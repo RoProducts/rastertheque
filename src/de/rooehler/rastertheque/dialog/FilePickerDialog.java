@@ -1,6 +1,7 @@
 package de.rooehler.rastertheque.dialog;
 
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -146,11 +147,18 @@ public class FilePickerDialog {
 			}
 
 			String path = mObjects.get(position);
+			
+			File file = new File(path);
+			
+			float fileSize = file.length() / 1048576f;
 
 			//ImageView imageView = (ImageView)row.findViewById(R.id.file_picker_image);
 			TextView textView = (TextView)row.findViewById(R.id.file_picker_text);
+			TextView sizetextView = (TextView)row.findViewById(R.id.file_picker_size);
+			sizetextView.setText(Float.toString(Math.round(fileSize * 100)/100f )+ " MB");
 			// Set single line
 			textView.setSingleLine(true);
+			sizetextView.setSingleLine(true);
 
 			final String fileName = path.substring(path.lastIndexOf("/") + 1);
 			textView.setText(fileName);

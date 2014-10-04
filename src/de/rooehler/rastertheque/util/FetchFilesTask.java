@@ -13,6 +13,7 @@ import android.content.ContentResolver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 import de.rooehler.rastertheque.R;
@@ -72,6 +73,8 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 				}while(cursor.moveToNext());
 			}
 			if(cursor != null)cursor.close();
+			
+			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/geocollect/"), 2));
 
 		}catch(Exception e){
 			Log.e(TAG, "error onbackground",e);	

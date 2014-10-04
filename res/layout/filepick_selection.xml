@@ -10,7 +10,9 @@
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
-        android:paddingBottom="5dip"
+        android:layout_marginBottom="5dip"
+        android:layout_marginTop="5dip"
+        android:fontFamily="sans-serif-light"
         android:paddingLeft="5dip"
         android:paddingRight="5dip"
         android:textAppearance="?android:attr/textAppearanceMedium" />
@@ -24,21 +26,20 @@
         android:paddingLeft="5dip"
         android:paddingRight="5dip" />
 
-       <LinearLayout
+    <LinearLayout
         android:id="@+id/buttonlayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true" >
 
-
-
         <Button
             android:id="@+id/cancelButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-			android:background="@drawable/bordered_button"
             android:layout_weight="1"
+            android:background="@drawable/bordered_button"
+            android:fontFamily="sans-serif-light"
             android:paddingLeft="5dip"
             android:paddingRight="5dip"
             android:paddingTop="5dip"

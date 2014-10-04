@@ -2,7 +2,6 @@ package de.rooehler.rastertheque;
 
 import java.io.File;
 
-import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 import org.mapsforge.map.android.mbtiles.MBTilesLayer;
@@ -12,13 +11,13 @@ import org.mapsforge.map.layer.Layer;
 import org.mapsforge.map.layer.cache.TileCache;
 import org.mapsforge.map.layer.renderer.TileRendererLayer;
 import org.mapsforge.map.model.MapViewPosition;
-import org.mapsforge.map.reader.MapDatabase;
 import org.mapsforge.map.rendertheme.InternalRenderTheme;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.content.res.Configuration;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Environment;
 import android.preference.PreferenceManager;
@@ -35,7 +34,6 @@ import android.widget.ListView;
 import de.rooehler.rastertheque.dialog.FilePickerDialog;
 import de.rooehler.rastertheque.dialog.FilePickerDialog.FilePathPickCallback;
 import de.rooehler.rastertheque.renderer.RendererType;
-import de.rooehler.rastertheque.util.Constants;
 
 public class MainActivity extends Activity {
 	
@@ -43,7 +41,7 @@ public class MainActivity extends Activity {
 	
 	final static String PREFS_FILEPATH = "de.rooehler.rastertheque.filepath";
 	final static String PREFS_RENDERER_TYPE = "de.rooehler.rastertheque.renderer_type";
-	final static String PREFS_ZOOM = "de.rooehler.rastertheque.prefs.zoom";
+//	final static String PREFS_ZOOM = "de.rooehler.rastertheque.prefs.zoom";
 	
 	private MapView mapView;
 	
@@ -63,6 +61,8 @@ public class MainActivity extends Activity {
 
 		setContentView(R.layout.main_layout);
 		
+		getActionBar().setBackgroundDrawable(new ColorDrawable(0xffffffff));
+		
 		mTitle = mDrawerTitle = getTitle();
 		
 		mapView = (MapView) findViewById(R.id.mapView);
@@ -78,6 +78,8 @@ public class MainActivity extends Activity {
 			public void onItemClick(AdapterView<?> parent, View view,int pos, long id) {
 				Log.d(TAG, "selected pos "+ pos);
 				
+				mDrawerLayout.closeDrawers();
+				
 				final RendererType newType = RendererType.values()[pos];
 				final String extension = RendererType.getExtensionForType(newType);
 				
@@ -88,9 +90,9 @@ public class MainActivity extends Activity {
 						
 						Log.d(TAG, "path selected "+filePath);
 						
-						LatLong loc = RendererType.getCenterForFilePath(newType, getBaseContext(), filePath);						
+						MapPosition mp = RendererType.getCenterForFilePath(newType, getBaseContext(), filePath);						
 						
-						setMapStyle(newType, filePath, loc,mapView.getModel().mapViewPosition.getZoomLevel());
+						setMapStyle(newType, filePath, mp);
 						
 						Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
 						ed.putString(PREFS_FILEPATH, filePath);
@@ -141,12 +143,11 @@ public class MainActivity extends Activity {
 		if(savedFilePath == null){
 			//hardcoded default file
 			savedFilePath = Environment.getExternalStorageDirectory().getAbsolutePath()+"/de.rooehler.bikecomputer.pro/italy.map";
-		}
+		}		
 		
+		final MapPosition mapPosition = RendererType.getCenterForFilePath(type,getBaseContext(), savedFilePath);
 		
-		final LatLong center = RendererType.getCenterForFilePath(type,getBaseContext(), savedFilePath);
-		
-		setMapStyle(type,savedFilePath,center,-1);
+		setMapStyle(type,savedFilePath,mapPosition);
 				
 	}
 
@@ -165,10 +166,6 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onStop() {
 		super.onStop();
-		
-		Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
-		ed.putInt(PREFS_ZOOM, mapView.getModel().mapViewPosition.getZoomLevel());
-		ed.commit();
 	}
 
 	@Override
@@ -240,9 +237,14 @@ public class MainActivity extends Activity {
 	
 	
 	
-	private void setMapStyle(final RendererType type, final String filePath, final LatLong center, int zoom) {
+	private void setMapStyle(final RendererType type, final String filePath, final MapPosition pMapPosition) {
 			
 		try{
+			final File file = new File(filePath);
+			if(!file.exists()){
+				Log.e(TAG, "filepath for map invalid");
+				return;
+			}
 			
 			//check existing layers
 			if(mapView.getLayerManager().getLayers().size() > 0){
@@ -250,24 +252,12 @@ public class MainActivity extends Activity {
 				mapView.getLayerManager().getLayers().remove(0);
 			}
 
-			MapViewPosition mvp = mapView.getModel().mapViewPosition;
-
-			if(zoom == -1){ //not set
-				zoom =  PreferenceManager.getDefaultSharedPreferences(this).getInt(PREFS_ZOOM, 12);			
-			}
-			//check bounds
-			int zoomInBounds = RendererType.checkZoomBounds(type, zoom);
-			
-			final File file = new File(filePath);
-			if(!file.exists()){
-				Log.e(TAG, "filepath for map invalid");
-				return;
-			}
+			MapViewPosition mvp = mapView.getModel().mapViewPosition;		
+			mvp.setMapPosition(pMapPosition);
 			
 			switch (type) {
 			case MAPSFORGE:
 				
-				mvp.setMapPosition(new MapPosition(center,(byte) zoomInBounds));
 				Layer mapsforgeLayer = new TileRendererLayer(tileCache, mvp, false, AndroidGraphicFactory.INSTANCE);
 				((TileRendererLayer) mapsforgeLayer).setMapFile(file);
 				((TileRendererLayer) mapsforgeLayer).setXmlRenderTheme(InternalRenderTheme.OSMARENDER);
@@ -279,8 +269,11 @@ public class MainActivity extends Activity {
 				break;
 			case MBTILES:
 				
+				
 				Layer mbTilesLayer = new MBTilesLayer(getBaseContext(), tileCache, mvp, false, AndroidGraphicFactory.INSTANCE, filePath);
 				mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
+				
+//				mapView.getModel().displayModel.setFixedTileSize(256);
 				
 				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) RendererType.MAPSFORGE_MAX_ZOOM);
 				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) RendererType.MAPSFORGE_MIN_ZOOM);

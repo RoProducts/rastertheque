@@ -4,7 +4,9 @@ import java.io.File;
 
 import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.core.model.LatLong;
+import org.mapsforge.core.model.MapPosition;
 import org.mapsforge.map.android.mbtiles.MbTilesDatabase;
+import org.mapsforge.map.model.MapViewPosition;
 import org.mapsforge.map.reader.MapDatabase;
 import org.mapsforge.map.reader.header.FileOpenResult;
 import org.mapsforge.map.reader.header.MapFileInfo;
@@ -41,7 +43,7 @@ public enum RendererType {
 		}
 	}
 	
-	public static LatLong getCenterForFilePath(RendererType type,final Context context,String filePath){
+	public static MapPosition getCenterForFilePath(RendererType type,final Context context,String filePath){
 		
 		
 		switch (type) {
@@ -55,17 +57,17 @@ public enum RendererType {
 			if (result.isSuccess()) {
 				final MapFileInfo mapFileInfo = mapDatabase.getMapFileInfo();
 				if (mapFileInfo != null && mapFileInfo.startPosition != null) {
-					return mapFileInfo.startPosition;
+					return new MapPosition(mapFileInfo.startPosition,mapFileInfo.startZoomLevel);
 				} else if(mapFileInfo != null){
 					final LatLong center  = mapFileInfo.boundingBox.getCenterPoint();
 					if(center != null){
-						return center;
+						return new MapPosition(center,mapFileInfo.startZoomLevel);
 					}else{
 						Log.e(RendererType.class.getSimpleName(), "could not retrieve bounding box center position for "+fileName);
 					}
 				}else{
 					Log.e(RendererType.class.getSimpleName(), "could not retrieve map start position for "+fileName);
-					return new LatLong(0,0);
+					return new MapPosition(new LatLong(0,0),(byte) 8);
 				}
 			}
 			throw new IllegalArgumentException("Invalid Map File " + fileName);
@@ -75,9 +77,11 @@ public enum RendererType {
 			MbTilesDatabase db = new MbTilesDatabase(context, filePath);
 			db.openDataBase();
 			LatLong loc = db.getBoundingBox().getCenterPoint();
+			int[] zoomMinMax = db.getMinMaxZoom(); 
 			db.close();
 			db = null;
-			return loc;
+			byte zoom = zoomMinMax == null ? (byte) 8 : (byte) zoomMinMax[0];
+			return new MapPosition(loc, zoom);
 
 		default:
 			throw new IllegalArgumentException("invalid type requested");
