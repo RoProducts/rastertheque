@@ -1,8 +1,11 @@
 package de.rooehler.rastertheque;
 
+import java.io.File;
+
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
+import org.mapsforge.map.android.mbtiles.MBTilesLayer;
 import org.mapsforge.map.android.util.AndroidUtil;
 import org.mapsforge.map.android.view.MapView;
 import org.mapsforge.map.layer.Layer;
@@ -10,37 +13,37 @@ import org.mapsforge.map.layer.cache.TileCache;
 import org.mapsforge.map.layer.renderer.TileRendererLayer;
 import org.mapsforge.map.model.MapViewPosition;
 import org.mapsforge.map.reader.MapDatabase;
-import org.mapsforge.map.reader.header.FileOpenResult;
 import org.mapsforge.map.rendertheme.InternalRenderTheme;
 
 import android.app.Activity;
-import android.app.SearchManager;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.os.Environment;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.widget.DrawerLayout;
 import android.util.Log;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.Toast;
-import de.rooehler.rastertheque.renderer.MapsforgeFileHelper;
+import de.rooehler.rastertheque.dialog.FilePickerDialog;
+import de.rooehler.rastertheque.dialog.FilePickerDialog.FilePathPickCallback;
 import de.rooehler.rastertheque.renderer.RendererType;
 import de.rooehler.rastertheque.util.Constants;
-import de.rooehler.rastertheque.util.LocateMe;
 
 public class MainActivity extends Activity {
 	
 	final static String TAG = MainActivity.class.getSimpleName();
+	
+	final static String PREFS_FILEPATH = "de.rooehler.rastertheque.filepath";
+	final static String PREFS_RENDERER_TYPE = "de.rooehler.rastertheque.renderer_type";
+	final static String PREFS_ZOOM = "de.rooehler.rastertheque.prefs.zoom";
 	
 	private MapView mapView;
 	
@@ -74,6 +77,29 @@ public class MainActivity extends Activity {
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view,int pos, long id) {
 				Log.d(TAG, "selected pos "+ pos);
+				
+				final RendererType newType = RendererType.values()[pos];
+				final String extension = RendererType.getExtensionForType(newType);
+				
+				new FilePickerDialog(MainActivity.this, "Select a file", extension, new FilePathPickCallback() {
+					
+					@Override
+					public void filePathPicked(String filePath) {
+						
+						Log.d(TAG, "path selected "+filePath);
+						
+						LatLong loc = RendererType.getCenterForFilePath(newType, getBaseContext(), filePath);						
+						
+						setMapStyle(newType, filePath, loc,mapView.getModel().mapViewPosition.getZoomLevel());
+						
+						Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
+						ed.putString(PREFS_FILEPATH, filePath);
+						ed.putInt(PREFS_RENDERER_TYPE, newType.ordinal());
+						ed.commit();
+						
+					}
+				});
+			
 			}
 		});
         
@@ -108,7 +134,19 @@ public class MainActivity extends Activity {
 				getResources().getDisplayMetrics().density, //screenratio
 				mapView.getModel().frameBufferModel.getOverdrawFactor());
 		
-		setMapStyle();
+		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		final RendererType type = RendererType.values()[prefs.getInt(PREFS_RENDERER_TYPE, 0)];
+		
+		String savedFilePath = prefs.getString(PREFS_FILEPATH, null);
+		if(savedFilePath == null){
+			//hardcoded default file
+			savedFilePath = Environment.getExternalStorageDirectory().getAbsolutePath()+"/de.rooehler.bikecomputer.pro/italy.map";
+		}
+		
+		
+		final LatLong center = RendererType.getCenterForFilePath(type,getBaseContext(), savedFilePath);
+		
+		setMapStyle(type,savedFilePath,center,-1);
 				
 	}
 
@@ -129,7 +167,7 @@ public class MainActivity extends Activity {
 		super.onStop();
 		
 		Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
-		ed.putInt(Constants.PREFS_ZOOM, mapView.getModel().mapViewPosition.getZoomLevel());
+		ed.putInt(PREFS_ZOOM, mapView.getModel().mapViewPosition.getZoomLevel());
 		ed.commit();
 	}
 
@@ -202,75 +240,50 @@ public class MainActivity extends Activity {
 	
 	
 	
-	private void setMapStyle() {
+	private void setMapStyle(final RendererType type, final String filePath, final LatLong center, int zoom) {
 			
 		try{
+			
+			//check existing layers
+			if(mapView.getLayerManager().getLayers().size() > 0){
+				Log.d(TAG, "removing map layer");
+				mapView.getLayerManager().getLayers().remove(0);
+			}
 
-			LatLong actualLoc = LocateMe.locateMeForLatLong(mapView.getContext());
 			MapViewPosition mvp = mapView.getModel().mapViewPosition;
 
-			final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-			final int zoom =  prefs.getInt(Constants.PREFS_ZOOM, 12);
+			if(zoom == -1){ //not set
+				zoom =  PreferenceManager.getDefaultSharedPreferences(this).getInt(PREFS_ZOOM, 12);			
+			}
+			//check bounds
+			int zoomInBounds = RendererType.checkZoomBounds(type, zoom);
 			
-			final RendererType type = RendererType.values()[prefs.getInt(Constants.PREFS_RENDERER_TYPE, 0)];
-			
-			int zoomInBounds = checkZoomBounds(type, zoom);
-			
-			if(actualLoc != null){ //use located pos
-				Log.d(TAG, "centering in mapStyle on "+actualLoc.toString());
-				mvp.setMapPosition(new MapPosition(actualLoc,(byte) zoomInBounds));
-			}else{ //use mapviews position or static if not available
-				mvp.setMapPosition(MapsforgeFileHelper.getInitialPosition());
+			final File file = new File(filePath);
+			if(!file.exists()){
+				Log.e(TAG, "filepath for map invalid");
+				return;
 			}
 			
 			switch (type) {
 			case MAPSFORGE:
 				
-				MapDatabase mapDatabase = new MapDatabase();
-				
-				final FileOpenResult result = mapDatabase.openFile(MapsforgeFileHelper.getMapsforgeFile());
-				if (result.isSuccess()) {
-					
-					Layer resultingLayer = new TileRendererLayer(tileCache, mvp, false, AndroidGraphicFactory.INSTANCE);
-					((TileRendererLayer) resultingLayer).setMapFile(MapsforgeFileHelper.getMapsforgeFile());
-					((TileRendererLayer) resultingLayer).setXmlRenderTheme(InternalRenderTheme.OSMARENDER);
-					mapView.getLayerManager().getLayers().add(0, resultingLayer);
-					
-					mapView.getModel().mapViewPosition.setZoomLevelMax((byte) MapsforgeFileHelper.RENDER_MAX_ZOOM);
-					mapView.getModel().mapViewPosition.setZoomLevelMin((byte) MapsforgeFileHelper.RENDER_MIN_ZOOM);
-					
-					//now that we have that layer, check if it covers
-					if(!LocateMe.mapFileContainsPoint(mapView, actualLoc)){
-						try{
-							Toast.makeText(getBaseContext(), "position outside of map file, centering on mapfile",Toast.LENGTH_SHORT).show();
-							TileRendererLayer trl = (TileRendererLayer) mapView.getLayerManager().getLayers().get(0);
-							
-							if(trl.getMapDatabase().getMapFileInfo().startPosition != null){
-								
-								mapView.getModel().mapViewPosition.setCenter(trl.getMapDatabase().getMapFileInfo().startPosition);
-								Log.d(TAG, "centering on startpos : " + trl.getMapDatabase().getMapFileInfo().startPosition.toString());
-								
-							}else{ //use bounding box center
-								
-								mapView.getModel().mapViewPosition.setCenter(trl.getMapDatabase().getMapFileInfo().boundingBox.getCenterPoint());
-								Log.d(TAG, "centering on bbs center : " + trl.getMapDatabase().getMapFileInfo().boundingBox.getCenterPoint().toString());
-							}
-							
-							mapView.getModel().mapViewPosition.setZoomLevel((byte) 8); //zoom out to see the map
-							mapView.getLayerManager().redrawLayers();
-														
-						}catch(Exception e){
-							Log.e(TAG, "Error using maps center as center position in setMapStyle",e);
-						}
-					}
-					
-				}else{
-					Log.d(TAG, "no success opening the file");
-					
-				}
+				mvp.setMapPosition(new MapPosition(center,(byte) zoomInBounds));
+				Layer mapsforgeLayer = new TileRendererLayer(tileCache, mvp, false, AndroidGraphicFactory.INSTANCE);
+				((TileRendererLayer) mapsforgeLayer).setMapFile(file);
+				((TileRendererLayer) mapsforgeLayer).setXmlRenderTheme(InternalRenderTheme.OSMARENDER);
+				mapView.getLayerManager().getLayers().add(0, mapsforgeLayer);
+
+				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) RendererType.MAPSFORGE_MAX_ZOOM);
+				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) RendererType.MAPSFORGE_MIN_ZOOM);
 				
 				break;
 			case MBTILES:
+				
+				Layer mbTilesLayer = new MBTilesLayer(getBaseContext(), tileCache, mvp, false, AndroidGraphicFactory.INSTANCE, filePath);
+				mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
+				
+				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) RendererType.MAPSFORGE_MAX_ZOOM);
+				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) RendererType.MAPSFORGE_MIN_ZOOM);
 				
 				break;
 
@@ -278,9 +291,6 @@ public class MainActivity extends Activity {
 				break;
 			}
 			
-
-
-
 			
 			if(mapView.getLayerManager().getLayers().size() > 0 ){
 				mapView.setClickable(true);
@@ -294,26 +304,4 @@ public class MainActivity extends Activity {
 		}
 		
 	}
-
-
-
-	public static int checkZoomBounds(final RendererType type,final int zoom){
-		int newZoom = zoom;
-
-		switch (type) {
-		case MAPSFORGE:
-			
-			if(zoom < MapsforgeFileHelper.RENDER_MIN_ZOOM)newZoom = MapsforgeFileHelper.RENDER_MIN_ZOOM;
-			if(zoom > MapsforgeFileHelper.RENDER_MAX_ZOOM)newZoom = MapsforgeFileHelper.RENDER_MAX_ZOOM;
-			break;
-		case MBTILES:
-		
-		break;
-
-		default:
-			break;
-		}
-		return newZoom;
-	}
-
 }
