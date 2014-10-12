@@ -2,6 +2,8 @@ package de.rooehler.rastertheque;
 
 import java.io.File;
 
+import org.gdal.gdal.Dataset;
+import org.gdal.gdal.gdal;
 import org.mapsforge.core.model.MapPosition;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 import org.mapsforge.map.android.mbtiles.MBTilesLayer;
@@ -41,7 +43,6 @@ public class MainActivity extends Activity {
 	
 	final static String PREFS_FILEPATH = "de.rooehler.rastertheque.filepath";
 	final static String PREFS_RENDERER_TYPE = "de.rooehler.rastertheque.renderer_type";
-//	final static String PREFS_ZOOM = "de.rooehler.rastertheque.prefs.zoom";
 	
 	private MapView mapView;
 	
@@ -53,7 +54,6 @@ public class MainActivity extends Activity {
 	private CharSequence mDrawerTitle;
     private CharSequence mTitle;
 	
-	private final static String[] titles = new String[]{"Mapsforge","MBTiles"};
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -70,7 +70,7 @@ public class MainActivity extends Activity {
 		mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         mDrawerList = (ListView) findViewById(R.id.left_drawer);
         
-        mDrawerList.setAdapter(new ArrayAdapter<String>(this, R.layout.drawer_list_item, titles));
+        mDrawerList.setAdapter(new ArrayAdapter<String>(this, R.layout.drawer_list_item, RendererType.getTypes()));
         // Set the list's click listener
         mDrawerList.setOnItemClickListener(new OnItemClickListener() {
 
@@ -90,15 +90,24 @@ public class MainActivity extends Activity {
 						
 						Log.d(TAG, "path selected "+filePath);
 						
-						MapPosition mp = RendererType.getCenterForFilePath(newType, getBaseContext(), filePath);						
+						String extension = filePath.substring(filePath.lastIndexOf(".") + 1);			
 						
-						setMapStyle(newType, filePath, mp);
-						
-						Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
-						ed.putString(PREFS_FILEPATH, filePath);
-						ed.putInt(PREFS_RENDERER_TYPE, newType.ordinal());
-						ed.commit();
-						
+						if(extension.equals("tif") || extension.equals("dem")){
+
+							GDALDecoder.open(filePath);
+							
+						}else{
+							MapPosition mp = RendererType.getCenterForFilePath(newType, getBaseContext(), filePath);						
+							
+							setMapStyle(newType, filePath, mp);
+							
+							Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
+							ed.putString(PREFS_FILEPATH, filePath);
+							ed.putInt(PREFS_RENDERER_TYPE, newType.ordinal());
+							ed.commit();
+
+							
+						}
 					}
 				});
 			
@@ -148,6 +157,7 @@ public class MainActivity extends Activity {
 		final MapPosition mapPosition = RendererType.getCenterForFilePath(type,getBaseContext(), savedFilePath);
 		
 		setMapStyle(type,savedFilePath,mapPosition);
+		
 				
 	}
 

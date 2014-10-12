@@ -2,11 +2,9 @@ package de.rooehler.rastertheque.renderer;
 
 import java.io.File;
 
-import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
 import org.mapsforge.map.android.mbtiles.MbTilesDatabase;
-import org.mapsforge.map.model.MapViewPosition;
 import org.mapsforge.map.reader.MapDatabase;
 import org.mapsforge.map.reader.header.FileOpenResult;
 import org.mapsforge.map.reader.header.MapFileInfo;
@@ -15,11 +13,11 @@ import android.content.Context;
 import android.util.Log;
 
 public enum RendererType {
-	
-	
 
 	MAPSFORGE,
-	MBTILES;
+	MBTILES,
+	GEOTIFF,
+	DEM;
 	
 	public static final int MAPSFORGE_MIN_ZOOM = 8;
 	public static final int MAPSFORGE_MAX_ZOOM = 20;
@@ -32,15 +30,28 @@ public enum RendererType {
 	public static String getExtensionForType(RendererType type){
 		
 		switch (type) {
-		case MAPSFORGE:
-			
+		case MAPSFORGE:		
 			return "map";
 		case MBTILES:
 			return "mbtiles";
+		case GEOTIFF:
+			return "tif";
+		case DEM:
+			return "dem";
 
 		default:
 			throw new IllegalArgumentException("invalid type requested");
 		}
+	}
+	public static String[] getTypes(){
+		
+		String[] titles = new String[RendererType.values().length];
+		
+		for(int i = 0; i < RendererType.values().length;i++){
+			titles[i] = RendererType.values()[i].name();
+		}
+		
+		return titles;
 	}
 	
 	public static MapPosition getCenterForFilePath(RendererType type,final Context context,String filePath){
