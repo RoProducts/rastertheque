@@ -1,5 +1,5 @@
-/Users/robertoehler/Documents/git/rastertheque/obj/local/armeabi/objs/gdalconstjni/gdalconst_wrap.o: \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdalconst_wrap.c \
+obj/local/armeabi/objs/gdalconstjni/gdalconst_wrap.o: \
+ jni/gdalconst_wrap.c \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/jni.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/stdlib.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/sys/cdefs.h \
@@ -22,10 +22,8 @@
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/machine/kernel.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/sys/sysmacros.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/memory.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/gdal.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/gdal_version.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_port.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_config.h \
+ jni/gdal/include/gdal.h jni/gdal/include/gdal_version.h \
+ jni/gdal/include/cpl_port.h jni/gdal/include/cpl_config.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/stdio.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/math.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/limits.h \
@@ -49,10 +47,8 @@
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/asm-generic/errno.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/asm-generic/errno-base.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/locale.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_error.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_progress.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_virtualmem.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_vsi.h \
+ jni/gdal/include/cpl_error.h jni/gdal/include/cpl_progress.h \
+ jni/gdal/include/cpl_virtualmem.h jni/gdal/include/cpl_vsi.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/unistd.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/sys/select.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/signal.h \
@@ -67,15 +63,11 @@
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/endian.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/sys/endian.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/machine/endian.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/gdalwarper.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/gdal_alg.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/gdal.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_minixml.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/ogr_api.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/ogr_core.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_string.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_conv.h \
- /Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_minixml.h
+ jni/gdal/include/gdalwarper.h jni/gdal/include/gdal_alg.h \
+ jni/gdal/include/gdal.h jni/gdal/include/cpl_minixml.h \
+ jni/gdal/include/ogr_api.h jni/gdal/include/ogr_core.h \
+ jni/gdal/include/cpl_string.h jni/gdal/include/cpl_conv.h \
+ jni/gdal/include/cpl_minixml.h
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/jni.h:
 
@@ -121,13 +113,13 @@
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/memory.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/gdal.h:
+jni/gdal/include/gdal.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/gdal_version.h:
+jni/gdal/include/gdal_version.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_port.h:
+jni/gdal/include/cpl_port.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_config.h:
+jni/gdal/include/cpl_config.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/stdio.h:
 
@@ -175,13 +167,13 @@
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/locale.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_error.h:
+jni/gdal/include/cpl_error.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_progress.h:
+jni/gdal/include/cpl_progress.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_virtualmem.h:
+jni/gdal/include/cpl_virtualmem.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_vsi.h:
+jni/gdal/include/cpl_vsi.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/unistd.h:
 
@@ -211,20 +203,20 @@
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/machine/endian.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/gdalwarper.h:
+jni/gdal/include/gdalwarper.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/gdal_alg.h:
+jni/gdal/include/gdal_alg.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/gdal.h:
+jni/gdal/include/gdal.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_minixml.h:
+jni/gdal/include/cpl_minixml.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/ogr_api.h:
+jni/gdal/include/ogr_api.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/ogr_core.h:
+jni/gdal/include/ogr_core.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_string.h:
+jni/gdal/include/cpl_string.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_conv.h:
+jni/gdal/include/cpl_conv.h:
 
-/Users/robertoehler/Documents/git/rastertheque/jni/gdal/include/cpl_minixml.h:
+jni/gdal/include/cpl_minixml.h:
