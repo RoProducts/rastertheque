@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque;
+package de.rooehler.rastertheque.gdal;
 
 import org.gdal.gdal.Dataset;
 import org.gdal.gdal.gdal;
@@ -11,6 +11,8 @@ import android.util.Log;
 public class GDALDecoder {
 	
 	private static final String TAG = GDALDecoder.class.getSimpleName();
+	
+	private static Dataset dataset;
 	
 	
 	static {
@@ -34,7 +36,7 @@ public class GDALDecoder {
 	
 	public static void open(String filePath){
 		
-		Dataset dataset = gdal.Open(filePath);
+		dataset = gdal.Open(filePath);
 
 		if (dataset == null) {
 			String lastErrMsg = gdal.GetLastErrorMsg();
@@ -42,16 +44,18 @@ public class GDALDecoder {
 			if (lastErrMsg != null) {
 				msg += ", " + lastErrMsg;
 			}
-			Log.e(GDALDecoder.class.getSimpleName(), msg +"\n"+ lastErrMsg);
+			Log.e(TAG, msg +"\n"+ lastErrMsg);
 		}else{
 			
-			printProperties(dataset);
+			Log.d(TAG, filePath.substring(filePath.lastIndexOf("/") + 1) +"succesfully opened");
 			
-			Log.d(TAG,"BoundingBox : \n"+getBoundingBox(dataset).toString());
+//			printProperties(dataset);
+			
+//			Log.d(TAG,"BoundingBox : \n"+getBoundingBox(dataset).toString());
 		}
 	}
 	
-	public static void printProperties(Dataset dataset){
+	public static void printProperties(){
 		
 		Log.d(TAG, "GetRasterXSize " +dataset.getRasterXSize());
 		Log.d(TAG, "GetRasterYSize " +dataset.getRasterYSize());
@@ -113,8 +117,9 @@ public class GDALDecoder {
 			GDALInfoReportCorner(dataset, "Center     ", dataset.getRasterXSize() / 2.0, dataset.getRasterYSize() / 2.0);
 
 	}
+
 	
-	public static BoundingBox getBoundingBox(Dataset dataset){
+	public static BoundingBox getBoundingBox(){
 		
 		
 		int width  = dataset.getRasterXSize();
@@ -130,24 +135,23 @@ public class GDALDecoder {
 		
 		//http://stackoverflow.com/questions/2922532/obtain-latitude-and-longitude-from-a-geotiff-file
 		
-		SpatialReference old_sr = new SpatialReference();
-		old_sr.ImportFromWkt(dataset.GetProjectionRef());
+		SpatialReference old_sr = new SpatialReference(dataset.GetProjectionRef());
 		
 		SpatialReference new_sr = new SpatialReference();
 		new_sr.SetWellKnownGeogCS("WGS84");
 		
-		gdal.PushErrorHandler( "CPLQuietErrorHandler" );
+//		final String WGS_84 = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.01745329251994328,AUTHORITY[\"EPSG\",\"9122\"]],AUTHORITY[\"EPSG\",\"4326\"]]";
+		
+//		new_sr.ImportFromWkt(WGS_84);
 			
-		CoordinateTransformation ct =  CoordinateTransformation.CreateCoordinateTransformation(new_sr, old_sr);
-	
-		gdal.PopErrorHandler();
+		CoordinateTransformation ct =  CoordinateTransformation.CreateCoordinateTransformation(old_sr, new_sr);
 		
 		if (ct != null){
 
 			double[] minLatLong = ct.TransformPoint(minx, miny);
 
 			double[] maxLatLong = ct.TransformPoint(maxx, maxy);
-			return new BoundingBox(minLatLong[0], minLatLong[1], maxLatLong[0], maxLatLong[1]);
+			return new BoundingBox(minLatLong[1], minLatLong[0], maxLatLong[1], maxLatLong[0]);
 		}else{
 
 			Log.e(TAG, gdal.GetLastErrorMsg());
@@ -163,16 +167,13 @@ public class GDALDecoder {
 	/*                        GDALInfoReportCorner()                        */
 	/************************************************************************/
 
-	static boolean GDALInfoReportCorner(Dataset hDataset, String corner_name,
-			double x, double y)
+	static boolean GDALInfoReportCorner(Dataset hDataset, String corner_name,double x, double y)
 
 	{
 		double dfGeoX, dfGeoY;
 		String pszProjection;
 		double[] adfGeoTransform = new double[6];
 		CoordinateTransformation hTransform = null;
-
-		Log.d(TAG,corner_name + " ");
 
 		/* -------------------------------------------------------------------- */
 		/*      Transform the point into georeferenced coordinates.             */
@@ -181,10 +182,8 @@ public class GDALDecoder {
 		{
 			pszProjection = hDataset.GetProjectionRef();
 
-			dfGeoX = adfGeoTransform[0] + adfGeoTransform[1] * x
-					+ adfGeoTransform[2] * y;
-			dfGeoY = adfGeoTransform[3] + adfGeoTransform[4] * x
-					+ adfGeoTransform[5] * y;
+			dfGeoX = adfGeoTransform[0] + adfGeoTransform[1] * x + adfGeoTransform[2] * y;
+			dfGeoY = adfGeoTransform[3] + adfGeoTransform[4] * x + adfGeoTransform[5] * y;
 		}
 
 		if (adfGeoTransform[0] == 0 && adfGeoTransform[1] == 0
@@ -197,7 +196,7 @@ public class GDALDecoder {
 		/* -------------------------------------------------------------------- */
 		/*      Report the georeferenced coordinates.                           */
 		/* -------------------------------------------------------------------- */
-		Log.d(TAG,"(" + dfGeoX + "," + dfGeoY + ") ");
+		Log.d(TAG,"Raw : (" + dfGeoX + "," + dfGeoY + ") ");
 
 		/* -------------------------------------------------------------------- */
 		/*      Setup transformation to lat/long.                               */
@@ -224,8 +223,7 @@ public class GDALDecoder {
 		if (hTransform != null) {
 			double[] transPoint = new double[3];
 			hTransform.TransformPoint(transPoint, dfGeoX, dfGeoY, 0);
-			Log.d(TAG,"(" + gdal.DecToDMS(transPoint[0], "Long", 2));
-			Log.d(TAG,"," + gdal.DecToDMS(transPoint[1], "Lat", 2) + ")");
+			Log.d(TAG,"WGS_84 : ("+ transPoint[0] +", "+transPoint[1]+ ")");
 		}
 
 		if (hTransform != null)

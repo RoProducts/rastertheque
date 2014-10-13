@@ -1,12 +1,9 @@
-package de.rooehler.rastertheque;
+package de.rooehler.rastertheque.activities;
 
 import java.io.File;
 
-import org.gdal.gdal.Dataset;
-import org.gdal.gdal.gdal;
 import org.mapsforge.core.model.MapPosition;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
-import org.mapsforge.map.android.mbtiles.MBTilesLayer;
 import org.mapsforge.map.android.util.AndroidUtil;
 import org.mapsforge.map.android.view.MapView;
 import org.mapsforge.map.layer.Layer;
@@ -33,9 +30,16 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import de.rooehler.rastertheque.R;
+import de.rooehler.rastertheque.R.drawable;
+import de.rooehler.rastertheque.R.id;
+import de.rooehler.rastertheque.R.layout;
+import de.rooehler.rastertheque.R.string;
 import de.rooehler.rastertheque.dialog.FilePickerDialog;
 import de.rooehler.rastertheque.dialog.FilePickerDialog.FilePathPickCallback;
+import de.rooehler.rastertheque.gdal.GDALDecoder;
 import de.rooehler.rastertheque.renderer.RendererType;
+import de.rooehler.rastertheque.util.mapsforge.mbtiles.MBTilesLayer;
 
 public class MainActivity extends Activity {
 	
@@ -81,22 +85,28 @@ public class MainActivity extends Activity {
 				mDrawerLayout.closeDrawers();
 				
 				final RendererType newType = RendererType.values()[pos];
-				final String extension = RendererType.getExtensionForType(newType);
+				final String[] extensions = RendererType.getExtensionForType(newType);
 				
-				new FilePickerDialog(MainActivity.this, "Select a file", extension, new FilePathPickCallback() {
+				new FilePickerDialog(MainActivity.this, "Select a file", extensions, new FilePathPickCallback() {
 					
 					@Override
 					public void filePathPicked(String filePath) {
 						
-						Log.d(TAG, "path selected "+filePath);
-						
-						String extension = filePath.substring(filePath.lastIndexOf(".") + 1);			
-						
-						if(extension.equals("tif") || extension.equals("dem")){
+						Log.d(TAG, "path selected "+filePath);			
+						//TODO also raster should be able to handle the default implementation
+						if(newType == RendererType.RASTER){
 
+							long now = System.currentTimeMillis();
 							GDALDecoder.open(filePath);
 							
+							Log.d(TAG, "RASTER open "+(System.currentTimeMillis()-now+" ms"));
+							
+							MapPosition mp = RendererType.getCenterForFilePath(newType, getBaseContext(), filePath);
+							
+							Log.d(TAG, "RASTER center "+(mp.latLong.toString()));
+							
 						}else{
+							
 							MapPosition mp = RendererType.getCenterForFilePath(newType, getBaseContext(), filePath);						
 							
 							setMapStyle(newType, filePath, mp);

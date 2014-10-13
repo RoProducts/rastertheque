@@ -4,20 +4,20 @@ import java.io.File;
 
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
-import org.mapsforge.map.android.mbtiles.MbTilesDatabase;
 import org.mapsforge.map.reader.MapDatabase;
 import org.mapsforge.map.reader.header.FileOpenResult;
 import org.mapsforge.map.reader.header.MapFileInfo;
 
 import android.content.Context;
 import android.util.Log;
+import de.rooehler.rastertheque.gdal.GDALDecoder;
+import de.rooehler.rastertheque.util.mapsforge.mbtiles.MbTilesDatabase;
 
 public enum RendererType {
 
 	MAPSFORGE,
 	MBTILES,
-	GEOTIFF,
-	DEM;
+	RASTER;
 	
 	public static final int MAPSFORGE_MIN_ZOOM = 8;
 	public static final int MAPSFORGE_MAX_ZOOM = 20;
@@ -27,17 +27,15 @@ public enum RendererType {
 	
 	
 	
-	public static String getExtensionForType(RendererType type){
+	public static String[] getExtensionForType(RendererType type){
 		
 		switch (type) {
 		case MAPSFORGE:		
-			return "map";
+			return new String[]{"map"};
 		case MBTILES:
-			return "mbtiles";
-		case GEOTIFF:
-			return "tif";
-		case DEM:
-			return "dem";
+			return new String[]{"mbtiles"};
+		case RASTER:
+			return new String[]{"tif","dem"};
 
 		default:
 			throw new IllegalArgumentException("invalid type requested");
@@ -93,8 +91,18 @@ public enum RendererType {
 			db = null;
 			byte zoom = zoomMinMax == null ? (byte) 8 : (byte) zoomMinMax[0];
 			return new MapPosition(loc, zoom);
-
+			
+		case RASTER:
+			
+			long now = System.currentTimeMillis();
+			LatLong center = GDALDecoder.getBoundingBox().getCenterPoint();
+			
+			Log.d(RendererType.class.getSimpleName(), "RASTER getCenter took "+(System.currentTimeMillis()-now+" ms"));
+			
+			return new MapPosition(center, (byte) 12);
+			
 		default:
+			
 			throw new IllegalArgumentException("invalid type requested");
 		}
 	}

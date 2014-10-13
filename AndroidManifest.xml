@@ -22,7 +22,7 @@
         android:theme="@style/AppTheme" 
         android:name=".app.App">
         
-        <activity android:name="de.rooehler.rastertheque.MainActivity">
+        <activity android:name="de.rooehler.rastertheque.activities.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -31,12 +31,12 @@ public class FilePickerDialog {
 	
 	protected FilePickerListAdapter mAdapter;
 	protected boolean mShowHiddenFiles = false;
-	protected String acceptedFileExtension;
+	protected String[] acceptedFileExtensions;
 	private Activity mActivity;
 	private String mMessage;
 	private FilePathPickCallback mFilePathPickCallback;
 	
-	public FilePickerDialog(final Activity activity,final String message,final String extension,final FilePathPickCallback filePickCallback) {
+	public FilePickerDialog(final Activity activity,final String message,final String[] extensions,final FilePathPickCallback filePickCallback) {
 
 		mActivity = activity;
 		
@@ -45,7 +45,7 @@ public class FilePickerDialog {
 		mFilePathPickCallback = filePickCallback;
 
 		// Initialize the extensions array to allow any file extensions
-		acceptedFileExtension = extension ;
+		acceptedFileExtensions = extensions;
 
 
 		refreshFilesList();
@@ -59,7 +59,7 @@ public class FilePickerDialog {
 	protected void refreshFilesList() {
 		// Clear the files ArrayList
 		
-		FetchFilesTask fft =new FetchFilesTask(mActivity,acceptedFileExtension) {
+		FetchFilesTask fft =new FetchFilesTask(mActivity,acceptedFileExtensions) {
 			
 			@Override
 			public void publishResult(ArrayList<String> result) {

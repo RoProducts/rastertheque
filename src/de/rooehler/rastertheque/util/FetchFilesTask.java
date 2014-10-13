@@ -24,13 +24,13 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 	
 	private ProgressDialog pd = null; 
 	private Activity activity;
-	private String mExtension;
+	private String[] mExtensions;
 	
 	public abstract void publishResult(final ArrayList<String> result);
 	
-	public FetchFilesTask(Activity act, final String pExtension){
+	public FetchFilesTask(Activity act, final String[] pExtensions){
 		this.activity  = act;
-		this.mExtension = pExtension;
+		this.mExtensions = pExtensions;
 	}
     
 	@Override
@@ -63,11 +63,14 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 					String path = cursor.getString(cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA));
 
 					String extension = path.substring(path.lastIndexOf(".") + 1, path.length());
-					if(extension.equals(mExtension)){
-						File file = new File(path);
-						if(!tempResult.contains(path) && file.exists()){
-							tempResult.add(path);
-							Log.d(TAG, "adding path : "+path);
+					for(int i = 0; i < mExtensions.length;i++){
+						final String target = mExtensions[i];
+						if(extension.equals(target)){
+							File file = new File(path);
+							if(!tempResult.contains(path) && file.exists()){
+								tempResult.add(path);
+								Log.d(TAG, "adding path : "+path);
+							}
 						}
 					}
 				}while(cursor.moveToNext());
@@ -126,8 +129,11 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 				if (listFile[i].isDirectory()) {
 					walkdir(listFile[i],level++);
 				} else {
-					if (listFile[i].getName().endsWith(mExtension)){					
-						tempResult.add(listFile[i].getPath());
+					for(int j = 0; j < mExtensions.length;j++){
+						final String target = mExtensions[j];
+						if (listFile[i].getName().endsWith(target)){					
+							tempResult.add(listFile[i].getPath());
+						}
 					}
 				}
 			}
