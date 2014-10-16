@@ -28,7 +28,7 @@ public class RasterFileJob extends Job {
 	private final int hashCodeValue;
 
 	protected RasterFileJob(Tile tile, DisplayModel displayModel, final BBDataSet pDataSet, boolean hasAlpha) {
-		super(tile, displayModel.getTileSize(), hasAlpha);
+		super(tile, hasAlpha);
 
 		this.dataSet = pDataSet;
 

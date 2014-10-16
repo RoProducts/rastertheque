@@ -27,7 +27,7 @@ public class MBTilesJob extends Job {
 	private final int hashCodeValue;
 
 	protected MBTilesJob(Tile tile, DisplayModel displayModel, final File file, boolean hasAlpha) {
-		super(tile, displayModel.getTileSize(), hasAlpha);
+		super(tile, hasAlpha);
 
 		this.mapFile = file;
 

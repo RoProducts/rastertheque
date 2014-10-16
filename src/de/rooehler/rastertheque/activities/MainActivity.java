@@ -278,7 +278,7 @@ public class MainActivity extends Activity {
 			switch (type) {
 			case MAPSFORGE:
 				
-				Layer mapsforgeLayer = new TileRendererLayer(tileCache, mvp, false, AndroidGraphicFactory.INSTANCE);
+				Layer mapsforgeLayer = new TileRendererLayer(tileCache, mvp, false, true, AndroidGraphicFactory.INSTANCE);
 				((TileRendererLayer) mapsforgeLayer).setMapFile(file);
 				((TileRendererLayer) mapsforgeLayer).setXmlRenderTheme(InternalRenderTheme.OSMARENDER);
 				mapView.getLayerManager().getLayers().add(0, mapsforgeLayer);

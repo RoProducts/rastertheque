@@ -50,7 +50,7 @@ public class MBTilesRenderer {
 
 		final Tile tile = job.tile;
 
-		final int tileSize = job.tileSize;
+		final int tileSize = tile.tileSize;
 
 		long localTileX = tile.tileX;
 		long localTileY = tile.tileY;
