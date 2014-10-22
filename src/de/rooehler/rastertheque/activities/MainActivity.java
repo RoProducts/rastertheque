@@ -40,6 +40,7 @@ import de.rooehler.rastertheque.dialog.FilePickerDialog.FilePathPickCallback;
 import de.rooehler.rastertheque.gdal.GDALDecoder;
 import de.rooehler.rastertheque.renderer.RendererType;
 import de.rooehler.rastertheque.util.mapsforge.mbtiles.MBTilesLayer;
+import de.rooehler.rastertheque.util.mapsforge.raster.RasterFileLayer;
 
 public class MainActivity extends Activity {
 	
@@ -92,39 +93,27 @@ public class MainActivity extends Activity {
 					@Override
 					public void filePathPicked(String filePath) {
 						
-						Log.d(TAG, "path selected "+filePath);			
-						//TODO also raster should be able to handle the default implementation
+						Log.d(TAG, "path selected "+filePath);	
+						
 						if(newType == RendererType.RASTER){
-
-							long now = System.currentTimeMillis();
+							
 							GDALDecoder.open(filePath);
-							
-							Log.d(TAG, "RASTER open "+(System.currentTimeMillis()-now+" ms"));
-							
-							MapPosition mp = RendererType.getCenterForFilePath(newType, getBaseContext(), filePath);
-							
-							Log.d(TAG, "RASTER center "+(mp.latLong.toString()));
-							
-						}else{
-							
-							MapPosition mp = RendererType.getCenterForFilePath(newType, getBaseContext(), filePath);						
-							
-							setMapStyle(newType, filePath, mp);
-							
-							Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
-							ed.putString(PREFS_FILEPATH, filePath);
-							ed.putInt(PREFS_RENDERER_TYPE, newType.ordinal());
-							ed.commit();
-
-							
 						}
+													
+						MapPosition	mp = RendererType.getCenterForFilePath(newType, mapView, filePath);
+												
+						setMapStyle(newType, filePath, mp);
+						
+						Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
+						ed.putString(PREFS_FILEPATH, filePath);
+						ed.putInt(PREFS_RENDERER_TYPE, newType.ordinal());
+						ed.commit();
 					}
 				});
 			
 			}
 		});
         
-        // enable ActionBar app icon to behave as action to toggle nav drawer
         getActionBar().setDisplayHomeAsUpEnabled(true);
         getActionBar().setHomeButtonEnabled(true);
 
@@ -164,15 +153,11 @@ public class MainActivity extends Activity {
 			savedFilePath = Environment.getExternalStorageDirectory().getAbsolutePath()+"/de.rooehler.bikecomputer.pro/italy.map";
 		}		
 		
-		final MapPosition mapPosition = RendererType.getCenterForFilePath(type,getBaseContext(), savedFilePath);
+		final MapPosition mapPosition = RendererType.getCenterForFilePath(type, this.mapView, savedFilePath);
 		
 		setMapStyle(type,savedFilePath,mapPosition);
-		
 				
 	}
-
-
-
 
 	@Override
 	public void onStart() {
@@ -181,7 +166,6 @@ public class MainActivity extends Activity {
         this.mapView.getLayerManager().redrawLayers();
 
 	}
-
 	
 	@Override
 	protected void onStop() {
@@ -292,11 +276,16 @@ public class MainActivity extends Activity {
 				
 				Layer mbTilesLayer = new MBTilesLayer(getBaseContext(), tileCache, mvp, false, AndroidGraphicFactory.INSTANCE, filePath);
 				mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
+								
+				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) RendererType.MBTILES_MAX_ZOOM);
+				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) RendererType.MBTILES_MIN_ZOOM);
 				
-//				mapView.getModel().displayModel.setFixedTileSize(256);
+				break;
 				
-				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) RendererType.MAPSFORGE_MAX_ZOOM);
-				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) RendererType.MAPSFORGE_MIN_ZOOM);
+			case RASTER:
+				
+				Layer rasterLayer = new RasterFileLayer(tileCache, mvp, false, AndroidGraphicFactory.INSTANCE, GDALDecoder.getCurrentDataSet());
+				mapView.getLayerManager().getLayers().add(0, rasterLayer);
 				
 				break;
 

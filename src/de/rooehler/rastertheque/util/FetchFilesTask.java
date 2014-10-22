@@ -78,6 +78,8 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 			if(cursor != null)cursor.close();
 			
 			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/geocollect/"), 2));
+			
+			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/"), 2));
 
 		}catch(Exception e){
 			Log.e(TAG, "error onbackground",e);	

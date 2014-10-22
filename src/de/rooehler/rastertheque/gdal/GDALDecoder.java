@@ -5,6 +5,7 @@ import org.gdal.gdal.gdal;
 import org.gdal.osr.CoordinateTransformation;
 import org.gdal.osr.SpatialReference;
 import org.mapsforge.core.model.BoundingBox;
+import org.mapsforge.core.model.Dimension;
 
 import android.util.Log;
 
@@ -47,12 +48,14 @@ public class GDALDecoder {
 			Log.e(TAG, msg +"\n"+ lastErrMsg);
 		}else{
 			
-			Log.d(TAG, filePath.substring(filePath.lastIndexOf("/") + 1) +"succesfully opened");
+			Log.d(TAG, filePath.substring(filePath.lastIndexOf("/") + 1) +" successfully opened");
 			
-//			printProperties(dataset);
-			
-//			Log.d(TAG,"BoundingBox : \n"+getBoundingBox(dataset).toString());
+			printProperties();
 		}
+	}
+	public static Dataset getCurrentDataSet(){
+		
+		return dataset;
 	}
 	
 	public static void printProperties(){
@@ -81,7 +84,6 @@ public class GDALDecoder {
 
 				hSRS.ExportToPrettyWkt(pszPrettyWkt, 0);
 				Log.d(TAG, "Coordinate System is: "+pszPrettyWkt[0]);
-				//gdal.CPLFree( pszPrettyWkt );
 			} else
 				Log.d(TAG,"Coordinate System is `"+ dataset.GetProjectionRef() + "'");
 

@@ -2,8 +2,13 @@ package de.rooehler.rastertheque.renderer;
 
 import java.io.File;
 
+import org.mapsforge.core.model.BoundingBox;
+import org.mapsforge.core.model.Dimension;
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
+import org.mapsforge.core.util.LatLongUtils;
+import org.mapsforge.core.util.MercatorProjection;
+import org.mapsforge.map.android.view.MapView;
 import org.mapsforge.map.reader.MapDatabase;
 import org.mapsforge.map.reader.header.FileOpenResult;
 import org.mapsforge.map.reader.header.MapFileInfo;
@@ -52,7 +57,7 @@ public enum RendererType {
 		return titles;
 	}
 	
-	public static MapPosition getCenterForFilePath(RendererType type,final Context context,String filePath){
+	public static MapPosition getCenterForFilePath(RendererType type,final MapView mapView,String filePath){
 		
 		
 		switch (type) {
@@ -83,7 +88,7 @@ public enum RendererType {
 			
 		case MBTILES:
 			
-			MbTilesDatabase db = new MbTilesDatabase(context, filePath);
+			MbTilesDatabase db = new MbTilesDatabase(mapView.getContext(), filePath);
 			db.openDataBase();
 			LatLong loc = db.getBoundingBox().getCenterPoint();
 			int[] zoomMinMax = db.getMinMaxZoom(); 
@@ -95,11 +100,19 @@ public enum RendererType {
 		case RASTER:
 			
 			long now = System.currentTimeMillis();
-			LatLong center = GDALDecoder.getBoundingBox().getCenterPoint();
-			
+			if(GDALDecoder.getCurrentDataSet() == null){
+				GDALDecoder.open(filePath);
+				if(GDALDecoder.getCurrentDataSet() == null){
+					throw new IllegalArgumentException("invalid mapFile provided");
+				}
+			}
+			final BoundingBox bb = GDALDecoder.getBoundingBox();
+			final LatLong center = bb.getCenterPoint();
 			Log.d(RendererType.class.getSimpleName(), "RASTER getCenter took "+(System.currentTimeMillis()-now+" ms"));
+	
+			byte rasterZoom = LatLongUtils.zoomForBounds( mapView.getDimension(), bb, mapView.getModel().displayModel.getTileSize());
 			
-			return new MapPosition(center, (byte) 12);
+			return new MapPosition(center, rasterZoom);
 			
 		default:
 			

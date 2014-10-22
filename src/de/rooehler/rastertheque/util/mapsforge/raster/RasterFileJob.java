@@ -14,8 +14,6 @@
  */
 package de.rooehler.rastertheque.util.mapsforge.raster;
 
-import java.io.File;
-
 import org.gdal.gdal.Dataset;
 import org.mapsforge.core.model.Tile;
 import org.mapsforge.map.layer.queue.Job;
@@ -24,13 +22,13 @@ import org.mapsforge.map.model.DisplayModel;
 public class RasterFileJob extends Job {
 
 	public final DisplayModel displayModel;
-	private BBDataSet dataSet;
+	private Dataset dataset;
 	private final int hashCodeValue;
 
-	protected RasterFileJob(Tile tile, DisplayModel displayModel, final BBDataSet pDataSet, boolean hasAlpha) {
+	protected RasterFileJob(Tile tile, DisplayModel displayModel, final Dataset pDataSet, boolean hasAlpha) {
 		super(tile, displayModel.getTileSize(), hasAlpha);
 
-		this.dataSet = pDataSet;
+		this.dataset = pDataSet;
 
 		this.displayModel = displayModel;
 
@@ -47,7 +45,7 @@ public class RasterFileJob extends Job {
 			return false;
 		}
 		RasterFileJob other = (RasterFileJob) obj;
-		if (!this.dataSet.equals(other.dataSet)) {
+		if (!this.dataset.equals(other.dataset)) {
 			return false;
 		} else if (!this.displayModel.equals(other.displayModel)) {
 			return false;
@@ -63,7 +61,7 @@ public class RasterFileJob extends Job {
 	private int calculateHashCode() {
 		final int prime = 31;
 		int result = super.hashCode();
-		result = prime * result + this.dataSet.hashCode();
+		result = prime * result + this.dataset.hashCode();
 		return result;
 	}
 

@@ -14,6 +14,7 @@
  */
 package de.rooehler.rastertheque.util.mapsforge.raster;
 
+import org.gdal.gdal.Dataset;
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.model.Tile;
 import org.mapsforge.map.layer.TileLayer;
@@ -27,15 +28,15 @@ public class RasterFileLayer extends TileLayer<RasterFileJob> {
 
 	private RasterFileWorkerThread worker;
 
-	private BBDataSet dataSet;
+	private Dataset dataset;
 
 	public RasterFileLayer(TileCache tileCache, MapViewPosition mapViewPosition, boolean isTransparent,
-			GraphicFactory graphicFactory, final BBDataSet pDataSet) {
+			GraphicFactory graphicFactory, final Dataset pDataSet) {
 		super(tileCache, mapViewPosition, graphicFactory.createMatrix(), isTransparent);
 
 		rasterFileRenderer = new RasterFileRenderer(graphicFactory,pDataSet);
 
-		this.dataSet = pDataSet;
+		this.dataset = pDataSet;
 
 	}
 
@@ -55,7 +56,7 @@ public class RasterFileLayer extends TileLayer<RasterFileJob> {
 
 	@Override
 	protected RasterFileJob createJob(Tile tile) {
-		return new RasterFileJob(tile, this.displayModel, this.dataSet, this.isTransparent);
+		return new RasterFileJob(tile, this.displayModel, this.dataset, this.isTransparent);
 	}
 
 	@Override
