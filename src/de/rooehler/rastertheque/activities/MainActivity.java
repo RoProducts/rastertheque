@@ -149,13 +149,32 @@ public class MainActivity extends Activity {
 		
 		String savedFilePath = prefs.getString(PREFS_FILEPATH, null);
 		if(savedFilePath == null){
-			//hardcoded default file
-			savedFilePath = Environment.getExternalStorageDirectory().getAbsolutePath()+"/de.rooehler.bikecomputer.pro/italy.map";
-		}		
+			
+			new FilePickerDialog(MainActivity.this, "Select a file", RendererType.getExtensionForType(type), new FilePathPickCallback() {
+				
+				@Override
+				public void filePathPicked(String filePath) {
+					
+					Log.d(TAG, "path selected "+filePath);	
+																	
+					MapPosition	mp = RendererType.getCenterForFilePath(type, mapView, filePath);
+											
+					setMapStyle(type, filePath, mp);
+					
+					Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
+					ed.putString(PREFS_FILEPATH, filePath);
+					ed.putInt(PREFS_RENDERER_TYPE, type.ordinal());
+					ed.commit();
+				}
+			});
+			
+		}	else{
+			
+			final MapPosition mapPosition = RendererType.getCenterForFilePath(type, this.mapView, savedFilePath);
+			
+			setMapStyle(type,savedFilePath,mapPosition);
+		}
 		
-		final MapPosition mapPosition = RendererType.getCenterForFilePath(type, this.mapView, savedFilePath);
-		
-		setMapStyle(type,savedFilePath,mapPosition);
 				
 	}
 
