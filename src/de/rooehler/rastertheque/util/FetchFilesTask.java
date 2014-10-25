@@ -49,6 +49,12 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 	protected ArrayList<String> doInBackground(Void... params) {
 		ArrayList<String> tempResult = new ArrayList<String>();
 		try{
+			
+//			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/geocollect/"), 2));
+			
+			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/"), 2));
+			
+//			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/"), 1));
 
 			ContentResolver cr = activity.getContentResolver();
 			Uri myUri = MediaStore.Files.getContentUri("external");
@@ -77,11 +83,7 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 			}
 			if(cursor != null)cursor.close();
 			
-			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/geocollect/"), 2));
-			
-			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/"), 2));
-			
-			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/"), 2));
+
 
 		}catch(Exception e){
 			Log.e(TAG, "error onbackground",e);	
@@ -124,6 +126,8 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 	public ArrayList<String> walkdir(File dir, int level) {
 
 		ArrayList<String> tempResult = new ArrayList<String>();
+		
+		if(level == 0)return tempResult;
 
 		File listFile[] = dir.listFiles();
 
@@ -131,7 +135,7 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 			for (int i = 0; i < listFile.length; i++) {
 
 				if (listFile[i].isDirectory()) {
-					walkdir(listFile[i],level++);
+					walkdir(listFile[i],--level);
 				} else {
 					for(int j = 0; j < mExtensions.length;j++){
 						final String target = mExtensions[j];

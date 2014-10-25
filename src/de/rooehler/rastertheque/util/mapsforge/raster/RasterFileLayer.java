@@ -22,6 +22,8 @@ import org.mapsforge.map.layer.cache.TileCache;
 import org.mapsforge.map.model.DisplayModel;
 import org.mapsforge.map.model.MapViewPosition;
 
+import android.util.Log;
+
 public class RasterFileLayer extends TileLayer<RasterFileJob> {
 
 	private RasterFileRenderer rasterFileRenderer;
@@ -31,10 +33,10 @@ public class RasterFileLayer extends TileLayer<RasterFileJob> {
 	private Dataset dataset;
 
 	public RasterFileLayer(TileCache tileCache, MapViewPosition mapViewPosition, boolean isTransparent,
-			GraphicFactory graphicFactory, final Dataset pDataSet) {
+			GraphicFactory graphicFactory, final Dataset pDataSet, final String pathToFile) {
 		super(tileCache, mapViewPosition, graphicFactory.createMatrix(), isTransparent);
 
-		rasterFileRenderer = new RasterFileRenderer(graphicFactory,pDataSet);
+		rasterFileRenderer = new RasterFileRenderer(graphicFactory,pDataSet,pathToFile);
 
 		this.dataset = pDataSet;
 
@@ -77,9 +79,13 @@ public class RasterFileLayer extends TileLayer<RasterFileJob> {
 
 	@Override
 	public void onDestroy() {
-		this.rasterFileRenderer.destroy();
-		this.worker.destroy();
-		super.onDestroy();
+		try{
+			this.rasterFileRenderer.destroy();
+//			this.worker.destroy();
+			super.onDestroy();
+		}catch(Exception e){
+			Log.e(RasterFileLayer.class.getSimpleName(), e.getMessage(),e);
+		}
 	}
 
 }

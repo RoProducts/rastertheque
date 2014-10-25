@@ -7,6 +7,7 @@ import org.gdal.osr.SpatialReference;
 import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.core.model.Dimension;
 
+import de.rooehler.rastertheque.util.RasterProperty;
 import android.util.Log;
 
 public class GDALDecoder {
@@ -57,6 +58,14 @@ public class GDALDecoder {
 		
 		return dataset;
 	}
+	public static RasterProperty getRasterProperties(final Dataset dataset){
+		
+		 double[] adfGeoTransform = new double[6];
+		 
+		 dataset.GetGeoTransform(adfGeoTransform);
+		 
+		 return new RasterProperty(dataset.GetRasterXSize(), dataset.getRasterYSize(), adfGeoTransform[1], adfGeoTransform[5]);
+	}
 	
 	public static void printProperties(){
 		
@@ -65,7 +74,7 @@ public class GDALDecoder {
 		
 		Log.d(TAG, "GetRasterCount (Bands) " +dataset.GetRasterCount());
 		Log.d(TAG, "GetFileList.size() " +dataset.GetFileList().size());
-		
+				
 		Log.d(TAG, "GetProjection " +dataset.GetProjection());
 		Log.d(TAG, "GetGCPProjection " +dataset.GetGCPProjection());
 		

@@ -85,32 +85,7 @@ public class MainActivity extends Activity {
 				
 				mDrawerLayout.closeDrawers();
 				
-				final RendererType newType = RendererType.values()[pos];
-				final String[] extensions = RendererType.getExtensionForType(newType);
-				
-				new FilePickerDialog(MainActivity.this, "Select a file", extensions, new FilePathPickCallback() {
-					
-					@Override
-					public void filePathPicked(String filePath) {
-						
-						Log.d(TAG, "path selected "+filePath);	
-						
-						if(newType == RendererType.RASTER){
-							
-							GDALDecoder.open(filePath);
-						}
-													
-						MapPosition	mp = RendererType.getCenterForFilePath(newType, mapView, filePath);
-												
-						setMapStyle(newType, filePath, mp);
-						
-						Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
-						ed.putString(PREFS_FILEPATH, filePath);
-						ed.putInt(PREFS_RENDERER_TYPE, newType.ordinal());
-						ed.commit();
-					}
-				});
-			
+				showFileSelectionDialog(RendererType.values()[pos]);
 			}
 		});
         
@@ -139,10 +114,12 @@ public class MainActivity extends Activity {
         mDrawerLayout.setDrawerListener(mDrawerToggle);
 		
 		tileCache = AndroidUtil.createTileCache(this,
-				"de.rooehler.bikecomputer.pro/cache/",
+				"rastertheque/cache/",
 				mapView.getModel().displayModel.getTileSize(),
 				getResources().getDisplayMetrics().density, //screenratio
-				mapView.getModel().frameBufferModel.getOverdrawFactor());
+				mapView.getModel().frameBufferModel.getOverdrawFactor(),
+				true);//delete external cache before start
+		
 		
 		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 		final RendererType type = RendererType.values()[prefs.getInt(PREFS_RENDERER_TYPE, 0)];
@@ -150,32 +127,12 @@ public class MainActivity extends Activity {
 		String savedFilePath = prefs.getString(PREFS_FILEPATH, null);
 		if(savedFilePath == null){
 			
-			new FilePickerDialog(MainActivity.this, "Select a file", RendererType.getExtensionForType(type), new FilePathPickCallback() {
-				
-				@Override
-				public void filePathPicked(String filePath) {
-					
-					Log.d(TAG, "path selected "+filePath);	
-																	
-					MapPosition	mp = RendererType.getCenterForFilePath(type, mapView, filePath);
-											
-					setMapStyle(type, filePath, mp);
-					
-					Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
-					ed.putString(PREFS_FILEPATH, filePath);
-					ed.putInt(PREFS_RENDERER_TYPE, type.ordinal());
-					ed.commit();
-				}
-			});
+			showFileSelectionDialog(type);
 			
 		}	else{
-			
-			final MapPosition mapPosition = RendererType.getCenterForFilePath(type, this.mapView, savedFilePath);
-			
-			setMapStyle(type,savedFilePath,mapPosition);
-		}
-		
-				
+					
+			setMapStyle(type, savedFilePath);
+		}			
 	}
 
 	@Override
@@ -183,7 +140,6 @@ public class MainActivity extends Activity {
 		super.onStart();
 	
         this.mapView.getLayerManager().redrawLayers();
-
 	}
 	
 	@Override
@@ -200,6 +156,103 @@ public class MainActivity extends Activity {
 		org.mapsforge.map.android.graphics.AndroidResourceBitmap.clearResourceBitmaps();
 		mapView = null;
 
+	}
+	
+	public void showFileSelectionDialog(final RendererType type){
+		
+		new FilePickerDialog(MainActivity.this, "Select a file", RendererType.getExtensionForType(type), new FilePathPickCallback() {
+			
+			@Override
+			public void filePathPicked(String filePath) {
+				
+				Log.d(TAG, "path selected "+filePath);
+				
+				if(type == RendererType.RASTER){
+					
+					GDALDecoder.open(filePath);
+					
+					GDALDecoder.printProperties();
+				}
+																										
+				setMapStyle(type, filePath);
+				
+				Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
+				ed.putString(PREFS_FILEPATH, filePath);
+				ed.putInt(PREFS_RENDERER_TYPE, type.ordinal());
+				ed.commit();
+			}
+		});
+	}
+	
+	private void setMapStyle(final RendererType type, final String filePath) {
+		
+		try{
+			final File file = new File(filePath);
+			if(!file.exists()){
+				Log.e(TAG, "filepath for map invalid");
+				return;
+			}
+			
+			//check existing layers
+			if(mapView.getLayerManager().getLayers().size() > 0){
+				Log.d(TAG, "removing map layer");
+				mapView.getLayerManager().getLayers().remove(0);
+			}
+			
+			final MapPosition	mp = RendererType.getCenterForFilePath(type, mapView, filePath);
+
+			MapViewPosition mvp = mapView.getModel().mapViewPosition;		
+			mvp.setMapPosition(mp);
+			
+			switch (type) {
+			case MAPSFORGE:
+				
+				Layer mapsforgeLayer = new TileRendererLayer(tileCache, mvp, false, AndroidGraphicFactory.INSTANCE);
+				((TileRendererLayer) mapsforgeLayer).setMapFile(file);
+				((TileRendererLayer) mapsforgeLayer).setXmlRenderTheme(InternalRenderTheme.OSMARENDER);
+				mapView.getLayerManager().getLayers().add(0, mapsforgeLayer);
+
+				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) RendererType.MAPSFORGE_MAX_ZOOM);
+				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) RendererType.MAPSFORGE_MIN_ZOOM);
+				
+				break;
+			case MBTILES:
+				
+				
+				Layer mbTilesLayer = new MBTilesLayer(getBaseContext(), tileCache, mvp, false, AndroidGraphicFactory.INSTANCE, filePath);
+				mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
+								
+				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) RendererType.MBTILES_MAX_ZOOM);
+				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) RendererType.MBTILES_MIN_ZOOM);
+				
+				break;
+				
+			case RASTER:
+				
+				Layer rasterLayer = new RasterFileLayer(tileCache, mvp, false, AndroidGraphicFactory.INSTANCE, GDALDecoder.getCurrentDataSet(),filePath);
+				mapView.getLayerManager().getLayers().add(0, rasterLayer);
+				
+				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) RendererType.RASTER_MAX_ZOOM);
+				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) RendererType.RASTER_MIN_ZOOM);
+				
+				break;
+
+			default:
+				break;
+			}
+			
+			
+			if(mapView.getLayerManager().getLayers().size() > 0 ){
+				mapView.setClickable(true);
+				mapView.setBuiltInZoomControls(true);
+				mapView.getMapScaleBar().setVisible(true);
+			}else{
+				Log.d(TAG, "no layers created");
+			}
+		}catch(Exception e){
+			Log.e(TAG, "error setting map style",e);
+		}
+		
 	}
 	
 	@Override
@@ -257,72 +310,4 @@ public class MainActivity extends Activity {
             return super.onOptionsItemSelected(item);
         }
     }
-	
-	
-	
-	private void setMapStyle(final RendererType type, final String filePath, final MapPosition pMapPosition) {
-			
-		try{
-			final File file = new File(filePath);
-			if(!file.exists()){
-				Log.e(TAG, "filepath for map invalid");
-				return;
-			}
-			
-			//check existing layers
-			if(mapView.getLayerManager().getLayers().size() > 0){
-				Log.d(TAG, "removing map layer");
-				mapView.getLayerManager().getLayers().remove(0);
-			}
-
-			MapViewPosition mvp = mapView.getModel().mapViewPosition;		
-			mvp.setMapPosition(pMapPosition);
-			
-			switch (type) {
-			case MAPSFORGE:
-				
-				Layer mapsforgeLayer = new TileRendererLayer(tileCache, mvp, false, AndroidGraphicFactory.INSTANCE);
-				((TileRendererLayer) mapsforgeLayer).setMapFile(file);
-				((TileRendererLayer) mapsforgeLayer).setXmlRenderTheme(InternalRenderTheme.OSMARENDER);
-				mapView.getLayerManager().getLayers().add(0, mapsforgeLayer);
-
-				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) RendererType.MAPSFORGE_MAX_ZOOM);
-				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) RendererType.MAPSFORGE_MIN_ZOOM);
-				
-				break;
-			case MBTILES:
-				
-				
-				Layer mbTilesLayer = new MBTilesLayer(getBaseContext(), tileCache, mvp, false, AndroidGraphicFactory.INSTANCE, filePath);
-				mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
-								
-				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) RendererType.MBTILES_MAX_ZOOM);
-				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) RendererType.MBTILES_MIN_ZOOM);
-				
-				break;
-				
-			case RASTER:
-				
-				Layer rasterLayer = new RasterFileLayer(tileCache, mvp, false, AndroidGraphicFactory.INSTANCE, GDALDecoder.getCurrentDataSet());
-				mapView.getLayerManager().getLayers().add(0, rasterLayer);
-				
-				break;
-
-			default:
-				break;
-			}
-			
-			
-			if(mapView.getLayerManager().getLayers().size() > 0 ){
-				mapView.setClickable(true);
-				mapView.setBuiltInZoomControls(true);
-				mapView.getMapScaleBar().setVisible(true);
-			}else{
-				Log.d(TAG, "no layers created");
-			}
-		}catch(Exception e){
-			Log.e(TAG, "error setting map style",e);
-		}
-		
-	}
 }
