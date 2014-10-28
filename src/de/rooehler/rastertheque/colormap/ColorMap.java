@@ -2,8 +2,6 @@ package de.rooehler.rastertheque.colormap;
 
 import java.util.ArrayList;
 
-import android.util.Log;
-
 public class ColorMap {
 	
 	private ArrayList<ColorMapEntry> mEntries;

@@ -103,7 +103,7 @@ public enum RendererType {
 			
 		case RASTER:
 			
-			long now = System.currentTimeMillis();
+//			long now = System.currentTimeMillis();
 			if(GDALDecoder.getCurrentDataSet() == null){
 				GDALDecoder.open(filePath);
 				if(GDALDecoder.getCurrentDataSet() == null){
@@ -112,19 +112,8 @@ public enum RendererType {
 			}
 			final BoundingBox bb = GDALDecoder.getBoundingBox();
 			final LatLong center = bb.getCenterPoint();
-			Log.d(RendererType.class.getSimpleName(), "RASTER getCenter took "+(System.currentTimeMillis()-now+" ms"));
+//			Log.d(RendererType.class.getSimpleName(), "RASTER getCenter took "+(System.currentTimeMillis()-now+" ms"));
 	
-//			byte rasterZoom = LatLongUtils.zoomForBounds( mapView.getDimension(), bb, mapView.getModel().displayModel.getTileSize());
-			
-//			final RasterProperty rasterProperty = GDALDecoder.getRasterProperties(GDALDecoder.getCurrentDataSet());
-//			
-//			int max = Integer.MIN_VALUE;
-//			
-//			max = rasterProperty.getmRasterXSize() >= rasterProperty.getmRasterYSize() ? rasterProperty.getmRasterXSize() : rasterProperty.getmRasterYSize();
-//			
-//			int ratio = max / mapView.getModel().displayModel.getTileSize();
-//			
-			
 			
 			return new MapPosition(center, (byte) 5);
 			

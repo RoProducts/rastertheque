@@ -106,9 +106,11 @@ public class RasterFileRenderer {
 	 */
 	public TileBitmap executeJob(RasterFileJob job) {
 
-		final int tileSize = job.tileSize;
+
+		final int tileSize = job.tile.tileSize;
 		
 		final short zoom = job.tile.zoomLevel;
+
 
 		TileBitmap bitmap = this.graphicFactory.createTileBitmap(job.displayModel.getTileSize(), job.hasAlpha);
 
