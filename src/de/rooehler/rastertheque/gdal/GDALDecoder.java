@@ -6,7 +6,9 @@ import org.gdal.osr.CoordinateTransformation;
 import org.gdal.osr.SpatialReference;
 import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.core.model.Dimension;
+import org.mapsforge.core.model.LatLong;
 
+import de.rooehler.rastertheque.util.Constants;
 import de.rooehler.rastertheque.util.RasterProperty;
 import android.util.Log;
 
@@ -75,8 +77,11 @@ public class GDALDecoder {
 		Log.d(TAG, "GetRasterCount (Bands) " +dataset.GetRasterCount());
 		Log.d(TAG, "GetFileList.size() " +dataset.GetFileList().size());
 				
-		Log.d(TAG, "GetProjection " +dataset.GetProjection());
-		Log.d(TAG, "GetGCPProjection " +dataset.GetGCPProjection());
+//		Log.d(TAG, "GetProjection " +dataset.GetProjection());
+//		Log.d(TAG, "GetGCPProjection " +dataset.GetGCPProjection());
+		
+		SpatialReference sr = new SpatialReference(dataset.GetProjectionRef());
+		Log.d(TAG, "Unit " + sr.GetLinearUnitsName());
 		
 		 /* -------------------------------------------------------------------- */
 		 /*      Report projection.                                              */
@@ -107,7 +112,7 @@ public class GDALDecoder {
 		 dataset.GetGeoTransform(adfGeoTransform);
 		 {
 			 if (adfGeoTransform[2] == 0.0 && adfGeoTransform[4] == 0.0) {
-				 Log.d(TAG,"Origin = (" + adfGeoTransform[0] + "," + adfGeoTransform[3] + ")");
+				 Log.d(TAG,"Upper Left  = (" + adfGeoTransform[0] + "," + adfGeoTransform[3] + ")");
 
 				 Log.d(TAG,"Pixel Size = (" + adfGeoTransform[1] + "," + adfGeoTransform[5] + ")");
 			 } else {
@@ -148,6 +153,7 @@ public class GDALDecoder {
 		
 		SpatialReference old_sr = new SpatialReference(dataset.GetProjectionRef());
 		
+		
 		SpatialReference new_sr = new SpatialReference();
 		new_sr.SetWellKnownGeogCS("WGS84");
 		
@@ -172,6 +178,52 @@ public class GDALDecoder {
 
 		}
 		
+	}
+	public static byte getStartZoomLevel(LatLong center){
+		
+		 double[] adfGeoTransform = new double[6];
+			
+		 dataset.GetGeoTransform(adfGeoTransform);
+		 
+			 if (adfGeoTransform[2] == 0.0 && adfGeoTransform[4] == 0.0) {
+				 
+				 SpatialReference sr = new SpatialReference(dataset.GetProjectionRef());
+				 Log.d(TAG, "Unit " + sr.GetLinearUnitsName());
+				 
+				 return 3;
+				 
+//				 if(sr.GetLinearUnitsName().toLowerCase().equals("degree")){
+//					 Log.d(TAG,"Pixel Size = (" + adfGeoTransform[1] + "," + adfGeoTransform[5] + ")");
+//					 float xResInMeters = (float) (adfGeoTransform[1] * distanceOfOneDegreeOfLongitudeAccordingToLatitude(center.latitude));
+//					 float yResInMeters = (float) (adfGeoTransform[5] * Constants.DEGREE_IN_METERS_AT_EQUATOR);
+//					 Log.d(TAG,"(xResInMeters " + xResInMeters + ", yResInMeters " + Math.abs(yResInMeters) + ")");
+//					 return zoomLevelAccordingToMetersPerPixel(Math.min(Math.abs(xResInMeters), Math.abs(yResInMeters)));
+//				 }else if(sr.GetLinearUnitsName().toLowerCase().equals("metre") || sr.GetLinearUnitsName().toLowerCase().equals("meter")){
+//					 return zoomLevelAccordingToMetersPerPixel((float)Math.min(Math.abs(adfGeoTransform[1]),Math.abs(adfGeoTransform[5])));
+//				 }
+					
+			 }
+	 //invalid data	 
+	 throw new IllegalArgumentException("unexpected transformation");
+		
+	}
+	private static double distanceOfOneDegreeOfLongitudeAccordingToLatitude(double lat){
+		
+		return Math.PI / 180 * Constants.EARTH_RADIUS * Math.cos(Math.toRadians(lat));
+	}
+	
+	private static byte zoomLevelAccordingToMetersPerPixel(float metersPerPixel){
+		
+		float temp = 156412;
+		byte zoom = 0;
+		
+		while(temp > metersPerPixel){
+			zoom++;
+			temp = (float) (temp / 2);
+		}
+		
+		return zoom;
+
 	}
 	
 	/************************************************************************/
@@ -207,7 +259,7 @@ public class GDALDecoder {
 		/* -------------------------------------------------------------------- */
 		/*      Report the georeferenced coordinates.                           */
 		/* -------------------------------------------------------------------- */
-		Log.d(TAG,"Raw : (" + dfGeoX + "," + dfGeoY + ") ");
+		//Log.d(TAG,"Raw : (" + dfGeoX + "," + dfGeoY + ") ");
 
 		/* -------------------------------------------------------------------- */
 		/*      Setup transformation to lat/long.                               */
@@ -234,7 +286,7 @@ public class GDALDecoder {
 		if (hTransform != null) {
 			double[] transPoint = new double[3];
 			hTransform.TransformPoint(transPoint, dfGeoX, dfGeoY, 0);
-			Log.d(TAG,"WGS_84 : ("+ transPoint[0] +", "+transPoint[1]+ ")");
+			Log.d(TAG,corner_name+"in WGS_84 : ("+ transPoint[0] +", "+transPoint[1]+ ")");
 		}
 
 		if (hTransform != null)

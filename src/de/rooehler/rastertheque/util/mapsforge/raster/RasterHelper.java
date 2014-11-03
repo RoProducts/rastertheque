@@ -1,6 +1,7 @@
 package de.rooehler.rastertheque.util.mapsforge.raster;
 
-import java.io.IOException;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,4 +65,29 @@ public class RasterHelper {
                   null;
 
        }
+       
+  public static Object getArrayAccordingToDatatype(final DataType dt, final ByteBuffer pBuffer){
+	  
+	  	Buffer b = null;
+  		switch(dt) {
+  		case CHAR:
+  			b = pBuffer.asCharBuffer();
+  		case BYTE:
+  			b = pBuffer;
+  			
+  		case SHORT:
+  			b =  pBuffer.asShortBuffer();
+  		case INT:
+  			b =  pBuffer.asIntBuffer();
+  		case LONG:
+  			b =  pBuffer.asLongBuffer();
+  		case FLOAT:
+  			b =  pBuffer.asFloatBuffer();
+  		case DOUBLE:
+  			b =  pBuffer.asDoubleBuffer();
+  		}
+  	
+  		return  b.array();
+  	}
+      
 }

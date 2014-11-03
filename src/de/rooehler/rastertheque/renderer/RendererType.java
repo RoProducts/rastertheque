@@ -3,20 +3,15 @@ package de.rooehler.rastertheque.renderer;
 import java.io.File;
 
 import org.mapsforge.core.model.BoundingBox;
-import org.mapsforge.core.model.Dimension;
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
-import org.mapsforge.core.util.LatLongUtils;
-import org.mapsforge.core.util.MercatorProjection;
 import org.mapsforge.map.android.view.MapView;
 import org.mapsforge.map.reader.MapDatabase;
 import org.mapsforge.map.reader.header.FileOpenResult;
 import org.mapsforge.map.reader.header.MapFileInfo;
 
-import android.content.Context;
 import android.util.Log;
 import de.rooehler.rastertheque.gdal.GDALDecoder;
-import de.rooehler.rastertheque.util.RasterProperty;
 import de.rooehler.rastertheque.util.mapsforge.mbtiles.MbTilesDatabase;
 
 public enum RendererType {
@@ -103,7 +98,6 @@ public enum RendererType {
 			
 		case RASTER:
 			
-//			long now = System.currentTimeMillis();
 			if(GDALDecoder.getCurrentDataSet() == null){
 				GDALDecoder.open(filePath);
 				if(GDALDecoder.getCurrentDataSet() == null){
@@ -112,48 +106,14 @@ public enum RendererType {
 			}
 			final BoundingBox bb = GDALDecoder.getBoundingBox();
 			final LatLong center = bb.getCenterPoint();
-//			Log.d(RendererType.class.getSimpleName(), "RASTER getCenter took "+(System.currentTimeMillis()-now+" ms"));
-	
-			
-			return new MapPosition(center, (byte) 5);
+
+			final byte zoomLevel = GDALDecoder.getStartZoomLevel(center);
+			Log.d(RendererType.class.getSimpleName(), "calculated zoom "+zoomLevel);
+			return new MapPosition(center, zoomLevel);
 			
 		default:
 			
 			throw new IllegalArgumentException("invalid type requested");
 		}
-	}
-	
-//	public static int checkZoomBounds(RendererType type,final int zoom){
-//		
-//		int newZoom = zoom;
-//		
-//		switch (type) {
-//		case MAPSFORGE:
-//
-//			if(zoom < MAPSFORGE_MIN_ZOOM)newZoom = MAPSFORGE_MIN_ZOOM;
-//			if(zoom > MAPSFORGE_MAX_ZOOM)newZoom = MAPSFORGE_MAX_ZOOM;
-//
-//			return newZoom;
-//
-//		case MBTILES:
-//
-//			if(zoom < MBTILES_MIN_ZOOM)newZoom = MBTILES_MIN_ZOOM;
-//			if(zoom > MBTILES_MAX_ZOOM)newZoom = MBTILES_MAX_ZOOM;
-//
-//			return newZoom;
-//			
-//		case RASTER:
-//			
-//			if(zoom < RASTER_MIN_ZOOM)newZoom = RASTER_MIN_ZOOM;
-//			if(zoom > RASTER_MAX_ZOOM)newZoom = RASTER_MAX_ZOOM;
-//
-//			return newZoom;
-//
-//		default:
-//			throw new IllegalArgumentException("invalid type requested");
-//		}
-//	}
-	
+	}	
 }
-
-

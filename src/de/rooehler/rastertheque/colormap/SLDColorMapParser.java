@@ -2,6 +2,8 @@ package de.rooehler.rastertheque.colormap;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -21,7 +23,7 @@ public class SLDColorMapParser {
 	
 	public static ColorMap parseColorMapFile(final File file){
 		
-		ArrayList<ColorMapEntry> colors = new ArrayList<ColorMapEntry>();
+		NavigableMap<Double,ColorMapEntry> colors = new TreeMap<Double,ColorMapEntry>();
 		
 		try {
 
@@ -32,7 +34,11 @@ public class SLDColorMapParser {
 			//read this - http://stackoverflow.com/questions/13786607/normalization-in-dom-parsing-with-java-how-does-it-work
 			doc.getDocumentElement().normalize();
 
-			NodeList nList = doc.getElementsByTagName("sld:ColorMapEntry");
+			NodeList nList = doc.getElementsByTagName("ColorMapEntry");
+			//TODO parse independent from namespace ?!
+			if(nList.getLength() == 0){
+				nList = doc.getElementsByTagName("sld:ColorMapEntry");
+			}
 
 			for (int temp = 0; temp < nList.getLength(); temp++) {
 
@@ -42,11 +48,21 @@ public class SLDColorMapParser {
 
 					// get attributes names and values
 					NamedNodeMap nodeMap = nNode.getAttributes();
+					
+					int color = Color.parseColor(nodeMap.getNamedItem("color").getNodeValue());
+					double quantity = Double.parseDouble(nodeMap.getNamedItem("quantity").getNodeValue());
+					double opacity = 1.0d;
+					
+					try{
+						opacity = Double.parseDouble(nodeMap.getNamedItem("opacity").getNodeValue());
+					}catch(NumberFormatException | NullPointerException e){		}
 
-					colors.add(new ColorMapEntry(Color.parseColor(
-							nodeMap.item(0).getNodeValue()),
-							Float.parseFloat(nodeMap.item(1).getNodeValue()),
-							Float.parseFloat(nodeMap.item(2).getNodeValue())));	
+					String label = null;
+					try{
+						label = nodeMap.getNamedItem("label").getNodeValue();
+					}catch( NullPointerException e){ }
+
+					colors.put(quantity, new ColorMapEntry(color, quantity, opacity, label));	
 				}
 			}	
 

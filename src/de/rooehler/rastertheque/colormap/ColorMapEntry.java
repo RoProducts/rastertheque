@@ -4,14 +4,24 @@ public class ColorMapEntry{
 	
 	
 	private int color;
-	private float opacity;
-	private float quantity;
+	private double opacity;
+	private double quantity;
+	private String label;
 	
-	public ColorMapEntry(final int pColor, final float pOpacity, final float pQuantity){
+	public ColorMapEntry(final int pColor,  final double pQuantity,final double pOpacity, final String pLabel){
 		
 		this.color = pColor;
 		this.opacity = pOpacity;
 		this.quantity = pQuantity;
+		this.label = pLabel;
+	}
+
+	public String getLabel() {
+		return label;
+	}
+
+	public void setLabel(String label) {
+		this.label = label;
 	}
 
 	public int getColor() {
@@ -22,19 +32,19 @@ public class ColorMapEntry{
 		this.color = color;
 	}
 
-	public float getOpacity() {
+	public double getOpacity() {
 		return opacity;
 	}
 
-	public void setOpacity(float opacity) {
+	public void setOpacity(double opacity) {
 		this.opacity = opacity;
 	}
 
-	public float getQuantity() {
+	public double getQuantity() {
 		return quantity;
 	}
 
-	public void setQuantity(float quantity) {
+	public void setQuantity(double quantity) {
 		this.quantity = quantity;
 	}
 	

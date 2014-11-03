@@ -170,8 +170,6 @@ public class MainActivity extends Activity {
 				if(type == RendererType.RASTER){
 					
 					GDALDecoder.open(filePath);
-					
-					GDALDecoder.printProperties();
 				}
 																										
 				setMapStyle(type, filePath);

@@ -17,6 +17,7 @@ package de.rooehler.rastertheque.util.mapsforge.raster;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
@@ -27,6 +28,7 @@ import org.gdal.osr.CoordinateTransformation;
 import org.gdal.osr.SpatialReference;
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
+import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.util.MercatorProjection;
 
 import android.util.Log;
@@ -45,7 +47,7 @@ public class RasterFileRenderer {
 
 	private CoordinateTransformation mTransformation;
 	
-	private boolean isWorking = false;
+	private boolean isWorking = true;
 	
 	private final String EPSG_3857 = "PROJCS[\"WGS 84 / Pseudo-Mercator\","+
     "GEOGCS[\"WGS 84\","+
@@ -72,6 +74,16 @@ public class RasterFileRenderer {
 	
 	private RasterProperty mRasterProperty;
 	private ColorMap mColorMap;
+	
+	private final boolean useColorMap = true;
+	
+	private LatLong origin;
+	private byte mInitialZoom;
+	
+	private int mWidth;
+	private int mHeight;
+	
+
 
 	public RasterFileRenderer(GraphicFactory graphicFactory, final Dataset pDataset, final String filePath) {
 
@@ -81,22 +93,47 @@ public class RasterFileRenderer {
 		
 		this.mRasterProperty = GDALDecoder.getRasterProperties(pDataset);
 		
-		//create a transformation which will turn WGS 84 / Pseudo-Mercator (EPSG:3857) coordinates coming from the job
-		// to coordinates available in the dataset
+		this.mInitialZoom = GDALDecoder.getStartZoomLevel(GDALDecoder.getBoundingBox().getCenterPoint());
 		
-		final SpatialReference inSpatialRef = new SpatialReference(EPSG_3857);
+		this.mWidth = this.dataset.GetRasterXSize();
 		
-		final SpatialReference outSpatialRef = new SpatialReference(this.dataset.GetProjectionRef());
+		this.mHeight = this.dataset.getRasterYSize();
 		
-		this.mTransformation = CoordinateTransformation.CreateCoordinateTransformation(inSpatialRef, outSpatialRef);
+		SpatialReference hProj = new SpatialReference(this.dataset.GetProjectionRef());
 		
-		final String colorMapFilePath = filePath.substring(0, filePath.lastIndexOf(".") + 1) + "sld";
+		SpatialReference hLatLong =  hProj.CloneGeogCS();
 		
-		File file = new File(colorMapFilePath);
+		this.mTransformation = CoordinateTransformation.CreateCoordinateTransformation(hProj, hLatLong);
 		
-		if(file.exists()){
+		double[] adfGeoTransform = new double[6];
 
-			mColorMap = SLDColorMapParser.parseColorMapFile(file);
+		dataset.GetGeoTransform(adfGeoTransform);
+
+		if (adfGeoTransform[2] == 0.0 && adfGeoTransform[4] == 0.0) {
+			
+			double[] transPoint = new double[3];
+			mTransformation.TransformPoint(transPoint, adfGeoTransform[0], adfGeoTransform[3], 0);
+			Log.d(TAG,"Origin(raw) : ("+ transPoint[0] +", "+transPoint[1]+ ")");
+			origin = new LatLong(transPoint[1], transPoint[0]);
+			Log.d(TAG,"Origin (ll) : ("+ origin.longitude +", "+origin.latitude+ ")");
+			
+			
+		}else{
+			//what is it ?
+			//TODO handle
+			throw new IllegalArgumentException("unexpected transformation");
+		}
+
+		if(useColorMap){
+			
+			final String colorMapFilePath = filePath.substring(0, filePath.lastIndexOf(".") + 1) + "sld";
+
+			File file = new File(colorMapFilePath);
+
+			if(file.exists()){
+
+				mColorMap = SLDColorMapParser.parseColorMapFile(file);
+			}
 		}
 	}
 
@@ -106,10 +143,11 @@ public class RasterFileRenderer {
 	 */
 	public TileBitmap executeJob(RasterFileJob job) {
 
+		long now = System.currentTimeMillis();
 
 		final int tileSize = job.tile.tileSize;
 		
-		final short zoom = job.tile.zoomLevel;
+		final byte zoom = job.tile.zoomLevel;
 
 
 		TileBitmap bitmap = this.graphicFactory.createTileBitmap(job.displayModel.getTileSize(), job.hasAlpha);
@@ -124,116 +162,218 @@ public class RasterFileRenderer {
                 datatype = dt;
             }
         }
-        int zoomedTS = (int) (tileSize * scaleFactorAccordingToZoom(zoom));
+         final double scaleFactor = scaleFactorAccordingToZoom(zoom);
+        Log.d(TAG, String.format("scaleFactor for initial zoom %d current zoom %d :  %f",this.mInitialZoom,zoom,scaleFactor));
+        int zoomedTS = (int) (tileSize * scaleFactor);
         
         Log.d(TAG, String.format("tile %d %d zoom %d zoomedTileSize %d",job.tile.tileX,job.tile.tileY,job.tile.zoomLevel,zoomedTS));
         
         long pixelX =  MercatorProjection.tileToPixel(job.tile.tileX, zoomedTS);
         long pixelY =  MercatorProjection.tileToPixel(job.tile.tileY, zoomedTS);
-        if(pixelX + zoomedTS > mRasterProperty.getmRasterXSize() && 
-           pixelY + zoomedTS > mRasterProperty.getmRasterYSize()){
+        
+        double originX = MercatorProjection.tileToPixel(MercatorProjection.longitudeToTileX(origin.longitude, zoom),zoomedTS);
+        double originY = MercatorProjection.tileToPixel(MercatorProjection.latitudeToTileY(origin.latitude, zoom), zoomedTS);
+        
+        long readFromX = (long) (pixelX - originX);
+        long readFromY = (long) (pixelY - originY);
+        
+        if(readFromX < 0 || readFromX > this.mWidth ||  readFromY < 0 || readFromY > this.mHeight){
+        	Log.e(TAG, "reading from "+readFromX+","+readFromY+" from file {"+this.mWidth+","+this.mHeight+"}");
+        }else{
+        	Log.i(TAG, "reading from "+readFromX+","+readFromY+" from file {"+this.mWidth+","+this.mHeight+"}");    	
+        }
+        
+        if(readFromX + zoomedTS > mRasterProperty.getmRasterXSize() && 
+           readFromY + zoomedTS > mRasterProperty.getmRasterYSize()){
         	//x and y bounds hit
         	zoomedTS = Math.min((int) (mRasterProperty.getmRasterXSize() - (pixelX + zoomedTS)),
         						(int) (mRasterProperty.getmRasterYSize() - (pixelY + zoomedTS)));
-        }else if(pixelX + zoomedTS > mRasterProperty.getmRasterXSize()){
+        }else if(readFromX + zoomedTS > mRasterProperty.getmRasterXSize()){
         	//x bounds hit
         	zoomedTS = (int) (mRasterProperty.getmRasterXSize() - (pixelX + zoomedTS));
-		}else if(pixelY + zoomedTS > mRasterProperty.getmRasterYSize()){
+		}else if(readFromY + zoomedTS > mRasterProperty.getmRasterYSize()){
         	//y bounds hit
         	zoomedTS = (int) (mRasterProperty.getmRasterYSize() - (pixelY + zoomedTS));
         }
         
         final Band band = bands.get(0);
-        
-        ByteBuffer buffer = ByteBuffer.allocateDirect(tileSize * tileSize * datatype.size());
+        final int bufferSize = tileSize * tileSize * datatype.size();
+        ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
         
         buffer.order(ByteOrder.nativeOrder()); 
         
-        Log.d(TAG, String.format("conversion from tile %d %d to coords %d %d", job.tile.tileX, job.tile.tileY,pixelX,pixelY));
+        //Log.d(TAG, String.format("conversion from tile %d %d to coords %d %d", job.tile.tileX, job.tile.tileY,pixelX,pixelY));
         
             // single band, read in same units as requested buffer
-        band.ReadRaster_Direct((int)pixelX,(int)pixelY, zoomedTS, zoomedTS, tileSize,tileSize, buffer);
+        band.ReadRaster_Direct((int)readFromX,(int)readFromY, zoomedTS, zoomedTS, tileSize,tileSize, RasterHelper.toGDAL(datatype), buffer);
 
 		// copy all pixels from the color array to the tile bitmap
-		bitmap.setPixels(generateGreyScalePixels(buffer.array(), tileSize, tileSize), tileSize);
-
+		bitmap.setPixels(generatePixels(buffer,bufferSize, datatype, tileSize, tileSize), tileSize);
+		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 		return bitmap;
 	}
 	/**
-	 * apply a colormap to an array one dimensional (elevation) values
-	 * @param rawdata
+	 * @param a Databuffer according to the datatype of this raster
 	 * @param pixelsWidth
 	 * @param pixelsHeight
 	 * @return
 	 * @throws Exception
 	 */
-	public int[] generateGreyScalePixels(byte[] rawdata, int pixelsWidth, int pixelsHeight){
+	public int[] generatePixels(final ByteBuffer buffer,final int bufferSize, final DataType dataType, int pixelsWidth, int pixelsHeight){
 
-        int[] pixels = new int[rawdata.length];
-        
-    	
-    	float max =  Byte.MIN_VALUE;
-    	float min =  Byte.MAX_VALUE;
-    	
-    	for (int i = 0;i< rawdata.length;i++){
-    		
-    			if (rawdata[i] < min){
-    				min = rawdata[i];
-    			}
-    			if(rawdata[i] > max){
-    				max = rawdata[i];
-    			}	
-    	}        
-    	
-    	//Log.d(TAG, "rawdata min "+min +" max "+max);
+		int wordSize = dataType.bits();
+		int byteSize = wordSize / 8;
+		
+		int pixelSize = bufferSize / byteSize;
+        int[] pixels = new int[pixelSize];
+        double max =  Double.MIN_VALUE;
+        double min =  Double.MAX_VALUE;
         
         
+        if(mColorMap == null){ //only needed if colormap not available
+        	while(buffer.hasRemaining()){
+        		switch(dataType) {
+        		case CHAR:
+        			char _char = buffer.getChar();
+        			if(_char > max){
+        				max = _char;
+        			}
+        			if(_char < min){
+        				min = _char;
+        			}
+        			break;
+        		case BYTE:
+        			byte _byte = buffer.get();
+        			if(_byte > max){
+        				max = _byte;
+        			}
+        			if(_byte < min){
+        				min = _byte;
+        			}
+        			break;
+        		case SHORT:
+        			short _short = buffer.getShort();
+        			if(_short > max){
+        				max = _short;
+        			}
+        			if(_short < min){
+        				min = _short;
+        			}
+        			break;
+        		case INT:
+        			int _int = buffer.getInt();
+        			if(_int > max){
+        				max = _int;
+        			}
+        			if(_int < min){
+        				min = _int;
+        			}
+        			break;
+        		case LONG:
+        			long _long = buffer.getLong();
+        			if(_long > max){
+        				max = _long;
+        			}
+        			if(_long < min){
+        				min = _long;
+        			}
+        			break;
+        		case FLOAT:
+        			float _float = buffer.getFloat();
+        			if(_float > max){
+        				max = _float;
+        			}
+        			if(_float < min){
+        				min = _float;
+        			}
+        			break;
+        		case DOUBLE:
+        			double _double = buffer.getDouble();
+        			if(_double > max){
+        				max = _double;
+        			}
+        			if(_double < min){
+        				min = _double;
+        			}
+        			break;
+        		}
+        	}
+       
+        	Log.d(TAG, "rawdata min "+min +" max "+max);
+        }
         
-        for( int i = 0; i < rawdata.length; i++ ){        
+        
+        buffer.rewind();
+        
+        double d = 0.0d;
+ 
+        for (int i = 0; i < pixelSize; i++) {
         	
-           	
-            	if(mColorMap != null){
-            		int rgb = mColorMap.getColorAccordingToValue(rawdata[i]);
-            		int r = (rgb >> 16) & 0x000000FF;
-            		int g = (rgb >> 8 ) & 0x000000FF;
-            		int b = (rgb)       & 0x000000FF;
-            		pixels[i] = 0xff000000 | ((((int) r) << 16) & 0xff0000) | ((((int) g) << 8) & 0xff00) | ((int) b);
-            	}else{
-            		final float color = (float) ((rawdata[i] - min) / (max - min));
-            		
-            		int grey = (int) (color * 256);
-            		pixels[i] = 0xff000000 | ((((int) grey) << 16) & 0xff0000) | ((((int) grey) << 8) & 0xff00) | ((int) grey);
-            	}
+    		switch(dataType) {
+    		case CHAR:
+    			char _char = buffer.getChar();
+    			d = (double) _char;
+    			break;
+    		case BYTE:
+    			byte _byte = buffer.get();
+    			d = (double) _byte;
 
+    			break;
+    		case SHORT:
+    			short _short = buffer.getShort();
+    			d = (double) _short;
+
+    			break;
+    		case INT:
+    			int _int = buffer.getInt();
+    			d = (double) _int;
+
+    			break;
+    		case LONG:
+    			long _long = buffer.getLong();
+    			d = (double) _long;
+
+    			break;
+    		case FLOAT:
+    			float _float = buffer.getFloat();
+    			d = (double) _float;
+
+    			break;
+    		case DOUBLE:
+    			double _double =  buffer.getDouble();
+    			d = _double;
+    		}
+
+
+    		if(mColorMap != null){
+    			pixels[i] = pixelValueForColorMapAccordingToData(d);
+    		}else{
+    			pixels[i] = pixelValueForGrayScale(d, min, max);
+    		}
         }
 
         return pixels;
     } 
-	public class ByteBufferBackedInputStream extends InputStream {
-
-	    ByteBuffer buf;
-
-	    public ByteBufferBackedInputStream(ByteBuffer buf) {
-	        this.buf = buf;
-	    }
-
-	    public int read() throws IOException {
-	        if (!buf.hasRemaining()) {
-	            return -1;
-	        }
-	        return buf.get() & 0xFF;
-	    }
-
-	    public int read(byte[] bytes, int off, int len) throws IOException {
-	        if (!buf.hasRemaining()) {
-	            return -1;
-	        }
-
-	        len = Math.min(len, buf.remaining());
-	        buf.get(bytes, off, len);
-	        return len;
-	    }
+	
+	public int pixelValueForColorMapAccordingToData(double val){
+		
+    		int rgb = mColorMap.getColorAccordingToValue(val);
+    		int r = (rgb >> 16) & 0x000000FF;
+    		int g = (rgb >> 8 ) & 0x000000FF;
+    		int b = (rgb)       & 0x000000FF;
+    		return 0xff000000 | ((((int) r) << 16) & 0xff0000) | ((((int) g) << 8) & 0xff00) | ((int) b);
 	}
+	
+	public int pixelValueForGrayScale(double val, double min, double max){
+		
+		final double color = (val - min) / (max - min);
+		int grey = (int) (color * 256);
+		return 0xff000000 | ((((int) grey) << 16) & 0xff0000) | ((((int) grey) << 8) & 0xff00) | ((int) grey);
+		
+	}
+	
+
+	
 
 	public void start() {
 
@@ -260,24 +400,30 @@ public class RasterFileRenderer {
 		stop();
 
 	}
-	
 	public double scaleFactorAccordingToZoom(short zoom){
 		
-		switch (zoom) {
-
-		case 8  : return 0.03125;
-		case 7  : return 0.0625;
-		case 6  : return 0.125;
-		case 5  : return 0.25;
-		case 4  : return 0.5;
-		case 3  : return 1;
-		case 2  : return 2;
-		case 1  : return 4;
-
-		default:
-			break;
-		}
-		return 0;
+		
+		return Math.pow(2,  -(zoom - this.mInitialZoom));
+		
 	}
+	
+//	public double scaleFactorAccordingToZoom(short zoom){
+//		
+//		switch (zoom) {
+//
+//		case 8  : return 0.03125;
+//		case 7  : return 0.0625;
+//		case 6  : return 0.125;
+//		case 5  : return 0.25;
+//		case 4  : return 0.5;
+//		case 3  : return 1;
+//		case 2  : return 2;
+//		case 1  : return 4;
+//
+//		default:
+//			break;
+//		}
+//		return 0;
+//	}
 
 }
