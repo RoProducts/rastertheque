@@ -1,7 +1,6 @@
 package de.rooehler.rastertheque.colormap;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
@@ -15,6 +14,7 @@ import org.w3c.dom.NodeList;
 
 import android.graphics.Color;
 import android.util.Log;
+import android.util.Pair;
 
 public class SLDColorMapParser {
 	
@@ -25,6 +25,7 @@ public class SLDColorMapParser {
 		
 		NavigableMap<Double,ColorMapEntry> colors = new TreeMap<Double,ColorMapEntry>();
 		
+		Pair<Double,Integer> noData = null;
 		try {
 
 			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
@@ -58,11 +59,17 @@ public class SLDColorMapParser {
 					}catch(NumberFormatException | NullPointerException e){		}
 
 					String label = null;
+					boolean add = true;
 					try{
 						label = nodeMap.getNamedItem("label").getNodeValue();
+						if(label.equals("nodata")){
+							add = false;
+							noData = new Pair<Double, Integer>(quantity, color);
+						}
 					}catch( NullPointerException e){ }
-
-					colors.put(quantity, new ColorMapEntry(color, quantity, opacity, label));	
+					if(add){						
+						colors.put(quantity, new ColorMapEntry(color, quantity, opacity, label));	
+					}
 				}
 			}	
 
@@ -70,6 +77,6 @@ public class SLDColorMapParser {
 			Log.e(TAG,"error parsing", e);
 		}
 		
-	    return new ColorMap(colors);
+	    return new ColorMap(colors,noData);
 	}
 }

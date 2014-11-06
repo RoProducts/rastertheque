@@ -80,8 +80,6 @@ public class GDALDecoder {
 //		Log.d(TAG, "GetProjection " +dataset.GetProjection());
 //		Log.d(TAG, "GetGCPProjection " +dataset.GetGCPProjection());
 		
-		SpatialReference sr = new SpatialReference(dataset.GetProjectionRef());
-		Log.d(TAG, "Unit " + sr.GetLinearUnitsName());
 		
 		 /* -------------------------------------------------------------------- */
 		 /*      Report projection.                                              */
@@ -148,19 +146,11 @@ public class GDALDecoder {
 		double	maxy = gt[3];
 		
 
-		
-		//http://stackoverflow.com/questions/2922532/obtain-latitude-and-longitude-from-a-geotiff-file
-		
 		SpatialReference old_sr = new SpatialReference(dataset.GetProjectionRef());
-		
 		
 		SpatialReference new_sr = new SpatialReference();
 		new_sr.SetWellKnownGeogCS("WGS84");
-		
-//		final String WGS_84 = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.01745329251994328,AUTHORITY[\"EPSG\",\"9122\"]],AUTHORITY[\"EPSG\",\"4326\"]]";
-		
-//		new_sr.ImportFromWkt(WGS_84);
-			
+
 		CoordinateTransformation ct =  CoordinateTransformation.CreateCoordinateTransformation(old_sr, new_sr);
 		
 		if (ct != null){
@@ -171,13 +161,11 @@ public class GDALDecoder {
 			return new BoundingBox(minLatLong[1], minLatLong[0], maxLatLong[1], maxLatLong[0]);
 		}else{
 
-			Log.e(TAG, gdal.GetLastErrorMsg());
-			
+			Log.e(TAG, gdal.GetLastErrorMsg());	
 
 			return null;
 
 		}
-		
 	}
 	public static byte getStartZoomLevel(LatLong center){
 		
@@ -190,7 +178,8 @@ public class GDALDecoder {
 				 SpatialReference sr = new SpatialReference(dataset.GetProjectionRef());
 				 Log.d(TAG, "Unit " + sr.GetLinearUnitsName());
 				 
-				 return 3;
+
+				 return 5;
 				 
 //				 if(sr.GetLinearUnitsName().toLowerCase().equals("degree")){
 //					 Log.d(TAG,"Pixel Size = (" + adfGeoTransform[1] + "," + adfGeoTransform[5] + ")");

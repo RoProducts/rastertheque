@@ -14,6 +14,7 @@
  */
 package de.rooehler.rastertheque.util.mapsforge.raster;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -77,11 +78,11 @@ public class RasterFileRenderer {
 	
 	private final boolean useColorMap = true;
 	
-	private LatLong origin;
+	private LatLong mOrigin;
 	private byte mInitialZoom;
 	
-	private int mWidth;
-	private int mHeight;
+	private int mRasterWidth;
+	private int mRasterHeight;
 	
 
 
@@ -95,9 +96,9 @@ public class RasterFileRenderer {
 		
 		this.mInitialZoom = GDALDecoder.getStartZoomLevel(GDALDecoder.getBoundingBox().getCenterPoint());
 		
-		this.mWidth = this.dataset.GetRasterXSize();
+		this.mRasterWidth = this.dataset.GetRasterXSize();
 		
-		this.mHeight = this.dataset.getRasterYSize();
+		this.mRasterHeight = this.dataset.getRasterYSize();
 		
 		SpatialReference hProj = new SpatialReference(this.dataset.GetProjectionRef());
 		
@@ -114,8 +115,8 @@ public class RasterFileRenderer {
 			double[] transPoint = new double[3];
 			mTransformation.TransformPoint(transPoint, adfGeoTransform[0], adfGeoTransform[3], 0);
 			Log.d(TAG,"Origin(raw) : ("+ transPoint[0] +", "+transPoint[1]+ ")");
-			origin = new LatLong(transPoint[1], transPoint[0]);
-			Log.d(TAG,"Origin (ll) : ("+ origin.longitude +", "+origin.latitude+ ")");
+			mOrigin = new LatLong(transPoint[1], transPoint[0]);
+			Log.d(TAG,"Origin (ll) : ("+ mOrigin.longitude +", "+mOrigin.latitude+ ")");
 			
 			
 		}else{
@@ -162,53 +163,68 @@ public class RasterFileRenderer {
                 datatype = dt;
             }
         }
-         final double scaleFactor = scaleFactorAccordingToZoom(zoom);
+        
+        final double scaleFactor = scaleFactorAccordingToZoom(zoom);
+        
         Log.d(TAG, String.format("scaleFactor for initial zoom %d current zoom %d :  %f",this.mInitialZoom,zoom,scaleFactor));
         int zoomedTS = (int) (tileSize * scaleFactor);
         
         Log.d(TAG, String.format("tile %d %d zoom %d zoomedTileSize %d",job.tile.tileX,job.tile.tileY,job.tile.zoomLevel,zoomedTS));
         
-        long pixelX =  MercatorProjection.tileToPixel(job.tile.tileX, zoomedTS);
-        long pixelY =  MercatorProjection.tileToPixel(job.tile.tileY, zoomedTS);
+        final long pixelX =  MercatorProjection.tileToPixel(job.tile.tileX, zoomedTS);
+        final long pixelY =  MercatorProjection.tileToPixel(job.tile.tileY, zoomedTS);
         
-        double originX = MercatorProjection.tileToPixel(MercatorProjection.longitudeToTileX(origin.longitude, zoom),zoomedTS);
-        double originY = MercatorProjection.tileToPixel(MercatorProjection.latitudeToTileY(origin.latitude, zoom), zoomedTS);
+        final long originX = MercatorProjection.tileToPixel(MercatorProjection.longitudeToTileX(mOrigin.longitude, zoom),zoomedTS);
+        final long originY = MercatorProjection.tileToPixel(MercatorProjection.latitudeToTileY(mOrigin.latitude, zoom), zoomedTS);
         
-        long readFromX = (long) (pixelX - originX);
-        long readFromY = (long) (pixelY - originY);
+        final long readFromX = pixelX - originX;
+        final long readFromY = pixelY - originY;
         
-        if(readFromX < 0 || readFromX > this.mWidth ||  readFromY < 0 || readFromY > this.mHeight){
-        	Log.e(TAG, "reading from "+readFromX+","+readFromY+" from file {"+this.mWidth+","+this.mHeight+"}");
+        if(readFromX < 0 || readFromX > this.mRasterWidth ||  readFromY < 0 || readFromY > this.mRasterHeight){
+        	Log.e(TAG, "reading from "+readFromX+","+readFromY+" from file {"+this.mRasterWidth+","+this.mRasterHeight+"}");
         }else{
-        	Log.i(TAG, "reading from "+readFromX+","+readFromY+" from file {"+this.mWidth+","+this.mHeight+"}");    	
+        	Log.i(TAG, "reading from "+readFromX+","+readFromY+" from file {"+this.mRasterWidth+","+this.mRasterHeight+"}");    	
         }
         
-        if(readFromX + zoomedTS > mRasterProperty.getmRasterXSize() && 
-           readFromY + zoomedTS > mRasterProperty.getmRasterYSize()){
+        if(readFromX + zoomedTS > this.mRasterWidth && 
+           readFromY + zoomedTS > this.mRasterHeight){
         	//x and y bounds hit
-        	zoomedTS = Math.min((int) (mRasterProperty.getmRasterXSize() - (pixelX + zoomedTS)),
-        						(int) (mRasterProperty.getmRasterYSize() - (pixelY + zoomedTS)));
-        }else if(readFromX + zoomedTS > mRasterProperty.getmRasterXSize()){
+        	zoomedTS = Math.min((int) (this.mRasterWidth - (pixelX + zoomedTS)),
+        						(int) (this.mRasterHeight - (pixelY + zoomedTS)));
+        }else if(readFromX + zoomedTS > this.mRasterWidth){
         	//x bounds hit
-        	zoomedTS = (int) (mRasterProperty.getmRasterXSize() - (pixelX + zoomedTS));
+        	zoomedTS = (int) (this.mRasterWidth - (pixelX + zoomedTS));
 		}else if(readFromY + zoomedTS > mRasterProperty.getmRasterYSize()){
         	//y bounds hit
-        	zoomedTS = (int) (mRasterProperty.getmRasterYSize() - (pixelY + zoomedTS));
+        	zoomedTS = (int) (this.mRasterHeight - (pixelY + zoomedTS));
         }
         
+        if(readFromX + zoomedTS <= 0 ||
+        		readFromX + zoomedTS > this.mRasterWidth ||
+        		readFromY + zoomedTS <= 0 ||
+        		readFromY + zoomedTS > this.mRasterHeight ||
+        		zoomedTS <= 0){
+        	//cannot read, create white tile
+        	int[] pixels = new int[tileSize * tileSize];
+        	for (int i = 0; i < pixels.length; i++) {
+				pixels[i] = 0xffffffff;
+			}
+        	bitmap.setPixels( pixels, tileSize);
+        	Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
+        	return bitmap;
+        }
+        
+        //TODO render all bands
         final Band band = bands.get(0);
         final int bufferSize = tileSize * tileSize * datatype.size();
         ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
         
         buffer.order(ByteOrder.nativeOrder()); 
-        
-        //Log.d(TAG, String.format("conversion from tile %d %d to coords %d %d", job.tile.tileX, job.tile.tileY,pixelX,pixelY));
-        
-            // single band, read in same units as requested buffer
+
         band.ReadRaster_Direct((int)readFromX,(int)readFromY, zoomedTS, zoomedTS, tileSize,tileSize, RasterHelper.toGDAL(datatype), buffer);
 
-		// copy all pixels from the color array to the tile bitmap
-		bitmap.setPixels(generatePixels(buffer,bufferSize, datatype, tileSize, tileSize), tileSize);
+		bitmap.setPixels( generatePixels(buffer,bufferSize, datatype, tileSize, tileSize), tileSize);
+		
 		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 		return bitmap;
 	}
@@ -219,10 +235,12 @@ public class RasterFileRenderer {
 	 * @return
 	 * @throws Exception
 	 */
-	public int[] generatePixels(final ByteBuffer buffer,final int bufferSize, final DataType dataType, int pixelsWidth, int pixelsHeight){
+	public int[] generatePixels(final ByteBuffer pBuffer,final int bufferSize, final DataType dataType, int pixelsWidth, int pixelsHeight){
 
 		int wordSize = dataType.bits();
 		int byteSize = wordSize / 8;
+		
+		final ByteBufferReader reader = new ByteBufferReader(pBuffer.array(), ByteOrder.nativeOrder());
 		
 		int pixelSize = bufferSize / byteSize;
         int[] pixels = new int[pixelSize];
@@ -231,118 +249,122 @@ public class RasterFileRenderer {
         
         
         if(mColorMap == null){ //only needed if colormap not available
-        	while(buffer.hasRemaining()){
-        		switch(dataType) {
-        		case CHAR:
-        			char _char = buffer.getChar();
-        			if(_char > max){
-        				max = _char;
+        	 for (int i = 0; i < pixelSize; i++) {
+        		try{
+        			switch(dataType) {
+        			case CHAR:
+        				char _char = reader.readChar();
+        				if(_char > max){
+        					max = _char;
+        				}
+        				if(_char < min){
+        					min = _char;
+        				}
+        				break;
+        			case BYTE:
+        				byte _byte = reader.readByte();
+        				if(_byte > max){
+        					max = _byte;
+        				}
+        				if(_byte < min){
+        					min = _byte;
+        				}
+        				break;
+        			case SHORT:
+        				short _short = reader.readShort();
+        				if(_short > max){
+        					max = _short;
+        				}
+        				if(_short < min){
+        					min = _short;
+        				}
+        				break;
+        			case INT:
+        				int _int = reader.readInt();
+        				if(_int > max){
+        					max = _int;
+        				}
+        				if(_int < min){
+        					min = _int;
+        				}
+        				break;
+        			case LONG:
+        				long _long = reader.readLong();
+        				if(_long > max){
+        					max = _long;
+        				}
+        				if(_long < min){
+        					min = _long;
+        				}
+        				break;
+        			case FLOAT:
+        				float _float = reader.readFloat();
+        				if(_float > max){
+        					max = _float;
+        				}
+        				if(_float < min){
+        					min = _float;
+        				}
+        				break;
+        			case DOUBLE:
+        				double _double = reader.readDouble();
+        				if(_double > max){
+        					max = _double;
+        				}
+        				if(_double < min){
+        					min = _double;
+        				}
+        				break;
         			}
-        			if(_char < min){
-        				min = _char;
-        			}
+        		}catch(EOFException e){
         			break;
-        		case BYTE:
-        			byte _byte = buffer.get();
-        			if(_byte > max){
-        				max = _byte;
-        			}
-        			if(_byte < min){
-        				min = _byte;
-        			}
-        			break;
-        		case SHORT:
-        			short _short = buffer.getShort();
-        			if(_short > max){
-        				max = _short;
-        			}
-        			if(_short < min){
-        				min = _short;
-        			}
-        			break;
-        		case INT:
-        			int _int = buffer.getInt();
-        			if(_int > max){
-        				max = _int;
-        			}
-        			if(_int < min){
-        				min = _int;
-        			}
-        			break;
-        		case LONG:
-        			long _long = buffer.getLong();
-        			if(_long > max){
-        				max = _long;
-        			}
-        			if(_long < min){
-        				min = _long;
-        			}
-        			break;
-        		case FLOAT:
-        			float _float = buffer.getFloat();
-        			if(_float > max){
-        				max = _float;
-        			}
-        			if(_float < min){
-        				min = _float;
-        			}
-        			break;
-        		case DOUBLE:
-        			double _double = buffer.getDouble();
-        			if(_double > max){
-        				max = _double;
-        			}
-        			if(_double < min){
-        				min = _double;
-        			}
-        			break;
+        		}catch(IOException  e){
+        			Log.e(TAG, "error reading from byteBufferedReader");
         		}
         	}
        
         	Log.d(TAG, "rawdata min "+min +" max "+max);
+        	reader.init();
         }
-        
-        
-        buffer.rewind();
+
         
         double d = 0.0d;
  
         for (int i = 0; i < pixelSize; i++) {
-        	
-    		switch(dataType) {
-    		case CHAR:
-    			char _char = buffer.getChar();
-    			d = (double) _char;
-    			break;
-    		case BYTE:
-    			byte _byte = buffer.get();
-    			d = (double) _byte;
-
-    			break;
-    		case SHORT:
-    			short _short = buffer.getShort();
-    			d = (double) _short;
-
-    			break;
-    		case INT:
-    			int _int = buffer.getInt();
-    			d = (double) _int;
-
-    			break;
-    		case LONG:
-    			long _long = buffer.getLong();
-    			d = (double) _long;
-
-    			break;
-    		case FLOAT:
-    			float _float = buffer.getFloat();
-    			d = (double) _float;
-
-    			break;
-    		case DOUBLE:
-    			double _double =  buffer.getDouble();
-    			d = _double;
-    		}
+        	try{
+        		switch(dataType) {
+        		case CHAR:
+        			char _char = reader.readChar();
+        			d = (double) _char;
+        			break;
+        		case BYTE:
+        			byte _byte = reader.readByte();
+        			d = (double) _byte;
+        			break;
+        		case SHORT:
+        			short _short = reader.readShort();
+        			d = (double) _short;
+        			break;
+        		case INT:
+        			int _int = reader.readInt();
+        			d = (double) _int;
+        			break;
+        		case LONG:
+        			long _long = reader.readLong();
+        			d = (double) _long;
+        			break;
+        		case FLOAT:
+        			float _float = reader.readFloat();
+        			d = (double) _float;
+        			break;
+        		case DOUBLE:
+        			double _double =  reader.readDouble();
+        			d = _double;
+        			break;
+        		}
+        	}catch(IOException  e){
+        		Log.e(TAG, "error reading from byteBufferedReader");
+        	}
 
 
     		if(mColorMap != null){
