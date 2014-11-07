@@ -5,6 +5,14 @@ import java.util.TreeMap;
 
 import android.util.Pair;
 
+
+/**
+ * class which defines ranges of values and maps colors to them
+ * for fast access on arbitrary values it uses a NavigableMap 
+ * As improvement the nodata value is handled separately
+ * @author robertoehler
+ *
+ */
 public class ColorMap {
 	
 	private NavigableMap<Double,ColorMapEntry> mEntries;
@@ -32,8 +40,8 @@ public class ColorMap {
 		if(mNoData != null && val.equals(mNoData.first)){
 			return mNoData.second;
 		}
-
-		return mEntries.get(mEntries.floorKey(val)).getColor();
+		
+		return  mEntries.get(mEntries.floorKey(val)).getColor();
 
 	}
 }

@@ -5,12 +5,10 @@ import org.gdal.gdal.gdal;
 import org.gdal.osr.CoordinateTransformation;
 import org.gdal.osr.SpatialReference;
 import org.mapsforge.core.model.BoundingBox;
-import org.mapsforge.core.model.Dimension;
 import org.mapsforge.core.model.LatLong;
 
-import de.rooehler.rastertheque.util.Constants;
-import de.rooehler.rastertheque.util.RasterProperty;
 import android.util.Log;
+import de.rooehler.rastertheque.util.Constants;
 
 public class GDALDecoder {
 	
@@ -59,14 +57,6 @@ public class GDALDecoder {
 	public static Dataset getCurrentDataSet(){
 		
 		return dataset;
-	}
-	public static RasterProperty getRasterProperties(final Dataset dataset){
-		
-		 double[] adfGeoTransform = new double[6];
-		 
-		 dataset.GetGeoTransform(adfGeoTransform);
-		 
-		 return new RasterProperty(dataset.GetRasterXSize(), dataset.getRasterYSize(), adfGeoTransform[1], adfGeoTransform[5]);
 	}
 	
 	public static void printProperties(){
@@ -167,7 +157,7 @@ public class GDALDecoder {
 
 		}
 	}
-	public static byte getStartZoomLevel(LatLong center){
+	public static byte getStartZoomLevel(LatLong center, final int tileSize){
 		
 		 double[] adfGeoTransform = new double[6];
 			
@@ -179,7 +169,18 @@ public class GDALDecoder {
 				 Log.d(TAG, "Unit " + sr.GetLinearUnitsName());
 				 
 
-				 return 5;
+				 int width =  dataset.GetRasterXSize();
+				 int height =  dataset.GetRasterYSize();
+				 
+				 int max = Math.max(width, height);
+				 
+				 double tilesEnter = (double) max / tileSize;
+				 
+				 double zoom = Math.log(tilesEnter) / Math.log(2);
+				 
+				 return (byte) Math.round(zoom);
+				 
+
 				 
 //				 if(sr.GetLinearUnitsName().toLowerCase().equals("degree")){
 //					 Log.d(TAG,"Pixel Size = (" + adfGeoTransform[1] + "," + adfGeoTransform[5] + ")");

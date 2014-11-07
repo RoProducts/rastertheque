@@ -67,7 +67,8 @@ public class SLDColorMapParser {
 							noData = new Pair<Double, Integer>(quantity, color);
 						}
 					}catch( NullPointerException e){ }
-					if(add){						
+					if(add){	
+						Log.i(TAG, "adding entry with color " + nodeMap.getNamedItem("color").getNodeValue() + " value : "+quantity);
 						colors.put(quantity, new ColorMapEntry(color, quantity, opacity, label));	
 					}
 				}

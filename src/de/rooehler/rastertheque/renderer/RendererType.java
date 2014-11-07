@@ -107,7 +107,9 @@ public enum RendererType {
 			final BoundingBox bb = GDALDecoder.getBoundingBox();
 			final LatLong center = bb.getCenterPoint();
 
-			final byte zoomLevel = GDALDecoder.getStartZoomLevel(center);
+			final int tileSize = mapView.getModel().displayModel.getTileSize();
+			
+			final byte zoomLevel = GDALDecoder.getStartZoomLevel(center,tileSize);
 			Log.d(RendererType.class.getSimpleName(), "calculated zoom "+zoomLevel);
 			return new MapPosition(center, zoomLevel);
 			
