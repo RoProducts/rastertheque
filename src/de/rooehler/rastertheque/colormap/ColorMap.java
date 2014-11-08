@@ -1,8 +1,8 @@
 package de.rooehler.rastertheque.colormap;
 
-import java.util.NavigableMap;
-import java.util.TreeMap;
+import java.util.ArrayList;
 
+import android.util.Log;
 import android.util.Pair;
 
 
@@ -15,24 +15,27 @@ import android.util.Pair;
  */
 public class ColorMap {
 	
-	private NavigableMap<Double,ColorMapEntry> mEntries;
 	private Pair<Double,Integer> mNoData;
+	private ArrayList<ColorMapEntry> mEntries;
+	private double mMinValue;
 	
-	public ColorMap(NavigableMap<Double,ColorMapEntry> pEntries, final Pair<Double,Integer> pNoData){
+	public ColorMap(ArrayList<ColorMapEntry> pEntries,final double pMin, final Pair<Double,Integer> pNoData){
 		
 		this.mEntries = pEntries;
 		
 		this.mNoData = pNoData;
+		
+		this.mMinValue = pMin;
 	}
 
-	public NavigableMap<Double,ColorMapEntry> getEntries() {
+	public ArrayList<ColorMapEntry> getEntries() {
 		
 		return mEntries;
 	}
 
-	public void setEntries(TreeMap<Double,ColorMapEntry> mEntries) {
+	public void setEntries(ArrayList<ColorMapEntry> pEntries) {
 		
-		this.mEntries = mEntries;
+		this.mEntries = pEntries;
 	}
 	
 	public int getColorAccordingToValue(Double val){
@@ -41,7 +44,15 @@ public class ColorMap {
 			return mNoData.second;
 		}
 		
-		return  mEntries.get(mEntries.floorKey(val)).getColor();
+		int index = (int) (val - mMinValue);
+		
+		try{
+			return  mEntries.get(index).getColor();
+			
+		}catch(IndexOutOfBoundsException e){
+			Log.e("ColorMap", "IndexOutOfBoundsException");
+			return mEntries.get(0).getColor();
+		}
 
 	}
 }

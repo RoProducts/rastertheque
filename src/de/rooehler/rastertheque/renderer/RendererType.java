@@ -2,7 +2,6 @@ package de.rooehler.rastertheque.renderer;
 
 import java.io.File;
 
-import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
 import org.mapsforge.map.android.view.MapView;
@@ -15,6 +14,7 @@ import de.rooehler.rastertheque.gdal.GDALDecoder;
 import de.rooehler.rastertheque.util.mapsforge.mbtiles.MbTilesDatabase;
 
 public enum RendererType {
+	
 
 	MAPSFORGE,
 	MBTILES,
@@ -29,6 +29,7 @@ public enum RendererType {
 	public static final int RASTER_MIN_ZOOM = 1;
 	public static final int RASTER_MAX_ZOOM = 8;
 	
+	public static final String TAG = RendererType.class.getSimpleName();
 	
 	
 	public static String[] getExtensionForType(RendererType type){
@@ -104,13 +105,13 @@ public enum RendererType {
 					throw new IllegalArgumentException("invalid mapFile provided");
 				}
 			}
-			final BoundingBox bb = GDALDecoder.getBoundingBox();
-			final LatLong center = bb.getCenterPoint();
 
+			final LatLong center = GDALDecoder.getCenterPoint();
+			
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
 			
 			final byte zoomLevel = GDALDecoder.getStartZoomLevel(center,tileSize);
-			Log.d(RendererType.class.getSimpleName(), "calculated zoom "+zoomLevel);
+			Log.d(TAG, "calculated zoom "+zoomLevel);
 			return new MapPosition(center, zoomLevel);
 			
 		default:

@@ -98,27 +98,7 @@ public class RasterFileRenderer {
 		
 		this.mTransformation = CoordinateTransformation.CreateCoordinateTransformation(hProj, hLatLong);
 		
-		double[] adfGeoTransform = new double[6];
-
-		dataset.GetGeoTransform(adfGeoTransform);
-
-		if (adfGeoTransform[2] == 0.0 && adfGeoTransform[4] == 0.0) {
-			
-			double dfGeoX = adfGeoTransform[0] + adfGeoTransform[1] * (this.mRasterWidth / 2) + adfGeoTransform[2] * (this.mRasterHeight / 2);
-			double dfGeoY = adfGeoTransform[3] + adfGeoTransform[4] * (this.mRasterWidth / 2) + adfGeoTransform[5] * (this.mRasterHeight / 2);
-			
-			double[] transPoint = new double[3];
-			mTransformation.TransformPoint(transPoint, dfGeoX, dfGeoY, 0);
-			Log.d(TAG,"Origin(raw) : ("+ transPoint[0] +", "+transPoint[1]+ ")");
-			mOrigin = new LatLong(transPoint[1], transPoint[0]);
-			Log.d(TAG,"Origin (ll) : ("+ mOrigin.longitude +", "+mOrigin.latitude+ ")");
-			
-			
-		}else{
-			//what is it ?
-			//TODO handle
-			throw new IllegalArgumentException("unexpected transformation");
-		}
+		mOrigin = GDALDecoder.getCenterPoint();
 
 		if(useColorMap){
 			
@@ -141,6 +121,16 @@ public class RasterFileRenderer {
 		
 		if(mInitialZoom == -1){
 			this.mInitialZoom = GDALDecoder.getStartZoomLevel(GDALDecoder.getBoundingBox().getCenterPoint(),job.tile.tileSize);
+			
+			if(this.mRasterHeight < job.tile.tileSize || this.mRasterWidth < job.tile.tileSize){
+				int necessary = Math.min(this.mRasterHeight, this.mRasterWidth);
+				int desired   = job.tile.tileSize;
+				while(desired > necessary){
+					this.mInitialZoom--;
+					desired /= 2;
+				}
+				
+			}
 		}
 
 		long now = System.currentTimeMillis();
@@ -166,26 +156,31 @@ public class RasterFileRenderer {
         
         final double scaleFactor = scaleFactorAccordingToZoom(zoom);
         
-        Log.d(TAG, String.format("scaleFactor for initial zoom %d current zoom %d :  %f",this.mInitialZoom,zoom,scaleFactor));
+        final double desiredLat = MercatorProjection.tileYToLatitude(job.tile.tileY, zoom);
+        final double desiredLon = MercatorProjection.tileXToLongitude(job.tile.tileX, zoom);
+        
+        Log.i(TAG, String.format("desired %f  %f", desiredLat,desiredLon));
+        
+        //Log.d(TAG, String.format("scaleFactor for initial zoom %d current zoom %d :  %f",this.mInitialZoom,zoom,scaleFactor));
         int zoomedTS = (int) (tileSize * scaleFactor);
         
-        Log.d(TAG, String.format("tile %d %d zoom %d zoomedTileSize %d",job.tile.tileX,job.tile.tileY,job.tile.zoomLevel,zoomedTS));
+        //Log.d(TAG, String.format("tile %d %d zoom %d zoomedTileSize %d",job.tile.tileX,job.tile.tileY,job.tile.zoomLevel,zoomedTS));
         
         final long pixelX =  MercatorProjection.tileToPixel(job.tile.tileX, zoomedTS);
         final long pixelY =  MercatorProjection.tileToPixel(job.tile.tileY, zoomedTS);
         
-        final long originX = MercatorProjection.tileToPixel(MercatorProjection.longitudeToTileX(mOrigin.longitude, zoom),zoomedTS);
-        final long originY = MercatorProjection.tileToPixel(MercatorProjection.latitudeToTileY(mOrigin.latitude, zoom), zoomedTS);
+//        final long originX = MercatorProjection.tileToPixel(MercatorProjection.longitudeToTileX(mOrigin.longitude, zoom),zoomedTS);
+//        final long originY = MercatorProjection.tileToPixel(MercatorProjection.latitudeToTileY(mOrigin.latitude, zoom), zoomedTS);
         
-        long readFromX = pixelX - originX;
-        long readFromY = pixelY - originY;
+        long readFromX = pixelX ;//- originX;
+        long readFromY = pixelY ;//- originY;
         
         if(readFromX < 0 || readFromX + zoomedTS > this.mRasterWidth ||  readFromY < 0 || readFromY + zoomedTS > this.mRasterHeight){
         	Log.e(TAG, "reading from "+readFromX+","+readFromY+" from file {"+this.mRasterWidth+","+this.mRasterHeight+"}");
 
         	//if entire desired area out of bounds return white tile
-        	if(readFromX + zoomedTS < 0 || readFromX  > this.mRasterWidth ||
-        	   readFromY + zoomedTS < 0 || readFromY  > this.mRasterHeight){
+        	if(readFromX + zoomedTS <= 0 || readFromX  > this.mRasterWidth ||
+        	   readFromY + zoomedTS <= 0 || readFromY  > this.mRasterHeight){
         		//cannot read, create white tile
         		int[] pixels = new int[tileSize * tileSize];
         		for (int i = 0; i < pixels.length; i++) {
@@ -205,11 +200,11 @@ public class RasterFileRenderer {
         		//max x or y bounds hit
         		if(readFromX + zoomedTS > this.mRasterWidth){        			
         			availableX = (int) (this.mRasterWidth -  readFromX);   			
-        			gdalTargetXSize = (int) (availableX * scaleFactor);
+        			gdalTargetXSize = (int) (availableX * (1 / scaleFactor));
         		}
         		if(readFromY + zoomedTS > this.mRasterHeight){        			
         			availableY = (int) (this.mRasterHeight - readFromY);  			
-        			gdalTargetYSize = (int) (availableY * scaleFactor);
+        			gdalTargetYSize = (int) (availableY * (1 / scaleFactor));
         		}
         	}
         	
@@ -217,14 +212,14 @@ public class RasterFileRenderer {
         		//min x or y bounds hit
         		if(readFromX < 0){        			
         			availableX = (int) (zoomedTS - Math.abs(readFromX));
-        			coveredXOrigin = tileSize - availableX;
-        			gdalTargetXSize = (int) (availableX * scaleFactor);
+        			coveredXOrigin = (int) (tileSize - (availableX * scaleFactor));
+        			gdalTargetXSize = (int) (availableX * (1 /  scaleFactor));
         			readFromX = 0;
         		}
         		if(readFromY < 0){        			
         			availableY = (int) (zoomedTS - Math.abs(readFromY));
-        			coveredYOrigin = tileSize - availableY;
-        			gdalTargetYSize = (int) (availableY * scaleFactor);
+        			coveredYOrigin = (int) (tileSize - (availableY * scaleFactor));
+        			gdalTargetYSize = (int) (availableY * (1 / scaleFactor));
         			readFromY = 0;
         		}
             }
@@ -235,9 +230,13 @@ public class RasterFileRenderer {
             buffer.order(ByteOrder.nativeOrder()); 
 
             band.ReadRaster_Direct((int)readFromX,(int)readFromY, availableX, availableY, gdalTargetXSize, gdalTargetYSize, RasterHelper.toGDAL(datatype), buffer);
-
-    		bitmap.setPixels( generateOutOfBoundsPixels(buffer,coveredXOrigin,coveredYOrigin,availableX, availableY, zoomedTS, datatype), tileSize);
-    		
+            try{
+            	bitmap.setPixels( generateOutOfBoundsPixels(buffer,coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, tileSize, datatype), tileSize);
+            }catch(ArrayIndexOutOfBoundsException e){
+    			Log.e("ColorMap", "ioob",e);
+    			int doh = 3;
+    			return bitmap;
+    		}
     		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
     		return bitmap;
 

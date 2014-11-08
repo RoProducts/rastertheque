@@ -8,7 +8,6 @@ import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.core.model.LatLong;
 
 import android.util.Log;
-import de.rooehler.rastertheque.util.Constants;
 
 public class GDALDecoder {
 	
@@ -157,6 +156,36 @@ public class GDALDecoder {
 
 		}
 	}
+	public static LatLong getCenterPoint(){
+		
+		double[] adfGeoTransform = new double[6];
+		
+		final SpatialReference hProj = new SpatialReference(dataset.GetProjectionRef());
+		
+		final SpatialReference hLatLong =  hProj.CloneGeogCS();
+		
+		final CoordinateTransformation transformation = CoordinateTransformation.CreateCoordinateTransformation(hProj, hLatLong);
+		
+		dataset.GetGeoTransform(adfGeoTransform);
+
+		if (adfGeoTransform[2] == 0.0 && adfGeoTransform[4] == 0.0) {
+			
+			double dfGeoX = adfGeoTransform[0] + adfGeoTransform[1] * (dataset.GetRasterXSize() / 2) + adfGeoTransform[2] * (dataset.GetRasterYSize() / 2);
+			double dfGeoY = adfGeoTransform[3] + adfGeoTransform[4] * (dataset.GetRasterXSize() / 2) + adfGeoTransform[5] * (dataset.GetRasterYSize() / 2);
+			
+			double[] transPoint = new double[3];
+			transformation.TransformPoint(transPoint, dfGeoX, dfGeoY, 0);
+			Log.d(TAG,"Origin : ("+ transPoint[0] +", "+transPoint[1]+ ")");
+			LatLong origin = new LatLong(transPoint[1], transPoint[0]);
+			
+			return origin;
+			
+		}else{
+			//what is it ?
+			//TODO handle
+			throw new IllegalArgumentException("unexpected transformation");
+		}
+	}
 	public static byte getStartZoomLevel(LatLong center, final int tileSize){
 		
 		 double[] adfGeoTransform = new double[6];
@@ -178,7 +207,7 @@ public class GDALDecoder {
 				 
 				 double zoom = Math.log(tilesEnter) / Math.log(2);
 				 
-				 return (byte) Math.round(zoom);
+				 return (byte) Math.max(2,Math.round(zoom));
 				 
 
 				 
@@ -197,24 +226,24 @@ public class GDALDecoder {
 	 throw new IllegalArgumentException("unexpected transformation");
 		
 	}
-	private static double distanceOfOneDegreeOfLongitudeAccordingToLatitude(double lat){
-		
-		return Math.PI / 180 * Constants.EARTH_RADIUS * Math.cos(Math.toRadians(lat));
-	}
-	
-	private static byte zoomLevelAccordingToMetersPerPixel(float metersPerPixel){
-		
-		float temp = 156412;
-		byte zoom = 0;
-		
-		while(temp > metersPerPixel){
-			zoom++;
-			temp = (float) (temp / 2);
-		}
-		
-		return zoom;
-
-	}
+//	private static double distanceOfOneDegreeOfLongitudeAccordingToLatitude(double lat){
+//		
+//		return Math.PI / 180 * Constants.EARTH_RADIUS * Math.cos(Math.toRadians(lat));
+//	}
+//	
+//	private static byte zoomLevelAccordingToMetersPerPixel(float metersPerPixel){
+//		
+//		float temp = 156412;
+//		byte zoom = 0;
+//		
+//		while(temp > metersPerPixel){
+//			zoom++;
+//			temp = (float) (temp / 2);
+//		}
+//		
+//		return zoom;
+//
+//	}
 	
 	/************************************************************************/
 	/*                        GDALInfoReportCorner()                        */
