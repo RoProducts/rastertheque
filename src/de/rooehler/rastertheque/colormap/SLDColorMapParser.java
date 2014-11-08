@@ -87,30 +87,37 @@ public class SLDColorMapParser {
 					higherOpacity = Double.parseDouble(higherNodeMap.getNamedItem("opacity").getNodeValue());
 				}catch(NumberFormatException | NullPointerException e){		}
 				
-				int lR = (lowerColor >> 16) & 0x000000FF;
-				int lG = (lowerColor >> 8 ) & 0x000000FF;
-				int lB = (lowerColor)       & 0x000000FF;
+				final int lR = (lowerColor >> 16) & 0x000000FF;
+				final int lG = (lowerColor >> 8 ) & 0x000000FF;
+				final int lB = (lowerColor)       & 0x000000FF;
 				
-				int hR = (higherColor >> 16) & 0x000000FF;
-	    		int hG = (higherColor >> 8 ) & 0x000000FF;
-	    		int hB = (higherColor)       & 0x000000FF;
+				final int hR = (higherColor >> 16) & 0x000000FF;
+				final int hG = (higherColor >> 8 ) & 0x000000FF;
+				final int hB = (higherColor)       & 0x000000FF;
 	    		
+				final int rMin = Math.min(hR, lR);
+				final int gMin = Math.min(lG, hG);
+				final int bMin = Math.min(lB, hB);
+				
+				final int rMax = Math.max(hR, lR);
+				final int gMax = Math.max(lG, hG);
+				final int bMax = Math.max(lB, hB);
 	    		
 	    		//can be negative
-	    		int slope = Math.abs(( int ) (higherValue - lowerValue)) - 1;
+				final int slope = Math.abs(( int ) (higherValue - lowerValue)) - 1;
 	    		
-	    		float redSlope = (float) (Math.max(hR,lR) - Math.min(hR, lR)) / slope;
-	    		float greenSlope = (float) (Math.max(lG,hG) - Math.min(lG, hG)) / slope;
-	    		float blueSlope = (float) (Math.max(lB,hB) - Math.min(lB, hB)) / slope;
+				final float redSlope =   (float) (rMax - rMin) / slope;
+				final float greenSlope = (float) (gMax - gMin) / slope;
+				final float blueSlope =  (float) (bMax - bMin) / slope;
 
 	    		colors.add(new ColorMapEntry(lowerColor, lowerValue, lowerOpacity, label));	
 	    		
 	    		for(int j = 1; j < slope; j++){
-	    			
+	    			//TODO apply opacity
 	    			int newColor =  0xff000000 |
-	    					((((int) (lR - (j * redSlope))) << 16) & 0xff0000) |
-	    					((((int) (lG - (j * greenSlope))) << 8) & 0xff00) |
-	    					((int)   (lB - (j * blueSlope)));
+	    					((((int) (rMax - (j * redSlope))) << 16) & 0xff0000) |
+	    					((((int) (gMax - (j * greenSlope))) << 8) & 0xff00) |
+	    					((int)   (bMax - (j * blueSlope)));
 	    			
 	    			colors.add(new ColorMapEntry(newColor, lowerValue + j, lowerOpacity, label));	
 	    			
