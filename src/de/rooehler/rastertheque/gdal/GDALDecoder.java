@@ -186,6 +186,21 @@ public class GDALDecoder {
 			throw new IllegalArgumentException("unexpected transformation");
 		}
 	}
+	/**
+	 * returns a float indicating the ratio between width and height of this raster which will be
+	 * 1.0 is width and heigth are equal
+	 * > 1, the ratio the width is larger  than the height
+	 * < 0, the ratio the width is smaller than the height
+	 * @return
+	 */
+	public static float getWidthGeightRatio(){
+		
+		int rasterWidth = dataset.GetRasterXSize();
+		
+		int rasterHeight = dataset.getRasterYSize();
+		
+		return (float) rasterWidth / rasterHeight;
+	}
 	public static byte getStartZoomLevel(LatLong center, final int tileSize){
 		
 		 double[] adfGeoTransform = new double[6];

@@ -73,13 +73,15 @@ public class RasterFileRenderer {
 	private ColorMap mColorMap;
 	
 	private final boolean useColorMap = true;
-	
-	private LatLong mOrigin;
+
 	private byte mInitialZoom = -1;
 	
 	private int mRasterWidth;
 	private int mRasterHeight;
 	
+	private float mWidthHeightRatio;
+	
+	private boolean distortQuadratic = false;
 
 
 	public RasterFileRenderer(GraphicFactory graphicFactory, final Dataset pDataset, final String filePath) {
@@ -92,13 +94,13 @@ public class RasterFileRenderer {
 		
 		this.mRasterHeight = this.dataset.getRasterYSize();
 		
+		this.mWidthHeightRatio = GDALDecoder.getWidthGeightRatio();
+		
 		SpatialReference hProj = new SpatialReference(this.dataset.GetProjectionRef());
 		
 		SpatialReference hLatLong =  hProj.CloneGeogCS();
 		
 		this.mTransformation = CoordinateTransformation.CreateCoordinateTransformation(hProj, hLatLong);
-		
-		mOrigin = GDALDecoder.getCenterPoint();
 
 		if(useColorMap){
 			
@@ -156,31 +158,29 @@ public class RasterFileRenderer {
         
         final double scaleFactor = scaleFactorAccordingToZoom(zoom);
         
-        final double desiredLat = MercatorProjection.tileYToLatitude(job.tile.tileY, zoom);
-        final double desiredLon = MercatorProjection.tileXToLongitude(job.tile.tileX, zoom);
+//        final double desiredLat = MercatorProjection.tileYToLatitude(job.tile.tileY, zoom);
+//        final double desiredLon = MercatorProjection.tileXToLongitude(job.tile.tileX, zoom);
+//        
+//        Log.i(TAG, String.format("desired %f  %f", desiredLat,desiredLon));
         
-        Log.i(TAG, String.format("desired %f  %f", desiredLat,desiredLon));
-        
-        //Log.d(TAG, String.format("scaleFactor for initial zoom %d current zoom %d :  %f",this.mInitialZoom,zoom,scaleFactor));
         int zoomedTS = (int) (tileSize * scaleFactor);
         
-        //Log.d(TAG, String.format("tile %d %d zoom %d zoomedTileSize %d",job.tile.tileX,job.tile.tileY,job.tile.zoomLevel,zoomedTS));
+        final int readAmountX = distortQuadratic ? (int) (this.mWidthHeightRatio < 1.0 ? zoomedTS / this.mWidthHeightRatio : zoomedTS) : zoomedTS;
+        final int readAmountY = distortQuadratic ? (int) (this.mWidthHeightRatio > 1.0 ? zoomedTS / this.mWidthHeightRatio : zoomedTS) : zoomedTS;
         
-        final long pixelX =  MercatorProjection.tileToPixel(job.tile.tileX, zoomedTS);
-        final long pixelY =  MercatorProjection.tileToPixel(job.tile.tileY, zoomedTS);
+        long readFromX =  MercatorProjection.tileToPixel(job.tile.tileX, readAmountX);
+        long readFromY =  MercatorProjection.tileToPixel(job.tile.tileY, readAmountY);
+          
+//        Log.d(TAG, String.format("tile %d %d zoom %d read from %d %d amount %d %d",job.tile.tileX,job.tile.tileY,job.tile.zoomLevel,readFromX,readFromY,readAmountX,readAmountY));
+
         
-//        final long originX = MercatorProjection.tileToPixel(MercatorProjection.longitudeToTileX(mOrigin.longitude, zoom),zoomedTS);
-//        final long originY = MercatorProjection.tileToPixel(MercatorProjection.latitudeToTileY(mOrigin.latitude, zoom), zoomedTS);
         
-        long readFromX = pixelX ;//- originX;
-        long readFromY = pixelY ;//- originY;
-        
-        if(readFromX < 0 || readFromX + zoomedTS > this.mRasterWidth ||  readFromY < 0 || readFromY + zoomedTS > this.mRasterHeight){
+        if(readFromX < 0 || readFromX + readAmountX > this.mRasterWidth ||  readFromY < 0 || readFromY + readAmountY > this.mRasterHeight){
         	Log.e(TAG, "reading from "+readFromX+","+readFromY+" from file {"+this.mRasterWidth+","+this.mRasterHeight+"}");
 
         	//if entire desired area out of bounds return white tile
-        	if(readFromX + zoomedTS <= 0 || readFromX  > this.mRasterWidth ||
-        	   readFromY + zoomedTS <= 0 || readFromY  > this.mRasterHeight){
+        	if(readFromX + readAmountX <= 0 || readFromX  > this.mRasterWidth ||
+        	   readFromY + readAmountY <= 0 || readFromY  > this.mRasterHeight){
         		//cannot read, create white tile
         		int[] pixels = new int[tileSize * tileSize];
         		for (int i = 0; i < pixels.length; i++) {
@@ -192,17 +192,17 @@ public class RasterFileRenderer {
         	}
         	
         	//out out bounds, needs special treatment
-        	int availableX = zoomedTS, availableY = zoomedTS;
+        	int availableX = readAmountX, availableY = readAmountY;
         	int gdalTargetXSize = tileSize, gdalTargetYSize = tileSize;
             int coveredXOrigin = 0, coveredYOrigin = 0;
 
-        	if(readFromX + zoomedTS > this.mRasterWidth || 	readFromY + zoomedTS > this.mRasterHeight){
+        	if(readFromX + readAmountX > this.mRasterWidth || 	readFromY + readAmountY > this.mRasterHeight){
         		//max x or y bounds hit
-        		if(readFromX + zoomedTS > this.mRasterWidth){        			
+        		if(readFromX + readAmountX > this.mRasterWidth){        			
         			availableX = (int) (this.mRasterWidth -  readFromX);   			
         			gdalTargetXSize = (int) (availableX * (1 / scaleFactor));
         		}
-        		if(readFromY + zoomedTS > this.mRasterHeight){        			
+        		if(readFromY + readAmountY > this.mRasterHeight){        			
         			availableY = (int) (this.mRasterHeight - readFromY);  			
         			gdalTargetYSize = (int) (availableY * (1 / scaleFactor));
         		}
@@ -211,13 +211,13 @@ public class RasterFileRenderer {
         	if(readFromX < 0 || readFromY < 0){
         		//min x or y bounds hit
         		if(readFromX < 0){        			
-        			availableX = (int) (zoomedTS - Math.abs(readFromX));
+        			availableX = (int) (readAmountX - Math.abs(readFromX));
         			coveredXOrigin = (int) (tileSize - (availableX * scaleFactor));
         			gdalTargetXSize = (int) (availableX * (1 /  scaleFactor));
         			readFromX = 0;
         		}
         		if(readFromY < 0){        			
-        			availableY = (int) (zoomedTS - Math.abs(readFromY));
+        			availableY = (int) (readAmountY - Math.abs(readFromY));
         			coveredYOrigin = (int) (tileSize - (availableY * scaleFactor));
         			gdalTargetYSize = (int) (availableY * (1 / scaleFactor));
         			readFromY = 0;
@@ -250,7 +250,7 @@ public class RasterFileRenderer {
         
         buffer.order(ByteOrder.nativeOrder()); 
 
-        band.ReadRaster_Direct((int)readFromX,(int)readFromY, zoomedTS, zoomedTS, tileSize,tileSize, RasterHelper.toGDAL(datatype), buffer);
+        band.ReadRaster_Direct((int)readFromX,(int)readFromY, readAmountX, readAmountY, tileSize,tileSize, RasterHelper.toGDAL(datatype), buffer);
 
 		bitmap.setPixels( generatePixels(buffer,(tileSize * tileSize), datatype), tileSize);
 		

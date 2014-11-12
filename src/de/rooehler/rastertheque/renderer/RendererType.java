@@ -4,6 +4,7 @@ import java.io.File;
 
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
+import org.mapsforge.core.util.MercatorProjection;
 import org.mapsforge.map.android.view.MapView;
 import org.mapsforge.map.reader.MapDatabase;
 import org.mapsforge.map.reader.header.FileOpenResult;
@@ -106,7 +107,17 @@ public enum RendererType {
 				}
 			}
 
-			final LatLong center = GDALDecoder.getCenterPoint();
+			LatLong center = GDALDecoder.getCenterPoint();
+			
+			final float widthHeightRatio = GDALDecoder.getWidthGeightRatio();
+			
+			if(widthHeightRatio != 1){
+				if(widthHeightRatio > 1){ //width is larger than height, move center up
+					center = new LatLong(center.latitude + MercatorProjection.LATITUDE_MAX / widthHeightRatio,center.longitude);
+				}else{ //height is larger than width, move center to left		
+					center = new LatLong(center.latitude, center.longitude - 360 * widthHeightRatio);
+				}
+			}
 			
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
 			
