@@ -1,4 +1,4 @@
-package de.rooehler.rastersampleapplication.rasterrenderer.mbtiles;
+package de.rooehler.rasterapp.rasterrenderer.mbtiles;
 
 import org.mapsforge.core.model.BoundingBox;
 

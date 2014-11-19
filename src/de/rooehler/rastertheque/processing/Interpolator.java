@@ -10,7 +10,7 @@ public class Interpolator {
 	 * @param dstPixels
 	 * @param dstSize
 	 */
-	public static void resizeBilinear(int srcPixels[], int srcSize, int dstPixels[], int dstSize) {
+	public static void resampleBilinear(int srcPixels[], int srcSize, int dstPixels[], int dstSize) {
 
 		int a, b, c, d, x, y, index;
 		float x_ratio = ((float) (srcSize - 1)) / dstSize;

@@ -1,4 +1,4 @@
-package de.rooehler.rastersampleapplication;
+package de.rooehler.rasterapp;
 
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 

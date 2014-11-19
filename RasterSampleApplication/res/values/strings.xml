@@ -1,9 +1,12 @@
 <resources>
 
-    <string name="app_name">RasterSampleApplication</string>
+    <string name="app_name">RasterApp</string>
     
     <string name="drawer_open">Open navigation drawer</string>
     <string name="drawer_close">Close navigation drawer</string>
     <string name="searching">Searching&#8230;</string>
 
+    
+    <string name="menu_transform">Projection</string>
+    <string name="menu_color">Color</string>
 </resources>

@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.io.mbtiles.gdal;
+package de.rooehler.rastertheque.io.gdal;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;

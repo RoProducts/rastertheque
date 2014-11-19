@@ -1,4 +1,4 @@
-package de.rooehler.rastersampleapplication.rasterrenderer;
+package de.rooehler.rasterapp.rasterrenderer;
 
 import java.io.File;
 
@@ -10,20 +10,28 @@ import org.mapsforge.map.model.DisplayModel;
 import org.mapsforge.map.model.MapViewPosition;
 
 import android.content.Context;
-
+/**
+ * A RasterLayer extends a Mapsforge TileLayer
+ * It's workerThread handles RasterJobs to render the raster file
+ * 
+ * It's rasterRenderer abstracts the raster's properties
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class RasterLayer extends TileLayer<RasterJob>  {
 
 	private RasterRenderer rasterRenderer;
 
 	private RasterWorkerThread worker;
 
-	private File mapFile;
+	private File rasterFile;
 
 	public RasterLayer(Context context, TileCache tileCache, MapViewPosition mapViewPosition, boolean isTransparent,
 			GraphicFactory graphicFactory, final RasterRenderer pRasterRenderer) {
 		super(tileCache, mapViewPosition, graphicFactory.createMatrix(), isTransparent);
 
-		this.mapFile = new File(pRasterRenderer.getFilePath());
+		this.rasterFile = new File(pRasterRenderer.getFilePath());
 
 		this.rasterRenderer = pRasterRenderer;
 	}
@@ -31,6 +39,7 @@ public class RasterLayer extends TileLayer<RasterJob>  {
 	@Override
 	public synchronized void setDisplayModel(DisplayModel displayModel) {
 		super.setDisplayModel(displayModel);
+		
 		if (displayModel != null) {
 			this.worker = new RasterWorkerThread(this.tileCache, this.jobQueue, this.rasterRenderer, this);
 			this.worker.start();
@@ -41,10 +50,14 @@ public class RasterLayer extends TileLayer<RasterJob>  {
 			}
 		}
 	}
+	
+	public RasterRenderer getRasterRenderer(){
+		return this.rasterRenderer;
+	}
 
 	@Override
 	protected RasterJob createJob(Tile tile) {
-		return new RasterJob(tile, this.displayModel, this.mapFile, this.isTransparent);
+		return new RasterJob(tile, this.displayModel, this.rasterFile, this.isTransparent);
 	}
 
 	@Override

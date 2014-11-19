@@ -1,4 +1,4 @@
-package de.rooehler.rastersampleapplication.dialog;
+package de.rooehler.rasterapp.dialog;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -16,7 +16,7 @@ import android.os.AsyncTask;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
-import de.rooehler.rastersampleapplication.R;
+import de.rooehler.rasterapp.R;
 
 public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<String>>{
 	

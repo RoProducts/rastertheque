@@ -1,4 +1,4 @@
-package de.rooehler.rastersampleapplication.rasterrenderer.mbtiles;
+package de.rooehler.rasterapp.rasterrenderer.mbtiles;
 
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
@@ -7,11 +7,12 @@ import org.mapsforge.core.model.Tile;
 import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.util.Log;
-import de.rooehler.rastersampleapplication.rasterrenderer.RasterJob;
-import de.rooehler.rastersampleapplication.rasterrenderer.RasterRenderer;
+import de.rooehler.rasterapp.rasterrenderer.RasterJob;
+import de.rooehler.rasterapp.rasterrenderer.RasterRenderer;
+import de.rooehler.rastertheque.io.mbtiles.MBTilesRaster;
 import de.rooehler.rastertheque.processing.Interpolator;
 
-public class MBTilesRenderer extends RasterRenderer{
+public class MBTilesRenderer implements RasterRenderer{
 
 	private final static String TAG = MBTilesRenderer.class.getSimpleName();
 
@@ -23,14 +24,15 @@ public class MBTilesRenderer extends RasterRenderer{
 
 	private boolean isDBOpen = false;
 	
-	private final String mFilePath;
+	private final MBTilesRaster mRaster;
 
-	public MBTilesRenderer(final Context pContext, GraphicFactory graphicFactory, final String pDBPath) {
+	public MBTilesRenderer(final Context pContext, GraphicFactory graphicFactory, final MBTilesRaster pRaster) {
 		
-		this.mFilePath = pDBPath;
+		this.mRaster = pRaster;
 		
-		this.db = new MbTilesDatabase(pContext, pDBPath);
+		this.db = new MbTilesDatabase(pContext, mRaster.getFilePath());
 
+		this.graphicFactory = graphicFactory;
 	}
 
 	/**
@@ -90,7 +92,7 @@ public class MBTilesRenderer extends RasterRenderer{
 
 		if (tileSize != MBTILES_SIZE) {
 
-			Interpolator.resizeBilinear(mbTilesPixels, MBTILES_SIZE, pixels, tileSize);
+			Interpolator.resampleBilinear(mbTilesPixels, MBTILES_SIZE, pixels, tileSize);
 
 		} else {
 
@@ -159,7 +161,7 @@ public class MBTilesRenderer extends RasterRenderer{
 	@Override
 	public String getFilePath() {
 		
-		return this.mFilePath;
+		return this.mRaster.getFilePath();
 		
 	}
 

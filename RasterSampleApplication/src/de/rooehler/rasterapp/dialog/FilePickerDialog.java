@@ -1,4 +1,4 @@
-package de.rooehler.rastersampleapplication.dialog;
+package de.rooehler.rasterapp.dialog;
 
 
 import java.io.File;
@@ -17,7 +17,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
-import de.rooehler.rastersampleapplication.R;
+import de.rooehler.rasterapp.R;
 
 /**
  * 		   class which shows a dialog letting the user select a certain file

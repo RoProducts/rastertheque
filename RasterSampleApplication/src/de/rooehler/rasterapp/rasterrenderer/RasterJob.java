@@ -1,4 +1,4 @@
-package de.rooehler.rastersampleapplication.rasterrenderer;
+package de.rooehler.rasterapp.rasterrenderer;
 
 import java.io.File;
 
@@ -6,8 +6,11 @@ import org.mapsforge.core.model.Tile;
 import org.mapsforge.map.layer.queue.Job;
 import org.mapsforge.map.model.DisplayModel;
 /**
- * a class which contains information about the raster that is to render
- * @author robertoehler
+ * A RasterJob contains information about the raster that is to render
+ * To identify a RasterJob inside a cache information not only about the tile
+ * but also the source has to be included into the hashcodevalue
+ * 
+ * @author Robert Oehler
  *
  */
 public class RasterJob extends Job {
@@ -16,7 +19,7 @@ public class RasterJob extends Job {
 	private final int hashCodeValue;
 	private File mFile;
 
-	protected RasterJob(Tile pTile, DisplayModel pDisplayModel,final File pFile, boolean pHasAlpha) {
+	protected RasterJob(Tile pTile, DisplayModel pDisplayModel, final File pFile, boolean pHasAlpha) {
 		super(pTile, pHasAlpha);
 
 		this.mFile = pFile;

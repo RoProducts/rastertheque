@@ -1,4 +1,4 @@
-package de.rooehler.rastersampleapplication.rasterrenderer;
+package de.rooehler.rasterapp.rasterrenderer;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
@@ -10,7 +10,14 @@ import org.mapsforge.map.layer.cache.TileCache;
 import org.mapsforge.map.layer.queue.JobQueue;
 import org.mapsforge.map.layer.renderer.MapWorker;
 import org.mapsforge.map.util.PausableThread;
-
+/**
+ * A RasterWorkerThread handles RasterJobs in its JobQueue
+ * 
+ * This follows the default Mapsforge implementation
+ * 
+ * @author Robert Oehler
+ *
+ */
 
 public class RasterWorkerThread extends PausableThread {
 	
@@ -89,5 +96,13 @@ public class RasterWorkerThread extends PausableThread {
 	protected boolean hasWork() {
 		return true;
 	}
+
+	@Override
+	public void destroy() {
+		
+		this.interrupt();
+	}
+	
+	
 
 }

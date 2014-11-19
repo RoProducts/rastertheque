@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.io.mbtiles.gdal;
+package de.rooehler.rastertheque.io.gdal;
 
 import java.io.DataInput;
 import java.io.DataOutput;
