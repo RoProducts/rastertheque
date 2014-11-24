@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.processing;
+package de.rooehler.rastertheque.processing.mimpl.colormap;
 
 import java.io.File;
 import java.util.ArrayList;

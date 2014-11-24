@@ -4,33 +4,28 @@ import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
 import org.mapsforge.core.model.Tile;
 
-import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.util.Log;
 import de.rooehler.rasterapp.rasterrenderer.RasterJob;
 import de.rooehler.rasterapp.rasterrenderer.RasterRenderer;
-import de.rooehler.rastertheque.io.mbtiles.MBTilesRaster;
-import de.rooehler.rastertheque.processing.Interpolator;
+import de.rooehler.rastertheque.io.mbtiles.MBTilesRasterIO;
+import de.rooehler.rastertheque.processing.mimpl.Interpolator;
 
-public class MBTilesRenderer implements RasterRenderer{
+public class MBTilesMapsforgeRenderer implements RasterRenderer{
 
-	private final static String TAG = MBTilesRenderer.class.getSimpleName();
+	private final static String TAG = MBTilesMapsforgeRenderer.class.getSimpleName();
 
 	private static final int MBTILES_SIZE = 256;
 	
 	private GraphicFactory graphicFactory;
 	
-	private MbTilesDatabase db;
-
-	private boolean isDBOpen = false;
 	
-	private final MBTilesRaster mRaster;
+	private final MBTilesRasterIO mRaster;
 
-	public MBTilesRenderer(final Context pContext, GraphicFactory graphicFactory, final MBTilesRaster pRaster) {
+	public MBTilesMapsforgeRenderer(GraphicFactory graphicFactory, final MBTilesRasterIO pRaster) {
 		
 		this.mRaster = pRaster;
 		
-		this.db = new MbTilesDatabase(pContext, mRaster.getFilePath());
 
 		this.graphicFactory = graphicFactory;
 	}
@@ -52,7 +47,7 @@ public class MBTilesRenderer implements RasterRenderer{
 		TileBitmap bitmap = this.graphicFactory.createTileBitmap(job.displayModel.getTileSize(), job.hasAlpha);
 
 		// conversion needed to fit the MbTiles coordinate system
-		final int[] tmsTileXY = googleTile2TmsTile(localTileX, localTileY, tile.zoomLevel);
+		final int[] tmsTileXY = mRaster.googleTile2TmsTile(localTileX, localTileY, tile.zoomLevel);
 
 		// Log.d(TAG, String.format("Tile requested %d %d is now %d %d", tile.tileX, tile.tileY, tmsTileXY[0],
 		// tmsTileXY[1]));
@@ -62,7 +57,7 @@ public class MBTilesRenderer implements RasterRenderer{
 		int[] pixels = new int[tileSize * tileSize];
 		int[] mbTilesPixels = new int[MBTILES_SIZE * MBTILES_SIZE];
 
-		rasterBytes = this.db.getTileAsBytes(String.valueOf(tmsTileXY[0]), String.valueOf(tmsTileXY[1]),
+		rasterBytes = mRaster.getDB().getTileAsBytes(String.valueOf(tmsTileXY[0]), String.valueOf(tmsTileXY[1]),
 				Byte.toString(tile.zoomLevel));
 
 		if (rasterBytes == null) {
@@ -108,60 +103,31 @@ public class MBTilesRenderer implements RasterRenderer{
 	@Override
 	public void start() {
 
-		if (!this.isDBOpen) {
-			this.db.openDataBase();
-			this.isDBOpen = true;
-		}
+		this.mRaster.start();
 
 	}
 	@Override
 	public void stop() {
 
-		if (this.isDBOpen) {
-			this.db.close();
-			this.isDBOpen = false;
-		}
+		this.mRaster.stop();
 	}
 	@Override
 	public boolean isWorking() {
 
-		return this.isDBOpen;
-	}
-
-	/**
-	 * closes and destroys any resources needed
-	 */
-	public void destroy() {
-
-		if (this.db != null) {
-			stop();
-			this.db = null;
-		}
-	}
-
-	/**
-	 * Converts Google tile coordinates to TMS Tile coordinates.
-	 * <p>
-	 * Code copied from: http://code.google.com/p/gmap-tile-generator/
-	 * </p>
-	 * 
-	 * @param tx
-	 *            the x tile number.
-	 * @param ty
-	 *            the y tile number.
-	 * @param zoom
-	 *            the current zoom level.
-	 * @return the converted values.
-	 */
-
-	public static int[] googleTile2TmsTile(long tx, long ty, byte zoom) {
-		return new int[] { (int) tx, (int) ((Math.pow(2, zoom) - 1) - ty) };
+		return this.mRaster.isWorking();
 	}
 
 	@Override
 	public String getFilePath() {
 		
 		return this.mRaster.getFilePath();
+		
+	}
+
+	@Override
+	public void destroy() {
+		
+		this.mRaster.destroy();
 		
 	}
 

@@ -3,7 +3,6 @@ package de.rooehler.rasterapp.dialog;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.content.Intent;
 import de.rooehler.rasterapp.R;
 import de.rooehler.rastertheque.util.Constants;
 

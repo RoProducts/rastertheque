@@ -1,6 +1,6 @@
-package de.rooehler.rasterapp.rasterrenderer.mbtiles;
+package de.rooehler.rastertheque.io.mbtiles;
 
-import org.mapsforge.core.model.BoundingBox;
+import java.nio.ByteBuffer;
 
 import android.content.Context;
 import android.database.Cursor;
@@ -9,6 +9,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
+
+import com.vividsolutions.jts.geom.Envelope;
 
 /**
  * class which connects to a database from downloaded zip bundle on the sdcard. If it is not yet installed in the
@@ -111,7 +113,9 @@ public class MbTilesDatabase extends SQLiteOpenHelper {
 				return null;
 			}
 			byte[] bb = c.getBlob(c.getColumnIndex("tile_data"));
+
 			c.close();
+			
 			return bb;
 		} catch (NullPointerException e) {
 			Log.e(TAG, "NPE getTileAsBytes", e);
@@ -123,12 +127,11 @@ public class MbTilesDatabase extends SQLiteOpenHelper {
 	}
 
 	/**
-	 * retrieves the bounding box of the metadata table of the database renders it and return @return an BoundingBox
-	 * object
+	 * retrieves the Envelope of the metadata table of the database 
 	 * 
-	 * @return the boundingbox of the data in this database file
+	 * @return the Envelope of the data in this database file in order {xMin,yMin,xMax,yMax}
 	 */
-	public BoundingBox getBoundingBox() {
+	public Envelope getEnvelope() {
 
 		try {
 			final Cursor c = this.mDataBase.rawQuery("select value from metadata where name=?",
@@ -149,7 +152,7 @@ public class MbTilesDatabase extends SQLiteOpenHelper {
 			double maxlat = Double.parseDouble(split[3]);
 			c.close();
 
-			return new BoundingBox(minlat, minlon, maxlat, maxlon);
+			return new Envelope( minlon,maxlon, minlat,maxlat);
 
 		} catch (NullPointerException e) {
 			Log.e(TAG, "NPE retrieving boundingbox from db", e);

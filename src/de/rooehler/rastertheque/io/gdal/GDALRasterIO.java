@@ -7,11 +7,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import org.gdal.gdal.Band;
 import org.gdal.gdal.Dataset;
 import org.gdal.gdal.gdal;
-import org.gdal.gdalconst.gdalconst;
 import org.gdal.osr.CoordinateTransformation;
 import org.gdal.osr.SpatialReference;
 
@@ -20,19 +20,18 @@ import android.util.Log;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 
+import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.Rectangle;
-import de.rooehler.rastertheque.processing.ColorMap;
-import de.rooehler.rastertheque.processing.SLDColorMapParser;
+import de.rooehler.rastertheque.interfaces.RasterIO;
 
-public class GDALRaster extends Raster {
+public class GDALRasterIO extends Raster implements RasterIO{
 	
-	private static final String TAG = GDALRaster.class.getSimpleName();
+	private static final String TAG = GDALRasterIO.class.getSimpleName();
 	
 	
 	private static Dataset dataset;
 	
-
 	
 	static {
 		System.loadLibrary("proj");
@@ -52,19 +51,15 @@ public class GDALRaster extends Raster {
             gdal.AllRegister();
         }
     }
-	
-	private ColorMap mColorMap;
 
 	private CoordinateTransformation mTransformation;
-	
-	private boolean useColorMap = true;
-	
+		
 	private int mRasterWidth;
 	private int mRasterHeight;
 	
 	private DataType mDatatype;
 	
-	public GDALRaster(final String pFilePath){
+	public GDALRasterIO(final String pFilePath){
 		
 		super(pFilePath);
 		
@@ -90,22 +85,9 @@ public class GDALRaster extends Raster {
             }
         }
 
-		if(useColorMap){
-			
-			final String colorMapFilePath = pFilePath.substring(0, pFilePath.lastIndexOf(".") + 1) + "sld";
-
-			File file = new File(colorMapFilePath);
-
-			if(file.exists()){
-
-				this.mColorMap = SLDColorMapParser.parseColorMapFile(file);
-				
-				useColorMap = true;
-			}
-		}
 	}
-	
-	public void open(String filePath){
+	@Override
+	public boolean open(String filePath){
 		
 		dataset = gdal.Open(filePath);
 
@@ -116,6 +98,7 @@ public class GDALRaster extends Raster {
 				msg += ", " + lastErrMsg;
 			}
 			Log.e(TAG, msg +"\n"+ lastErrMsg);
+			return false;
 		}else{
 			
 			Log.d(TAG, filePath.substring(filePath.lastIndexOf("/") + 1) +" successfully opened");
@@ -123,17 +106,53 @@ public class GDALRaster extends Raster {
 //			printProperties();
 			
 		}
+		return true;
 	}
 	
+	@Override
 	public void read(
-			final Band band,
 			final Rectangle src,
-			final Rectangle dst,
+			final Dimension dstDim,
 			final ByteBuffer buffer){
 		
+		List<Band> bands = getBands();
+		int[] readBands = new int[bands.size()];
+		for(int i = 0; i < bands.size();i++){
+			readBands[i] = bands.get(i).GetBand();
+		}
+		
+		if(readBands.length == 1){
+			dataset.ReadRaster_Direct(
+					src.srcX,src.srcY, //src pos
+					src.width, src.height, //src dim
+					dstDim.getWidth(),dstDim.getHeight(), //dst dim
+					DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
+					buffer, //buffer to write in
+					readBands, //the list of band numbers being read/written. Note band numbers are 1 based. This may be null to select the first nBandCount bands.
+					0, //The byte offset from the start of one pixel value in the buffer to the start of the next pixel value within a scanline. If defaulted (0) the size of the datatype buf_type is used.
+					0, //The byte offset from the start of one scanline in the buffer to the start of the next. If defaulted the size of the datatype buf_type * buf_xsize is used.
+					0  //the byte offset from the start of one bands data to the start of the next. If defaulted (zero) the value will be nLineSpace * buf_ysize implying band sequential organization of the data buffer.
+					);
+		}else{
+			
+			dataset.ReadRaster_Direct(src.srcX,src.srcY,
+					src.width, src.height,
+					dstDim.getWidth(),dstDim.getHeight(),
+					DataType.toGDAL(getDatatype()),
+					buffer,
+					readBands,
+					getDatatype().size(),
+					0, 
+					1 
+					);
+		}
 
-        band.ReadRaster_Direct(src.srcX,src.srcY, src.width, src.height, dst.width,dst.height, DataType.toGDAL(getDatatype()), buffer);
 
+	}
+	
+	@Override
+	public void read(final Rectangle src,final ByteBuffer buffer){
+		read(src, new Dimension(src.width, src.height), buffer);
 	}
 	
 	public void applyProjection(String wkt){
@@ -149,249 +168,28 @@ public class GDALRaster extends Raster {
 			this.mRasterHeight = dataset.getRasterYSize();
 		
 	}
-	public void saveCurrentProjectionToFile(final String newFileName){
+	public Callable<Dataset> saveCurrentProjectionToFile(final String newFileName){
 		
 		
-//		String fileName = mFilePath.substring(mFilePath.lastIndexOf("/") + 1);
-//		fileName = fileName.substring(0, fileName.lastIndexOf("."))+"_reprojected"+fileName.substring(fileName.lastIndexOf("."));
-		final String newPath = mFilePath.substring(0,mFilePath.lastIndexOf("/") + 1) + newFileName;
+		Callable<Dataset> c =  new Callable<Dataset>() {
+			@Override
+		    public Dataset call() throws Exception {
+		      
+				//		String fileName = mFilePath.substring(mFilePath.lastIndexOf("/") + 1);
+				//		fileName = fileName.substring(0, fileName.lastIndexOf("."))+"_reprojected"+fileName.substring(fileName.lastIndexOf("."));
+		        final String newPath = mFilePath.substring(0,mFilePath.lastIndexOf("/") + 1) + newFileName;
+		        Log.d(TAG, "saving to path "+newPath);
+//		        return dataset.GetDriver().CreateCopy(newPath, dataset);
+		        return dataset.GetDriver().Create(newPath,dataset.getRasterXSize(),dataset.GetRasterYSize(),dataset.getRasterCount());
+		        
+		    }
+		};
 		
-		//this will block
-		//TODO handle in thread somehow
-		dataset.GetDriver().CreateCopy(newPath, dataset);
+		return c;
+		
+
 	}
-	
-	/**
-	 * @param a Databuffer according to the datatype of this raster
-	 * @param pixelsWidth
-	 * @param pixelsHeight
-	 * @return
-	 * @throws Exception
-	 */
-	public int[] generatePixels(final ByteBuffer pBuffer,final int tileSize, final DataType dataType){
-	
-		final ByteBufferReader reader = new ByteBufferReader(pBuffer.array(), ByteOrder.nativeOrder());
-		
-        int[] pixels = new int[tileSize];
-        double[] minMax = new double[2];
-        
-        final boolean colorMapExists = useColorMap && getColorMap() != null;
-        
-        if(!colorMapExists){ // if colormap not available, calculate min max for grayscale
 
-        	getMinMax(minMax, reader, tileSize, dataType);
-       
-        	Log.d(TAG, "rawdata min "+minMax[0] +" max "+minMax[1]);
-        	reader.init();
-        }
- 
-        for (int i = 0; i < tileSize; i++) {
-        	
-        	double d = getValue(reader, dataType);
-
-    		if(colorMapExists){
-    			pixels[i] = pixelValueForColorMapAccordingToData(d);
-    		}else{
-    			pixels[i] = pixelValueForGrayScale(d, minMax[0], minMax[1]);
-    		}
-        }
-
-        return pixels;
-    } 
-	/**
-	 * extracts pixels at the bounds of a tile and fills the remaining area with white pixels
-	 * @param a Databuffer according to the datatype of this raster
-	 * @param pixelsWidth
-	 * @param pixelsHeight
-	 * @return
-	 * @throws Exception
-	 */
-	public int[] extractBoundsPixels(final ByteBuffer pBuffer,
-			final int coveredOriginX,
-			final int coveredOriginY,
-			final int coveredAreaX,
-			final int coveredAreaY,
-			final int tileSize,
-			final DataType dataType){
-	
-		final ByteBufferReader reader = new ByteBufferReader(pBuffer.array(), ByteOrder.nativeOrder());
-		
-        int[] pixels = new int[tileSize * tileSize];
-        double[] minMax = new double[2];
-        
-        final boolean colorMapExists = useColorMap && getColorMap() != null;
-        
-        if(!colorMapExists){ // if colormap not available, calculate min max for grayscale
-
-        	getMinMax(minMax, reader, coveredAreaX * coveredAreaY, dataType);
-       
-        	Log.d(TAG, "rawdata min "+minMax[0] +" max "+minMax[1]);
-        	reader.init();
-        }
- 
-        for (int y = 0; y < tileSize; y++) {
-        	for (int x = 0; x < tileSize; x++) {
-
-        		int pos = y * tileSize + x;
-        		
-        		if( x  >= coveredOriginX && y >= coveredOriginY && x < coveredOriginX + coveredAreaX && y < coveredOriginY + coveredAreaY){
-        			//gdalpixel
-        			double d = getValue(reader, dataType);
-        			
-        			if(colorMapExists){
-        				pixels[pos] = pixelValueForColorMapAccordingToData(d);
-        			}else{
-        				pixels[pos] = pixelValueForGrayScale(d, minMax[0], minMax[1]);
-        			}
-        		}else {
-        			//white pixel;
-        			pixels[pos] =  0xffffffff;
-        		}
-
-        	}
-        }
-
-        return pixels;
-    } 
-	
-	public double getValue(ByteBufferReader reader,final DataType dataType){
-
-		double d = 0.0d;
-		try{
-			switch(dataType) {
-			case CHAR:
-				char _char = reader.readChar();
-				d = (double) _char;
-				break;
-			case BYTE:
-				byte _byte = reader.readByte();
-				d = (double) _byte;
-				break;
-			case SHORT:
-				short _short = reader.readShort();
-				d = (double) _short;
-				break;
-			case INT:
-				int _int = reader.readInt();
-				d = (double) _int;
-				break;
-			case LONG:
-				long _long = reader.readLong();
-				d = (double) _long;
-				break;
-			case FLOAT:
-				float _float = reader.readFloat();
-				d = (double) _float;
-				break;
-			case DOUBLE:
-				double _double =  reader.readDouble();
-				d = _double;
-				break;
-			}
-		}catch(IOException  e){
-			Log.e(TAG, "error reading from byteBufferedReader");
-		}
-
-		return d;
-	}
-	
-	public void getMinMax(double[] result, ByteBufferReader reader, int pixelSize, final DataType dataType){
-		double max =  Double.MIN_VALUE;
-		double min =  Double.MAX_VALUE;
-
-		for (int i = 0; i < pixelSize; i++) {
-			try{
-				switch(dataType) {
-				case CHAR:
-					char _char = reader.readChar();
-					if(_char > max){
-						max = _char;
-					}
-					if(_char < min){
-						min = _char;
-					}
-					break;
-				case BYTE:
-					byte _byte = reader.readByte();
-					if(_byte > max){
-						max = _byte;
-					}
-					if(_byte < min){
-						min = _byte;
-					}
-					break;
-				case SHORT:
-					short _short = reader.readShort();
-					if(_short > max){
-						max = _short;
-					}
-					if(_short < min){
-						min = _short;
-					}
-					break;
-				case INT:
-					int _int = reader.readInt();
-					if(_int > max){
-						max = _int;
-					}
-					if(_int < min){
-						min = _int;
-					}
-					break;
-				case LONG:
-					long _long = reader.readLong();
-					if(_long > max){
-						max = _long;
-					}
-					if(_long < min){
-						min = _long;
-					}
-					break;
-				case FLOAT:
-					float _float = reader.readFloat();
-					if(_float > max){
-						max = _float;
-					}
-					if(_float < min){
-						min = _float;
-					}
-					break;
-				case DOUBLE:
-					double _double = reader.readDouble();
-					if(_double > max){
-						max = _double;
-					}
-					if(_double < min){
-						min = _double;
-					}
-					break;
-				}
-			}catch(EOFException e){
-				break;
-			}catch(IOException  e){
-				Log.e(TAG, "error reading from byteBufferedReader");
-			}
-		}
-		result[0] = min;
-		result[1] = max;
-	}
-	
-	public int pixelValueForColorMapAccordingToData(double val){
-		
-    		int rgb = getColorMap().getColorAccordingToValue(val);
-    		int r = (rgb >> 16) & 0x000000FF;
-    		int g = (rgb >> 8 ) & 0x000000FF;
-    		int b = (rgb)       & 0x000000FF;
-    		return 0xff000000 | ((((int) r) << 16) & 0xff0000) | ((((int) g) << 8) & 0xff00) | ((int) b);
-	}
-	
-	public int pixelValueForGrayScale(double val, double min, double max){
-		
-		final double color = (val - min) / (max - min);
-		int grey = (int) (color * 256);
-		return 0xff000000 | ((((int) grey) << 16) & 0xff0000) | ((((int) grey) << 8) & 0xff00) | ((int) grey);
-		
-	}
 	
 	public List<Band> getBands(){
 		int nbands = dataset.GetRasterCount();
@@ -468,7 +266,7 @@ public class GDALRaster extends Raster {
 			return origin;
 			
 		}else{
-			//what is it ?
+			//this is rotated
 			//TODO handle
 			throw new IllegalArgumentException("unexpected transformation");
 		}
@@ -547,14 +345,6 @@ public class GDALRaster extends Raster {
 
 	public int getRasterHeight() {
 		return mRasterHeight;
-	}
-
-	public ColorMap getColorMap() {
-		return mColorMap;
-	}
-	public void toogleUseColorMap(){
-		
-		this.useColorMap = !useColorMap;
 	}
 
 

@@ -9,4 +9,5 @@
     
     <string name="menu_transform">Projection</string>
     <string name="menu_color">Color</string>
+    <string name="menu_save">Save</string>
 </resources>

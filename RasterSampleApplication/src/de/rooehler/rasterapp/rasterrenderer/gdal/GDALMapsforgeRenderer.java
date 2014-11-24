@@ -3,9 +3,7 @@ package de.rooehler.rasterapp.rasterrenderer.gdal;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.List;
 
-import org.gdal.gdal.Band;
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
 import org.mapsforge.core.util.MercatorProjection;
@@ -13,17 +11,18 @@ import org.mapsforge.core.util.MercatorProjection;
 import android.util.Log;
 import de.rooehler.rasterapp.rasterrenderer.RasterJob;
 import de.rooehler.rasterapp.rasterrenderer.RasterRenderer;
+import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
-import de.rooehler.rastertheque.io.gdal.DataType;
-import de.rooehler.rastertheque.io.gdal.GDALRaster;
+import de.rooehler.rastertheque.interfaces.RasterProcessing;
+import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
 /**
  * A GDALFileRenderer
  * @author Robert Oehler
  *
  */
-public class GDALFileRenderer implements RasterRenderer {
+public class GDALMapsforgeRenderer implements RasterRenderer {
 
-	private final static String TAG = GDALFileRenderer.class.getSimpleName();
+	private final static String TAG = GDALMapsforgeRenderer.class.getSimpleName();
 
 	private GraphicFactory graphicFactory;
 
@@ -33,13 +32,21 @@ public class GDALFileRenderer implements RasterRenderer {
 	
 	private boolean isWorking = true;
 	
-	private GDALRaster mRaster;
+	private GDALRasterIO mRasterIO;
+	
+	private RasterProcessing mRasterProcessing;
+	
+	private boolean mUseColorMap;
 
-	public GDALFileRenderer(GraphicFactory graphicFactory, final GDALRaster pRaster) {
+	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALRasterIO pRaster, final RasterProcessing pRasterProcessing, final boolean pUseColorMap) {
 		
 		this.graphicFactory = graphicFactory;
 		
-		this.mRaster = pRaster;
+		this.mRasterIO = pRaster;
+		
+		this.mRasterProcessing = pRasterProcessing;
+		
+		this.mUseColorMap = pUseColorMap;
 
 	}
 
@@ -52,12 +59,12 @@ public class GDALFileRenderer implements RasterRenderer {
 		
 		final int ts = job.tile.tileSize;
 		final byte zoom = job.tile.zoomLevel;
-		final int h = mRaster.getRasterHeight();
-		final int w = mRaster.getRasterWidth();
+		final int h = mRasterIO.getRasterHeight();
+		final int w = mRasterIO.getRasterWidth();
 		
 		if(mInitialZoom == -1){
 			
-			this.mInitialZoom = mRaster.getStartZoomLevel(mRaster.getBoundingBox().centre(),ts);
+			this.mInitialZoom = mRasterIO.getStartZoomLevel(mRasterIO.getBoundingBox().centre(),ts);
 			
 			if(h < ts || w < ts){
 				int necessary = Math.min(h, w);
@@ -72,20 +79,13 @@ public class GDALFileRenderer implements RasterRenderer {
 		long now = System.currentTimeMillis();
 
 		TileBitmap bitmap = this.graphicFactory.createTileBitmap(job.displayModel.getTileSize(), job.hasAlpha);
-
-		List<Band> bands = mRaster.getBands();
-
-        //TODO render all bands
-        final Band band = bands.get(0);
         
         final double scaleFactor = scaleFactorAccordingToZoom(zoom);
         
         int zoomedTS = (int) (ts * scaleFactor);
         
-        //final double whr = mRaster.getWidthHeightRatio();
-        
-        final int readAmountX = zoomedTS;//distortQuadratic ? (int) (whr < 1.0 ? zoomedTS / whr : zoomedTS) : zoomedTS;
-        final int readAmountY = zoomedTS;//distortQuadratic ? (int) (whr > 1.0 ? zoomedTS / whr : zoomedTS) : zoomedTS;
+        final int readAmountX = zoomedTS;
+        final int readAmountY = zoomedTS;
         
         long readFromX =  MercatorProjection.tileToPixel(job.tile.tileX, readAmountX);
         long readFromY =  MercatorProjection.tileToPixel(job.tile.tileY, readAmountY);
@@ -93,7 +93,7 @@ public class GDALFileRenderer implements RasterRenderer {
 //        Log.d(TAG, String.format("tile %d %d zoom %d read from %d %d amount %d %d",job.tile.tileX,job.tile.tileY,job.tile.zoomLevel,readFromX,readFromY,readAmountX,readAmountY));   
         
         if(readFromX < 0 || readFromX + readAmountX > w ||  readFromY < 0 || readFromY + readAmountY > h){
-        	Log.e(TAG, "reading from "+readFromX+","+readFromY+" from file {"+w+","+h+"}");
+        	Log.e(TAG, "reading from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");
 
         	//if entire desired area out of bounds return white tile
         	if(readFromX + readAmountX <= 0 || readFromX  > w ||
@@ -135,36 +135,47 @@ public class GDALFileRenderer implements RasterRenderer {
         		}
             }
         	
-        	final int bufferSize = gdalTargetXSize * gdalTargetYSize * mRaster.getDatatype().size();
+        	final int bufferSize = gdalTargetXSize * gdalTargetYSize * mRasterIO.getDatatype().size();
             ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
-            
             buffer.order(ByteOrder.nativeOrder()); 
-            Rectangle src = new Rectangle((int)readFromX,(int)readFromY, availableX, availableY);
-            band.ReadRaster_Direct((int)readFromX,(int)readFromY, availableX, availableY, gdalTargetXSize, gdalTargetYSize, DataType.toGDAL(mRaster.getDatatype()), buffer);
+
+            mRasterIO.read(new Rectangle((int)readFromX,(int)readFromY, availableX, availableY), new Dimension(gdalTargetXSize, gdalTargetYSize), buffer);
+
             try{
-            	bitmap.setPixels(mRaster.extractBoundsPixels(buffer,coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, mRaster.getDatatype()), ts);
+            	
+            	int[] pixels = null;
+                if(!mUseColorMap){
+                	pixels  = mRasterProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, (gdalTargetXSize * gdalTargetYSize), mRasterIO.getDatatype());
+                }else{
+                	pixels  = mRasterProcessing.generatePixelsWithColorMap(buffer, (gdalTargetXSize * gdalTargetYSize), mRasterIO.getDatatype());
+                }
+                
+                return createBoundsTile(bitmap, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
+            	
             }catch(ArrayIndexOutOfBoundsException e){
     			Log.e("ColorMap", "ioob",e);
     			return bitmap;
     		}
-    		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
-    		return bitmap;
-
 
         }else{
-        	Log.i(TAG, "reading from "+readFromX+","+readFromY+" from file {"+w+","+h+"}");    	
+        	Log.i(TAG, "reading from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
         }
 
-        final int bufferSize = ts * ts * mRaster.getDatatype().size();
+        final int bufferSize = ts * ts * mRasterIO.getDatatype().size();
         ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
         
         buffer.order(ByteOrder.nativeOrder()); 
-        Rectangle src = new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY);
-        Rectangle dst = new Rectangle(0,0, ts,ts);
-        
-        mRaster.read(band,src, dst, buffer);
+ 
+        mRasterIO.read(new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY), new Dimension(ts, ts), buffer);
 
-		bitmap.setPixels(mRaster.generatePixels(buffer,(ts * ts), mRaster.getDatatype()), ts);
+        int[] pixels = null;
+        if(!mUseColorMap){
+        	pixels  = mRasterProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, (ts * ts), mRasterIO.getDatatype());
+        }else{
+        	pixels  = mRasterProcessing.generatePixelsWithColorMap(buffer, (ts * ts), mRasterIO.getDatatype());
+        }
+        
+		bitmap.setPixels(pixels, ts);
 		
 		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 		return bitmap;
@@ -182,11 +193,42 @@ public class GDALFileRenderer implements RasterRenderer {
 		
 	}
 	
-	public void toggleColorMap(){
-		this.mRaster.toogleUseColorMap();
+	public TileBitmap createBoundsTile(	
+			final TileBitmap bitmap,
+			final int[] gdalPixels,
+			final int coveredOriginX,
+			final int coveredOriginY,
+			final int coveredAreaX,
+			final int coveredAreaY,
+			final int ts,
+			final long now){
+
+		int[] pixels = new int[ts * ts];
+		int gdalPixelCounter = 0;
+
+		for (int y = 0; y < ts; y++) {
+			for (int x = 0; x < ts; x++) {
+
+				int pos = y * ts + x;
+
+				if( x  >= coveredOriginX && y >= coveredOriginY && x < coveredOriginX + coveredAreaX && y < coveredOriginY + coveredAreaY){
+					//gdalpixel
+					pixels[pos] = gdalPixels[gdalPixelCounter++];
+
+				}else {
+					//white pixel;
+					pixels[pos] =  0xffffffff;
+				}
+
+			}
+		}
+		bitmap.setPixels( pixels, ts);
+		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
+		return bitmap;
 	}
-	public void applyProjection(String wkt){
-		this.mRaster.applyProjection(wkt);
+	
+	public GDALRasterIO getRaster(){
+		return mRasterIO;
 	}
 
 	@Override
@@ -221,10 +263,15 @@ public class GDALFileRenderer implements RasterRenderer {
 		return Math.pow(2,  -(zoom - this.mInitialZoom));
 		
 	}
+	public void toggleUseColorMap(){
+		
+		this.mUseColorMap = !mUseColorMap;
+		
+	}
 
 	@Override
 	public String getFilePath() {
 		
-		return mRaster.getFilePath();
+		return mRasterIO.getFilePath();
 	}
 }
