@@ -5,11 +5,10 @@ import org.mapsforge.core.graphics.TileBitmap;
 import org.mapsforge.core.model.Tile;
 
 import android.graphics.BitmapFactory;
-import android.util.Log;
 import de.rooehler.rasterapp.rasterrenderer.RasterJob;
 import de.rooehler.rasterapp.rasterrenderer.RasterRenderer;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesRasterIO;
-import de.rooehler.rastertheque.processing.mimpl.Interpolator;
+import de.rooehler.rastertheque.processing.resampling.MBilinearInterpolator;
 
 public class MBTilesMapsforgeRenderer implements RasterRenderer{
 
@@ -19,20 +18,18 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 	
 	private GraphicFactory graphicFactory;
 	
-	
 	private final MBTilesRasterIO mRaster;
 
 	public MBTilesMapsforgeRenderer(GraphicFactory graphicFactory, final MBTilesRasterIO pRaster) {
 		
 		this.mRaster = pRaster;
 		
-
 		this.graphicFactory = graphicFactory;
 	}
 
 	/**
-	 * called from MBTilesWorkerThread : executes a mapgeneratorJob and modifies the @param bitmap which will be the
-	 * result according to the parameters inside @param mapGeneratorJob
+	 * called from RasterWorkerThread : executes a rasterJob extracting data
+	 * from the db and returns the database tile if available otherwise a white tile
 	 */
 	@Override
 	public TileBitmap executeJob(RasterJob job) {
@@ -49,20 +46,15 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 		// conversion needed to fit the MbTiles coordinate system
 		final int[] tmsTileXY = mRaster.googleTile2TmsTile(localTileX, localTileY, tile.zoomLevel);
 
-		// Log.d(TAG, String.format("Tile requested %d %d is now %d %d", tile.tileX, tile.tileY, tmsTileXY[0],
-		// tmsTileXY[1]));
-
 		byte[] rasterBytes = null;
 		android.graphics.Bitmap decodedBitmap = null;
 		int[] pixels = new int[tileSize * tileSize];
 		int[] mbTilesPixels = new int[MBTILES_SIZE * MBTILES_SIZE];
 
-		rasterBytes = mRaster.getDB().getTileAsBytes(String.valueOf(tmsTileXY[0]), String.valueOf(tmsTileXY[1]),
-				Byte.toString(tile.zoomLevel));
+		rasterBytes = mRaster.getDB().getTileAsBytes(String.valueOf(tmsTileXY[0]), String.valueOf(tmsTileXY[1]), Byte.toString(tile.zoomLevel));
 
 		if (rasterBytes == null) {
 
-			Log.d(TAG, String.format("Tile not available %d", tileSize));
 			// got nothing,make white pixels for lower zoom levels
 			for (int i = 0; i < mbTilesPixels.length; i++) {
 				mbTilesPixels[i] = 0xff << 24 | (0xff << 16) | (0xff << 8) | 0xff;
@@ -73,7 +65,6 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 
 			// check if the input stream could be decoded into a bitmap
 			if (decodedBitmap != null) {
-				Log.d(TAG, String.format("Tile found %d", tileSize));
 				// copy all pixels from the decoded bitmap to the color array
 				// the MBTILES database has always 256 x256 tiles
 				decodedBitmap.getPixels(mbTilesPixels, 0, MBTILES_SIZE, 0, 0, MBTILES_SIZE, MBTILES_SIZE);
@@ -87,7 +78,7 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 
 		if (tileSize != MBTILES_SIZE) {
 
-			Interpolator.resampleBilinear(mbTilesPixels, MBTILES_SIZE, pixels, tileSize);
+			MBilinearInterpolator.resampleBilinear(mbTilesPixels, MBTILES_SIZE, pixels, tileSize);
 
 		} else {
 

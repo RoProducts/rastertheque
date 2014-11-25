@@ -1,10 +1,10 @@
-package de.rooehler.rastertheque.interfaces;
+package de.rooehler.rastertheque.processing;
 
 import java.nio.ByteBuffer;
 
 import de.rooehler.rastertheque.io.gdal.DataType;
 
-public interface RasterProcessing {
+public interface ColorMapProcessing {
 	
 	public int[] generateGrayScalePixelsCalculatingMinMax(final ByteBuffer pBuffer,final int bufferSize, final DataType dataType);
 	

@@ -14,7 +14,7 @@ import android.content.Context;
  * A RasterLayer extends a Mapsforge TileLayer
  * It's workerThread handles RasterJobs to render the raster file
  * 
- * It's rasterRenderer abstracts the raster's properties
+ * Its rasterRenderer abstracts the raster's properties
  * 
  * @author Robert Oehler
  *

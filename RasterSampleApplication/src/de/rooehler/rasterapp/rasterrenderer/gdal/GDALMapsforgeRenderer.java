@@ -13,10 +13,10 @@ import de.rooehler.rasterapp.rasterrenderer.RasterJob;
 import de.rooehler.rasterapp.rasterrenderer.RasterRenderer;
 import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
-import de.rooehler.rastertheque.interfaces.RasterProcessing;
 import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
+import de.rooehler.rastertheque.processing.ColorMapProcessing;
 /**
- * A GDALFileRenderer
+ * A Renderer of gdal data for Mapsforge
  * @author Robert Oehler
  *
  */
@@ -28,31 +28,29 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 
 	private byte mInitialZoom = -1;
 	
-//	private boolean distortQuadratic = false;
-	
 	private boolean isWorking = true;
 	
 	private GDALRasterIO mRasterIO;
 	
-	private RasterProcessing mRasterProcessing;
+	private ColorMapProcessing mColorMapProcessing;
 	
 	private boolean mUseColorMap;
 
-	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALRasterIO pRaster, final RasterProcessing pRasterProcessing, final boolean pUseColorMap) {
+	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALRasterIO pRaster, final ColorMapProcessing pColorMapProcessing, final boolean pUseColorMap) {
 		
 		this.graphicFactory = graphicFactory;
 		
 		this.mRasterIO = pRaster;
 		
-		this.mRasterProcessing = pRasterProcessing;
+		this.mColorMapProcessing = pColorMapProcessing;
 		
 		this.mUseColorMap = pUseColorMap;
 
 	}
 
 	/**
-	 * called from RasterFileWorkerThread : executes a mapgeneratorJob and modifies the @param bitmap which will be the
-	 * result according to the parameters inside @param mapGeneratorJob
+	 * called from RasterWorkerThread : executes a rasterJob and returns a bitmap which will be the
+	 * result according to the parameters inside the job or null 
 	 */
 	@Override
 	public TileBitmap executeJob(RasterJob job) {
@@ -95,14 +93,14 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         if(readFromX < 0 || readFromX + readAmountX > w ||  readFromY < 0 || readFromY + readAmountY > h){
         	Log.e(TAG, "reading from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");
 
-        	//if entire desired area out of bounds return white tile
+        	//if entirely out of bounds -> return white tile
         	if(readFromX + readAmountX <= 0 || readFromX  > w ||
         	   readFromY + readAmountY <= 0 || readFromY  > h){
         		//cannot read, create white tile
         		return returnWhiteTile(bitmap, ts, now);
         	}
         	
-        	//out out bounds, needs special treatment
+        	//this tile is partially out of bounds, get available rectangle
         	int availableX = readAmountX, availableY = readAmountY;
         	int gdalTargetXSize = ts, gdalTargetYSize = ts;
             int coveredXOrigin = 0, coveredYOrigin = 0;
@@ -138,6 +136,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         	final int bufferSize = gdalTargetXSize * gdalTargetYSize * mRasterIO.getDatatype().size();
             ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
             buffer.order(ByteOrder.nativeOrder()); 
+            //read the available pixels
 
             mRasterIO.read(new Rectangle((int)readFromX,(int)readFromY, availableX, availableY), new Dimension(gdalTargetXSize, gdalTargetYSize), buffer);
 
@@ -145,19 +144,19 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
             	
             	int[] pixels = null;
                 if(!mUseColorMap){
-                	pixels  = mRasterProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, (gdalTargetXSize * gdalTargetYSize), mRasterIO.getDatatype());
+                	pixels  = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, (gdalTargetXSize * gdalTargetYSize), mRasterIO.getDatatype());
                 }else{
-                	pixels  = mRasterProcessing.generatePixelsWithColorMap(buffer, (gdalTargetXSize * gdalTargetYSize), mRasterIO.getDatatype());
+                	pixels  = mColorMapProcessing.generatePixelsWithColorMap(buffer, (gdalTargetXSize * gdalTargetYSize), mRasterIO.getDatatype());
                 }
                 
                 return createBoundsTile(bitmap, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
             	
             }catch(ArrayIndexOutOfBoundsException e){
-    			Log.e("ColorMap", "ioob",e);
+    			Log.e(TAG, "error creating the out of bounds tile",e);
     			return bitmap;
     		}
 
-        }else{
+        }else{ //this rectangle is fully covered by the file
         	Log.i(TAG, "reading from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
         }
 
@@ -170,9 +169,9 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 
         int[] pixels = null;
         if(!mUseColorMap){
-        	pixels  = mRasterProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, (ts * ts), mRasterIO.getDatatype());
+        	pixels  = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, (ts * ts), mRasterIO.getDatatype());
         }else{
-        	pixels  = mRasterProcessing.generatePixelsWithColorMap(buffer, (ts * ts), mRasterIO.getDatatype());
+        	pixels  = mColorMapProcessing.generatePixelsWithColorMap(buffer, (ts * ts), mRasterIO.getDatatype());
         }
         
 		bitmap.setPixels(pixels, ts);
@@ -181,18 +180,36 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		return bitmap;
 	}
 
-	public TileBitmap returnWhiteTile(final TileBitmap bitmap, final int ts, final long now){
+	/**
+	 * returns a Tile filled with white pixels as the desired coordinates are not covered by the file
+	 * @param bitmap to modify the pixels 
+	 * @param ts destination tilesize
+	 * @param timestamp when the creation of this tile started
+	 * @return the modified bitmap
+	 */
+	public TileBitmap returnWhiteTile(final TileBitmap bitmap, final int ts, final long timestamp){
 		//cannot read, create white tile
 		int[] pixels = new int[ts * ts];
 		for (int i = 0; i < pixels.length; i++) {
 			pixels[i] = 0xffffffff;
 		}
 		bitmap.setPixels( pixels, ts);
-		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
+		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - timestamp) / 1000.0f)+ " s");
 		return bitmap;
 		
 	}
-	
+	/**
+	 * returns a tile which partially contains raster data, the rest is filled with white pixels
+	 * @param bitmap to modify the pixels
+	 * @param gdalPixels the pixels with the raster data
+	 * @param coveredOriginX the x coord of the covered area's origin
+	 * @param coveredOriginY the y coord of the covered area's origin
+	 * @param coveredAreaX the covered area's width
+	 * @param coveredAreaY the covered area's height
+	 * @param ts the destination tileSize
+	 * @param timestamp when the creation of this tile started
+	 * @return the modified bitmap
+	 */
 	public TileBitmap createBoundsTile(	
 			final TileBitmap bitmap,
 			final int[] gdalPixels,
@@ -201,7 +218,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 			final int coveredAreaX,
 			final int coveredAreaY,
 			final int ts,
-			final long now){
+			final long timestamp){
 
 		int[] pixels = new int[ts * ts];
 		int gdalPixelCounter = 0;
@@ -223,7 +240,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 			}
 		}
 		bitmap.setPixels( pixels, ts);
-		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
+		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - timestamp) / 1000.0f)+ " s");
 		return bitmap;
 	}
 	

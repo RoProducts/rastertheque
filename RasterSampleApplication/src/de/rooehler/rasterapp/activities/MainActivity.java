@@ -44,7 +44,6 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rasterapp.R;
 import de.rooehler.rasterapp.dialog.FilePickerDialog;
@@ -58,7 +57,7 @@ import de.rooehler.rasterapp.util.SupportedType;
 import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesRasterIO;
 import de.rooehler.rastertheque.io.mbtiles.MbTilesDatabase;
-import de.rooehler.rastertheque.processing.mimpl.MRasterProcessing;
+import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
 
 
 public class MainActivity extends Activity {
@@ -248,12 +247,12 @@ public class MainActivity extends Activity {
 			case RASTER:
 				
 				GDALRasterIO gdalRaster = new GDALRasterIO(filePath);
-				MRasterProcessing mRasterProcessing = new MRasterProcessing(filePath);
+				MColorMapProcessing mColorMapProcessing = new MColorMapProcessing(filePath);
 				final MapPosition gdalmp = getCenterForGDALFile(gdalRaster);
 				final MapViewPosition gdalmvp = mapView.getModel().mapViewPosition;		
 				gdalmvp.setMapPosition(gdalmp);
 				
-				GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE, gdalRaster,mRasterProcessing, true);
+				GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE, gdalRaster, mColorMapProcessing, true);
 				Layer rasterLayer = new RasterLayer(getBaseContext(),tileCache, gdalmvp, false, AndroidGraphicFactory.INSTANCE, gdalFileRenderer);
 				mapView.getLayerManager().getLayers().add(0, rasterLayer);
 				

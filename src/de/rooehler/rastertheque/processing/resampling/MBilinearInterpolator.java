@@ -1,6 +1,6 @@
-package de.rooehler.rastertheque.processing.mimpl;
+package de.rooehler.rastertheque.processing.resampling;
 
-public class Interpolator {
+public class MBilinearInterpolator {
 	
 	/**
 	 * Bilinear interpolation http://en.wikipedia.org/wiki/Bilinear_interpolation

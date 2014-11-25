@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.processing.mimpl.colormap;
+package de.rooehler.rastertheque.processing.colormap;
 
 import java.util.ArrayList;
 
@@ -8,9 +8,11 @@ import android.util.Pair;
 
 /**
  * class which defines ranges of values and maps colors to them
- * for fast access on arbitrary values it uses a NavigableMap 
- * As improvement the nodata value is handled separately
- * @author robertoehler
+ * The nodata value is handled separately
+ * It uses internally an array where every (pixel) value that is covered must be a member of the mEntries list
+ * To be able to handle negative values, a min Value is set by which the query is reduced when getting the value
+ * which will result e.g. for a range {-100,100} with minValue - 100 in the index -100 - -100 --> 0
+ * @author Robert Oehler
  *
  */
 public class ColorMap {

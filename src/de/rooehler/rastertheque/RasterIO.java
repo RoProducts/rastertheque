@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.interfaces;
+package de.rooehler.rastertheque;
 
 import java.nio.ByteBuffer;
 

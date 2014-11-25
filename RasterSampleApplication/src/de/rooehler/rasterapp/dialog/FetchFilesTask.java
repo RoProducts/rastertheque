@@ -17,7 +17,13 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 import de.rooehler.rasterapp.R;
-
+/**
+ * Asynctask which crawls the file system / queries the android MediaStore database
+ * to retrieve all files on the system with specified extensions @param mExtensions
+ * 
+ * @author Robert Oehler
+ *
+ */
 public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<String>>{
 	
 	private final static String TAG = FetchFilesTask.class.getSimpleName();
@@ -50,12 +56,13 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 		ArrayList<String> tempResult = new ArrayList<String>();
 		try{
 			
-//			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/geocollect/"), 2));
-			
+			//crawl some folder
 			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/"), 2));
 			
+			//this would be more generic but may last a while
 //			tempResult.addAll(walkdir(new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/"), 1));
 
+			//query the MediaStore
 			ContentResolver cr = activity.getContentResolver();
 			Uri myUri = MediaStore.Files.getContentUri("external");
 			String selection  = MediaStore.Files.FileColumns.MEDIA_TYPE + "=" + MediaStore.Files.FileColumns.MEDIA_TYPE_NONE;
@@ -81,10 +88,9 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 					}
 				}while(cursor.moveToNext());
 			}
-			if(cursor != null)cursor.close();
+			if(cursor != null)
+				cursor.close();
 			
-
-
 		}catch(Exception e){
 			Log.e(TAG, "error onbackground",e);	
 		}
@@ -96,7 +102,7 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 		super.onPostExecute(result);
 		try{
 
-			Collections.sort(result, new MyPathComparator());
+			Collections.sort(result, new MyFileNameComparator());
 			
 			publishResult(result);
 
@@ -104,14 +110,19 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 			Log.e(TAG, "error onPostexecute",e);
 		}
 		try{
-			if(pd != null && pd.isShowing())pd.dismiss();
+			if(pd != null && pd.isShowing())
+				pd.dismiss();
 		}catch(Exception e){
 			Log.e(TAG, "error removing pd");
 		}
 
 	}
-	
-	public class MyPathComparator implements Comparator<String>{
+	/**
+	 * compares fileName to sort and retrieve a list which is alphabetically sorted
+	 * @author robertoehler
+	 *
+	 */
+	public class MyFileNameComparator implements Comparator<String>{
 
 
 		@Override
@@ -123,11 +134,18 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 	        return fileName1.compareTo(fileName2);
 	    }
 	}
+	/**
+	 * recursive method to walk through a file systems directory hierarchy
+	 * @param dir the directory to start
+	 * @param level the amount of steps to go up the hierarchy
+	 * @return the list of files found according to mExtensions
+	 */
 	public ArrayList<String> walkdir(File dir, int level) {
 
 		ArrayList<String> tempResult = new ArrayList<String>();
 		
-		if(level == 0)return tempResult;
+		if(level == 0)
+			return tempResult;
 
 		File listFile[] = dir.listFiles();
 

@@ -58,7 +58,7 @@ public class FilePickerDialog {
 	protected void refreshFilesList() {
 		// Clear the files ArrayList
 		
-		FetchFilesTask fft =new FetchFilesTask(mActivity,acceptedFileExtensions) {
+		FetchFilesTask fft = new FetchFilesTask(mActivity,acceptedFileExtensions) {
 			
 			@Override
 			public void publishResult(ArrayList<String> result) {

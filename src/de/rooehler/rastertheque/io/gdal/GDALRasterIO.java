@@ -1,7 +1,6 @@
 package de.rooehler.rastertheque.io.gdal;
 
 import java.io.EOFException;
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -20,10 +19,10 @@ import android.util.Log;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 
+import de.rooehler.rastertheque.RasterIO;
 import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.Rectangle;
-import de.rooehler.rastertheque.interfaces.RasterIO;
 
 public class GDALRasterIO extends Raster implements RasterIO{
 	
@@ -102,8 +101,6 @@ public class GDALRasterIO extends Raster implements RasterIO{
 		}else{
 			
 			Log.d(TAG, filePath.substring(filePath.lastIndexOf("/") + 1) +" successfully opened");
-			
-//			printProperties();
 			
 		}
 		return true;
@@ -351,5 +348,238 @@ public class GDALRasterIO extends Raster implements RasterIO{
 	public CoordinateTransformation getTransformation() {
 		return mTransformation;
 	}
+	
+		/**
+		 * @param a Databuffer according to the datatype of this raster
+		 * @param pixelsWidth
+		 * @param pixelsHeight
+		 * @return
+		 * @throws Exception
+	 */
+		public int[] generatePixels(final ByteBuffer pBuffer,final int tileSize, final DataType dataType){
+		
+			final ByteBufferReader reader = new ByteBufferReader(pBuffer.array(), ByteOrder.nativeOrder());
+			
+	        int[] pixels = new int[tileSize];
+	        double[] minMax = new double[2];
+	        
+	    
+	        	getMinMax(minMax, reader, tileSize, dataType);
+	       
+        	Log.d(TAG, "rawdata min "+minMax[0] +" max "+minMax[1]);
+	        	reader.init();
+	        
+	        for (int i = 0; i < tileSize; i++) {
+	        	
+	        	double d = getValue(reader, dataType);
+	
+	    		
+	    		pixels[i] = pixelValueForGrayScale(d, minMax[0], minMax[1]);
+	    		
+	        }
+	
+	        return pixels;
+	    } 
+		/**
+		 * extracts pixels at the bounds of a tile and fills the remaining area with white pixels
+		 * @param a Databuffer according to the datatype of this raster
+		 * @param pixelsWidth
+		 * @param pixelsHeight
+		 * @return
+		 * @throws Exception
+		 */
+		public int[] extractBoundsPixels(final ByteBuffer pBuffer,
+				final int coveredOriginX,
+				final int coveredOriginY,
+				final int coveredAreaX,
+				final int coveredAreaY,
+				final int tileSize,
+				final DataType dataType){
+		
+			final ByteBufferReader reader = new ByteBufferReader(pBuffer.array(), ByteOrder.nativeOrder());
+			
+        int[] pixels = new int[tileSize * tileSize];
+	        double[] minMax = new double[2];
+	        
+	        
+	      
+	
+	        getMinMax(minMax, reader, coveredAreaX * coveredAreaY, dataType);
+	       
+	        Log.d(TAG, "rawdata min "+minMax[0] +" max "+minMax[1]);
+        	reader.init();
+	        
+	 
+	        for (int y = 0; y < tileSize; y++) {
+	        	for (int x = 0; x < tileSize; x++) {
+	
+	        		int pos = y * tileSize + x;
+	        		
+	        		if( x  >= coveredOriginX && y >= coveredOriginY && x < coveredOriginX + coveredAreaX && y < coveredOriginY + coveredAreaY){
+	        			//gdalpixel
+	        			double d = getValue(reader, dataType);
+	        			
+        		
+	        			pixels[pos] = pixelValueForGrayScale(d, minMax[0], minMax[1]);
+	        			
+	        		}else {
+	        			//white pixel;
+	        			pixels[pos] =  0xffffffff;
+	        		}
+	
+	        	}
+	        }
+	
+	        return pixels;
+	    } 
+		/**
+		 * returns a (grayscale color) int value according to the @param val inside the range of @param min and @param max  
+		 * @param pixel value to calculate a color for
+		 * @param min value
+		 * @param max value
+		 * @return the calculated color value
+		 */
+		private int pixelValueForGrayScale(double val, double min, double max){
 
+			final double color = (val - min) / (max - min);
+			int grey = (int) (color * 256);
+			return 0xff000000 | ((((int) grey) << 16) & 0xff0000) | ((((int) grey) << 8) & 0xff00) | ((int) grey);
+
+		}
+
+		/**
+		 * retrieve a value from the ByteBufferReader according to its datatype
+		 * actually the data is read and for a unified return type is cast to double
+		 * @param reader the reader to read from
+		 * @param dataType the datatype according to which the data is read
+		 * @return the value of the pixel
+		 */
+		private double getValue(ByteBufferReader reader,final DataType dataType){
+
+			double d = 0.0d;
+			try{
+				switch(dataType) {
+				case CHAR:
+					char _char = reader.readChar();
+					d = (double) _char;
+					break;
+				case BYTE:
+					byte _byte = reader.readByte();
+					d = (double) _byte;
+					break;
+				case SHORT:
+					short _short = reader.readShort();
+					d = (double) _short;
+					break;
+				case INT:
+					int _int = reader.readInt();
+					d = (double) _int;
+					break;
+				case LONG:
+					long _long = reader.readLong();
+					d = (double) _long;
+					break;
+				case FLOAT:
+					float _float = reader.readFloat();
+					d = (double) _float;
+					break;
+				case DOUBLE:
+					double _double =  reader.readDouble();
+					d = _double;
+					break;
+				}
+			}catch(IOException  e){
+				Log.e(TAG, "error reading from byteBufferedReader");
+			}
+
+			return d;
+		}
+		/**
+		 * iterates over the pixelsize, determining min and max value of the data in 
+		 * the ByteBufferReader according to its datatype
+		 * @param result array in order {min, max}
+		 * @param reader the reader to read from 	
+		 * @param pixelSize the amount of pixels to check
+		 * @param dataType the datatype according to which the data is read
+		 */
+		private void getMinMax(double[] result, ByteBufferReader reader, int pixelSize, final DataType dataType){
+			double max =  Double.MIN_VALUE;
+			double min =  Double.MAX_VALUE;
+
+			for (int i = 0; i < pixelSize; i++) {
+				try{
+					switch(dataType) {
+					case CHAR:
+						char _char = reader.readChar();
+						if(_char > max){
+							max = _char;
+						}
+						if(_char < min){
+							min = _char;
+						}
+						break;
+					case BYTE:
+						byte _byte = reader.readByte();
+						if(_byte > max){
+							max = _byte;
+						}
+						if(_byte < min){
+							min = _byte;
+						}
+						break;
+					case SHORT:
+						short _short = reader.readShort();
+						if(_short > max){
+							max = _short;
+						}
+						if(_short < min){
+							min = _short;
+						}
+						break;
+					case INT:
+						int _int = reader.readInt();
+						if(_int > max){
+							max = _int;
+						}
+						if(_int < min){
+							min = _int;
+						}
+						break;
+					case LONG:
+						long _long = reader.readLong();
+						if(_long > max){
+							max = _long;
+						}
+						if(_long < min){
+							min = _long;
+						}
+						break;
+					case FLOAT:
+						float _float = reader.readFloat();
+						if(_float > max){
+							max = _float;
+						}
+						if(_float < min){
+							min = _float;
+						}
+						break;
+					case DOUBLE:
+						double _double = reader.readDouble();
+						if(_double > max){
+							max = _double;
+						}
+						if(_double < min){
+							min = _double;
+						}
+						break;
+					}
+				}catch(EOFException e){
+					break;
+				}catch(IOException  e){
+					Log.e(TAG, "error reading from byteBufferedReader");
+				}
+			}
+			result[0] = min;
+			result[1] = max;
+		}
 }
