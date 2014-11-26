@@ -7,6 +7,7 @@ import java.nio.ByteOrder;
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
 import org.mapsforge.core.util.MercatorProjection;
+import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.util.Log;
 import de.rooehler.rasterapp.rasterrenderer.RasterJob;
@@ -15,6 +16,8 @@ import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
 import de.rooehler.rastertheque.processing.ColorMapProcessing;
+import de.rooehler.rastertheque.proj.Proj;
+import de.rooehler.rastertheque.util.Constants;
 /**
  * A Renderer of gdal data for Mapsforge
  * @author Robert Oehler
@@ -62,7 +65,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		
 		if(mInitialZoom == -1){
 			
-			this.mInitialZoom = mRasterIO.getStartZoomLevel(mRasterIO.getBoundingBox().centre(),ts);
+			this.mInitialZoom = mRasterIO.getStartZoomLevel(mRasterIO.getEnvelope().centre(),ts);
 			
 			if(h < ts || w < ts){
 				int necessary = Math.min(h, w);
@@ -137,6 +140,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
             ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
             buffer.order(ByteOrder.nativeOrder()); 
             //read the available pixels
+            
 
             mRasterIO.read(new Rectangle((int)readFromX,(int)readFromY, availableX, availableY), new Dimension(gdalTargetXSize, gdalTargetYSize), buffer);
 
@@ -289,6 +293,6 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	@Override
 	public String getFilePath() {
 		
-		return mRasterIO.getFilePath();
+		return mRasterIO.getSource();
 	}
 }

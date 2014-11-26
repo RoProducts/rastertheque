@@ -21,6 +21,7 @@ import org.mapsforge.map.reader.MapDatabase;
 import org.mapsforge.map.reader.header.FileOpenResult;
 import org.mapsforge.map.reader.header.MapFileInfo;
 import org.mapsforge.map.rendertheme.InternalRenderTheme;
+import org.osgeo.proj4j.CoordinateTransform;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
@@ -44,6 +45,7 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rasterapp.R;
 import de.rooehler.rasterapp.dialog.FilePickerDialog;
@@ -58,6 +60,8 @@ import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesRasterIO;
 import de.rooehler.rastertheque.io.mbtiles.MbTilesDatabase;
 import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
+import de.rooehler.rastertheque.proj.Proj;
+import de.rooehler.rastertheque.util.Constants;
 
 
 public class MainActivity extends Activity {
@@ -239,8 +243,8 @@ public class MainActivity extends Activity {
 				Layer mbTilesLayer = new RasterLayer(getBaseContext(), tileCache, mbtmvp, false, AndroidGraphicFactory.INSTANCE, mbTilesRenderer);
 				mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
 								
-				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) mbTilesRaster.getMaxZoom());
-				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) mbTilesRaster.getMinZoom());
+//				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) mbTilesRaster.getMaxZoom());
+//				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) mbTilesRaster.getMinZoom());
 				
 				break;
 				
@@ -256,8 +260,8 @@ public class MainActivity extends Activity {
 				Layer rasterLayer = new RasterLayer(getBaseContext(),tileCache, gdalmvp, false, AndroidGraphicFactory.INSTANCE, gdalFileRenderer);
 				mapView.getLayerManager().getLayers().add(0, rasterLayer);
 				
-				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) gdalRaster.getMaxZoom());
-				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) gdalRaster.getMinZoom());
+//				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) gdalRaster.getMaxZoom());
+//				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) gdalRaster.getMinZoom());
 				
 				break;
 
@@ -324,17 +328,17 @@ public class MainActivity extends Activity {
 	public MapPosition getCenterForGDALFile(GDALRasterIO raster){
 
 		Coordinate center = raster.getCenterPoint();
+		Log.d(TAG, "normal center +" + center.x + " "+center.y);
 		LatLong latLong = new LatLong(center.y, center.x);
 		
-//		final float widthHeightRatio = raster.getWidthHeightRatio();
-//		
-//		if(widthHeightRatio != 1){
-//			if(widthHeightRatio > 1){ //width is larger than height, move center up
-//				latLong = new LatLong(latLong.latitude + MercatorProjection.LATITUDE_MAX / widthHeightRatio,latLong.longitude);
-//			}else{ //height is larger than width, move center to left		
-//				latLong = new LatLong(latLong.latitude, latLong.longitude - 360 * widthHeightRatio);
-//			}
-//		}
+//		Envelope rasterEnvelope = raster.getEnvelope();
+//		Log.d(TAG, "raster envelope " + rasterEnvelope.toString());
+//		Envelope reprojectedEnvelope = Proj.reproject(rasterEnvelope, raster.getCRS(),Proj.EPSG_4326);
+//		 
+//		Coordinate reprojectedCoord =  reprojectedEnvelope.centre();
+//		Log.d(TAG, "reprojected envelope " + reprojectedEnvelope.toString());
+//		Log.d(TAG, "reprojected center " + reprojectedCoord.x + " "+reprojectedCoord.y);
+//		LatLong latLong = new LatLong(reprojectedCoord.y, reprojectedCoord.x);
 		
 		final int tileSize = mapView.getModel().displayModel.getTileSize();
 		

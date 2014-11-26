@@ -111,7 +111,7 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 	@Override
 	public String getFilePath() {
 		
-		return this.mRaster.getFilePath();
+		return this.mRaster.getSource();
 		
 	}
 

@@ -2,6 +2,8 @@ package de.rooehler.rastertheque;
 
 import java.nio.ByteBuffer;
 
+import org.osgeo.proj4j.CoordinateReferenceSystem;
+
 import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
 

@@ -1,9 +1,15 @@
 package de.rooehler.rastertheque.io.mbtiles;
 
-import android.content.Context;
-import de.rooehler.rastertheque.core.Raster;
+import org.osgeo.proj4j.CoordinateReferenceSystem;
 
-public class MBTilesRasterIO extends Raster {
+import android.content.Context;
+
+import com.vividsolutions.jts.geom.Envelope;
+
+import de.rooehler.rastertheque.core.RasterDataSet;
+import de.rooehler.rastertheque.proj.Proj;
+
+public class MBTilesRasterIO implements RasterDataSet {
 	
 	private MbTilesDatabase db;
 
@@ -11,11 +17,15 @@ public class MBTilesRasterIO extends Raster {
 	
 	private Context mContext;
 	
+	private String mSource;
+	
+
+	
 	public MBTilesRasterIO(final Context pContext,final String pFilePath){
 		
-		super(pFilePath);
+		this.mSource = pFilePath;
 		
-		this.db = new MbTilesDatabase(mContext, mFilePath);
+		this.db = new MbTilesDatabase(mContext, mSource);
 		
 		this.mContext  = pContext;
 	}
@@ -23,17 +33,6 @@ public class MBTilesRasterIO extends Raster {
 	public MbTilesDatabase getDB(){
 		
 		return this.db;
-	}
-
-
-	@Override
-	public int getMinZoom() {
-		return 10;
-	}
-
-	@Override
-	public int getMaxZoom() {
-		return 16;
 	}
 	
 	public void start() {
@@ -86,6 +85,24 @@ public class MBTilesRasterIO extends Raster {
 
 	public int[] googleTile2TmsTile(long tx, long ty, byte zoom) {
 		return new int[] { (int) tx, (int) ((Math.pow(2, zoom) - 1) - ty) };
+	}
+
+	@Override
+	public String getSource() {
+		
+		return mSource;
+	}
+
+	@Override
+	public CoordinateReferenceSystem getCRS() {
+		
+		 return Proj.EPSG_900913;
+	}
+
+	@Override
+	public Envelope getEnvelope() {
+
+		return db.getEnvelope();
 	}
 
 
