@@ -100,7 +100,7 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 	@Override
 	public void stop() {
 
-		this.mRaster.stop();
+		this.mRaster.close();
 	}
 	@Override
 	public boolean isWorking() {

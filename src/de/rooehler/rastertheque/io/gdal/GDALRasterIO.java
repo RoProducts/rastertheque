@@ -21,13 +21,14 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.RasterIO;
+import de.rooehler.rastertheque.core.DataContainer;
 import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.RasterDataSet;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.proj.Proj;
 import de.rooehler.rastertheque.util.Constants;
 
-public class GDALRasterIO  implements RasterDataSet,RasterIO{
+public class GDALRasterIO  implements RasterDataSet, RasterIO{
 
 	private static final String TAG = GDALRasterIO.class.getSimpleName();
 
@@ -105,6 +106,13 @@ public class GDALRasterIO  implements RasterDataSet,RasterIO{
 
 		}
 		return true;
+	}
+	@Override
+	public void close(){
+		if (dataset != null) {
+			dataset.delete();
+			dataset = null;
+		}
 	}
 
 	@Override
@@ -247,6 +255,7 @@ public class GDALRasterIO  implements RasterDataSet,RasterIO{
 
 		}
 	}
+	
 	public Coordinate getCenterPoint(){
 
 		double[] adfGeoTransform = new double[6];

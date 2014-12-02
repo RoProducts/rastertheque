@@ -43,8 +43,8 @@ public class MBTilesRasterIO implements RasterDataSet {
 		}
 
 	}
-
-	public void stop() {
+	@Override
+	public void close() {
 
 		if (this.isDBOpen) {
 			this.db.close();
@@ -64,7 +64,7 @@ public class MBTilesRasterIO implements RasterDataSet {
 	public void destroy() {
 
 		if (this.db != null) {
-			stop();
+			close();
 			this.db = null;
 		}
 	}
