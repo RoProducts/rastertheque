@@ -29,6 +29,12 @@ public class MColorMapProcessing implements ColorMapProcessing{
 
 		}
 	}
+	
+	@Override
+	public boolean hasColorMap() {
+		
+		return this.mColorMap != null;
+	}
 
 	/**
 	 * generates an array of colored pixels for a buffer of raster pixels according to a priorly loaded ColorMap

@@ -6,8 +6,6 @@ import java.nio.ByteOrder;
 
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
-import org.mapsforge.core.util.MercatorProjection;
-import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.util.Log;
 import de.rooehler.rasterapp.rasterrenderer.RasterJob;
@@ -16,8 +14,6 @@ import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
 import de.rooehler.rastertheque.processing.ColorMapProcessing;
-import de.rooehler.rastertheque.proj.Proj;
-import de.rooehler.rastertheque.util.Constants;
 /**
  * A Renderer of gdal data for Mapsforge
  * @author Robert Oehler
@@ -29,7 +25,9 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 
 	private GraphicFactory graphicFactory;
 
-	private byte mInitialZoom = -1;
+	private byte mInternalZoom = 1;
+	
+//	private float mScaleFactor = 1.0f;
 	
 	private boolean isWorking = true;
 	
@@ -50,6 +48,37 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		this.mUseColorMap = pUseColorMap;
 
 	}
+	
+	public byte calculateZoomLevelsAndStartScale(int tileSize, int screenWidth, int rasterWidth,	int rasterHeight) {
+		
+
+		double tilesEnter = rasterWidth / tileSize;
+
+		int nativeZoom = (int) (Math.log(tilesEnter) / Math.log(2));
+		
+		int offset = nativeZoom - 1;
+		
+		byte maxZoom = (byte) (5 + offset);
+		
+		if(rasterWidth > screenWidth){
+			//if raster larger than screen
+			int available = rasterWidth;
+			while(available > screenWidth){
+				this.mInternalZoom++;
+				available /= 2.0;
+			}
+		}else if(rasterHeight < tileSize || rasterWidth < tileSize){
+			//if raster smaller than tilesize
+			int necessary = Math.min(rasterHeight, rasterWidth);
+			int desired   = tileSize;
+			while(desired > necessary){
+				this.mInternalZoom--;
+				desired /= 2;
+			}
+		}
+		
+		return maxZoom;
+	}
 
 	/**
 	 * called from RasterWorkerThread : executes a rasterJob and returns a bitmap which will be the
@@ -63,33 +92,19 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		final int h = mRasterIO.getRasterHeight();
 		final int w = mRasterIO.getRasterWidth();
 		
-		if(mInitialZoom == -1){
-			
-			this.mInitialZoom = mRasterIO.getStartZoomLevel(mRasterIO.getEnvelope().centre(),ts);
-			
-			if(h < ts || w < ts){
-				int necessary = Math.min(h, w);
-				int desired   = ts;
-				while(desired > necessary){
-					this.mInitialZoom--;
-					desired /= 2;
-				}
-			}
-		}
-
 		long now = System.currentTimeMillis();
 
 		TileBitmap bitmap = this.graphicFactory.createTileBitmap(job.displayModel.getTileSize(), job.hasAlpha);
         
         final double scaleFactor = scaleFactorAccordingToZoom(zoom);
         
-        int zoomedTS = (int) (ts * scaleFactor);
-        
+        int zoomedTS = (int) (ts * scaleFactor);  
+
         final int readAmountX = zoomedTS;
         final int readAmountY = zoomedTS;
         
-        long readFromX =  MercatorProjection.tileToPixel(job.tile.tileX, readAmountX);
-        long readFromY =  MercatorProjection.tileToPixel(job.tile.tileY, readAmountY);
+        long readFromX = job.tile.tileX * readAmountX;
+        long readFromY = job.tile.tileY * readAmountY;
           
 //        Log.d(TAG, String.format("tile %d %d zoom %d read from %d %d amount %d %d",job.tile.tileX,job.tile.tileY,job.tile.zoomLevel,readFromX,readFromY,readAmountX,readAmountY));   
         
@@ -147,12 +162,11 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
             try{
             	
             	int[] pixels = null;
-                if(!mUseColorMap){
-                	pixels  = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, (gdalTargetXSize * gdalTargetYSize), mRasterIO.getDatatype());
-                }else{
+                if(mColorMapProcessing.hasColorMap() && mUseColorMap){
                 	pixels  = mColorMapProcessing.generatePixelsWithColorMap(buffer, (gdalTargetXSize * gdalTargetYSize), mRasterIO.getDatatype());
+                } else {
+                	pixels  = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, (gdalTargetXSize * gdalTargetYSize), mRasterIO.getDatatype());
                 }
-                
                 return createBoundsTile(bitmap, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
             	
             }catch(ArrayIndexOutOfBoundsException e){
@@ -172,11 +186,11 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         mRasterIO.read(new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY), new Dimension(ts, ts), buffer);
 
         int[] pixels = null;
-        if(!mUseColorMap){
-        	pixels  = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, (ts * ts), mRasterIO.getDatatype());
-        }else{
+         if(mColorMapProcessing.hasColorMap() && mUseColorMap){
         	pixels  = mColorMapProcessing.generatePixelsWithColorMap(buffer, (ts * ts), mRasterIO.getDatatype());
-        }
+        }else{        	
+        	pixels  = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, (ts * ts), mRasterIO.getDatatype());
+        }         
         
 		bitmap.setPixels(pixels, ts);
 		
@@ -281,7 +295,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	}
 	public double scaleFactorAccordingToZoom(short zoom){
 		
-		return Math.pow(2,  -(zoom - this.mInitialZoom));
+		return Math.pow(2,  -(zoom - this.mInternalZoom));
 		
 	}
 	public void toggleUseColorMap(){
@@ -295,4 +309,6 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		
 		return mRasterIO.getSource();
 	}
+
+
 }
