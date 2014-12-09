@@ -62,10 +62,39 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 
 	private DataType mDatatype;
 
+	public GDALRasterIO(){
+		//for tests only
+	}
 	public GDALRasterIO(final String pFilePath){
 
 		open(pFilePath);
 
+		setup(pFilePath);
+		
+	}
+	
+	@Override
+	public boolean open(String filePath){
+
+		dataset = gdal.Open(filePath);
+
+		if (dataset == null) {
+			String lastErrMsg = gdal.GetLastErrorMsg();
+			String msg = "Unable to open file: " + filePath;
+			if (lastErrMsg != null) {
+				msg += ", " + lastErrMsg;
+			}
+			Log.e(TAG, msg +"\n"+ lastErrMsg);
+			return false;
+		}else{
+
+			Log.d(TAG, filePath.substring(filePath.lastIndexOf("/") + 1) +" successfully opened");
+
+		}
+		return true;
+	}
+	public void setup(final String pFilePath){
+		
 		this.mSource = pFilePath;
 
 		this.mRasterWidth = dataset.GetRasterXSize();
@@ -86,26 +115,6 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 				mDatatype = dt;
 			}
 		}
-	}
-	@Override
-	public boolean open(String filePath){
-
-		dataset = gdal.Open(filePath);
-
-		if (dataset == null) {
-			String lastErrMsg = gdal.GetLastErrorMsg();
-			String msg = "Unable to open file: " + filePath;
-			if (lastErrMsg != null) {
-				msg += ", " + lastErrMsg;
-			}
-			Log.e(TAG, msg +"\n"+ lastErrMsg);
-			return false;
-		}else{
-
-			Log.d(TAG, filePath.substring(filePath.lastIndexOf("/") + 1) +" successfully opened");
-
-		}
-		return true;
 	}
 	@Override
 	public void close(){

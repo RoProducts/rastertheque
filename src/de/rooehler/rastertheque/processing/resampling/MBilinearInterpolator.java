@@ -5,10 +5,12 @@ public class MBilinearInterpolator {
 	/**
 	 * Bilinear interpolation http://en.wikipedia.org/wiki/Bilinear_interpolation
 	 * 
-	 * @param srcPixels
-	 * @param srcSize
-	 * @param dstPixels
-	 * @param dstSize
+	 * Must be a quadratic image having with the Dimension ( srcSize , srcSize )
+	 * 
+	 * @param srcPixels the source pixels
+	 * @param srcSize  width / height of the src 
+	 * @param dstPixels the pixels of the resample image, allocated
+	 * @param dstSize the width/height of the resampled image
 	 */
 	public static void resampleBilinear(int srcPixels[], int srcSize, int dstPixels[], int dstSize) {
 
