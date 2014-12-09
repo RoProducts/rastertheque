@@ -3,9 +3,11 @@ package de.rooehler.rasterapp.test;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import android.util.Log;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
 import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
+import de.rooehler.rastertheque.processing.resampling.JAI_Interpolation;
 import de.rooehler.rastertheque.processing.resampling.MBilinearInterpolator;
 
 public class TestProcessing extends android.test.AndroidTestCase  {
@@ -37,27 +39,47 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         assertNotNull(pixels);
         
-        final int resamplingFactor = 10;
+        final int resamplingFactor = 3;
         
         final int resampledSize = tileSize * resamplingFactor;
         
-        int[] resampled = new int[resampledSize * resampledSize];
+        int[] mResampled = new int[resampledSize * resampledSize];
+        int[] jaiResampled = new int[resampledSize * resampledSize];
         
-        MBilinearInterpolator.resampleBilinear(pixels, tileSize, resampled, resampledSize);
+        long now = System.currentTimeMillis();
         
-        assertTrue(resampled.length == pixels.length * resamplingFactor * resamplingFactor);
+        new MBilinearInterpolator().resampleBilinear(pixels, tileSize, mResampled, resampledSize);
+        
+        Log.d(TestProcessing.class.getSimpleName(), "MInterpolation took "+ (System.currentTimeMillis() - now));
+        
+        now = System.currentTimeMillis();
+        
+        new JAI_Interpolation().resampleBilinear(pixels, tileSize, jaiResampled, resampledSize);
+        
+        Log.d(TestProcessing.class.getSimpleName(), "JAI took "+ (System.currentTimeMillis() - now));
+        
+        assertTrue(mResampled.length == pixels.length * resamplingFactor * resamplingFactor);
         
         //check a pixel
-        int pixel = resampled[resampledSize / 2];
+        int mPixel = mResampled[resampledSize / 2];
+        int jaiPixel = jaiResampled[resampledSize / 2];
         
-        int red = (pixel >> 16) & 0xff;
-        int green = (pixel >> 8) & 0xff;
-        int blue = (pixel) & 0xff;
+        int mRed = (mPixel >> 16) & 0xff;
+        int mGreen = (mPixel >> 8) & 0xff;
+        int mBlue = (mPixel) & 0xff;
+        
+        int jaiRed = (jaiPixel >> 16) & 0xff;
+        int jaiGreen = (jaiPixel >> 8) & 0xff;
+        int jaiBlue = (jaiPixel) & 0xff;
         
         //valid values
-        assertTrue(red >= 0 && red <= 255);
-        assertTrue(green >= 0 && green <= 255);
-        assertTrue(blue >= 0 && blue <= 255);
+        assertTrue(mRed >= 0 && mRed <= 255);
+        assertTrue(mGreen >= 0 && mGreen <= 255);
+        assertTrue(mBlue >= 0 && mBlue <= 255);
+        
+        assertTrue(mRed == jaiRed);
+        assertTrue(mGreen == jaiGreen);
+        assertTrue(mBlue == jaiBlue);
 	}
 
 }

@@ -1,6 +1,8 @@
 package de.rooehler.rastertheque.processing.resampling;
 
-public class MBilinearInterpolator {
+import de.rooehler.rastertheque.processing.IResampling;
+
+public class MBilinearInterpolator  implements IResampling{
 	
 	/**
 	 * Bilinear interpolation http://en.wikipedia.org/wiki/Bilinear_interpolation
@@ -12,7 +14,8 @@ public class MBilinearInterpolator {
 	 * @param dstPixels the pixels of the resample image, allocated
 	 * @param dstSize the width/height of the resampled image
 	 */
-	public static void resampleBilinear(int srcPixels[], int srcSize, int dstPixels[], int dstSize) {
+	@Override
+	public void resampleBilinear(int srcPixels[], int srcSize, int dstPixels[], int dstSize) {
 
 		int a, b, c, d, x, y, index;
 		float x_ratio = ((float) (srcSize - 1)) / dstSize;

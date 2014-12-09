@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory;
 import de.rooehler.rasterapp.rasterrenderer.RasterJob;
 import de.rooehler.rasterapp.rasterrenderer.RasterRenderer;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesRasterIO;
+import de.rooehler.rastertheque.processing.resampling.JAI_Interpolation;
 import de.rooehler.rastertheque.processing.resampling.MBilinearInterpolator;
 
 public class MBTilesMapsforgeRenderer implements RasterRenderer{
@@ -78,7 +79,8 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 
 		if (tileSize != MBTILES_SIZE) {
 
-			MBilinearInterpolator.resampleBilinear(mbTilesPixels, MBTILES_SIZE, pixels, tileSize);
+			new JAI_Interpolation().resampleBilinear(mbTilesPixels, MBTILES_SIZE, pixels, tileSize);
+//			new MBilinearInterpolator().resampleBilinear(mbTilesPixels, MBTILES_SIZE, pixels, tileSize);
 
 		} else {
 
