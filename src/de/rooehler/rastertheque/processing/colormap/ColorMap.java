@@ -52,7 +52,11 @@ public class ColorMap {
 			return  mEntries.get(index).getColor();
 			
 		}catch(IndexOutOfBoundsException e){
-			Log.e("ColorMap", "IndexOutOfBoundsException");
+			if(mNoData == null){
+				mNoData = new Pair<Double, Integer>(val, mEntries.get(0).getColor());
+			}else{				
+				Log.e("ColorMap", "IndexOutOfBoundsException");
+			}
 			return mEntries.get(0).getColor();
 		}
 

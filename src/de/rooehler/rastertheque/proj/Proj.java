@@ -98,7 +98,7 @@ public class Proj {
             return EPSG_4326;
         }
         
-        //hack for epsg:900913, we nweed to add this to proj4j
+        //hack for epsg:900913, we need to add this to proj4j
         if ("epsg:900913".equalsIgnoreCase(s)) {
             return EPSG_900913 != null ? EPSG_900913 : createFromExtra("epsg", "900913");
         }

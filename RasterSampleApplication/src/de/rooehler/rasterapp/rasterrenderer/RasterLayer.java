@@ -9,6 +9,7 @@ import org.mapsforge.map.layer.cache.TileCache;
 import org.mapsforge.map.model.DisplayModel;
 import org.mapsforge.map.model.MapViewPosition;
 
+import de.rooehler.rasterapp.interfaces.IWorkStatus;
 import android.content.Context;
 /**
  * A RasterLayer extends a Mapsforge TileLayer
@@ -26,14 +27,18 @@ public class RasterLayer extends TileLayer<RasterJob>  {
 	private RasterWorkerThread worker;
 
 	private File rasterFile;
+	
+	private IWorkStatus mStatus;
 
 	public RasterLayer(Context context, TileCache tileCache, MapViewPosition mapViewPosition, boolean isTransparent,
-			GraphicFactory graphicFactory, final RasterRenderer pRasterRenderer) {
+			GraphicFactory graphicFactory, final RasterRenderer pRasterRenderer, final IWorkStatus status) {
 		super(tileCache, mapViewPosition, graphicFactory.createMatrix(), isTransparent);
 
 		this.rasterFile = new File(pRasterRenderer.getFilePath());
 
 		this.rasterRenderer = pRasterRenderer;
+		
+		this.mStatus = status;
 	}
 
 	@Override
@@ -41,7 +46,7 @@ public class RasterLayer extends TileLayer<RasterJob>  {
 		super.setDisplayModel(displayModel);
 		
 		if (displayModel != null) {
-			this.worker = new RasterWorkerThread(this.tileCache, this.jobQueue, this.rasterRenderer, this);
+			this.worker = new RasterWorkerThread(this.tileCache, this.jobQueue, this.rasterRenderer, this, mStatus);
 			this.worker.start();
 		} else {
 			// if we do not have a displayModel any more we can stop rendering.

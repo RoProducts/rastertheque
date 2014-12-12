@@ -51,6 +51,7 @@ import de.rooehler.rasterapp.dialog.FilePickerDialog;
 import de.rooehler.rasterapp.dialog.FilePickerDialog.FilePathPickCallback;
 import de.rooehler.rasterapp.dialog.SelectProjectionDialog;
 import de.rooehler.rasterapp.dialog.SelectProjectionDialog.IProjectionSelected;
+import de.rooehler.rasterapp.interfaces.IWorkStatus;
 import de.rooehler.rasterapp.rasterrenderer.RasterLayer;
 import de.rooehler.rasterapp.rasterrenderer.gdal.GDALMapsforgeRenderer;
 import de.rooehler.rasterapp.rasterrenderer.mbtiles.MBTilesMapsforgeRenderer;
@@ -61,7 +62,7 @@ import de.rooehler.rastertheque.io.mbtiles.MbTilesDatabase;
 import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
 
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements IWorkStatus{
 	
 	final static String TAG = MainActivity.class.getSimpleName();
 	
@@ -79,6 +80,9 @@ public class MainActivity extends Activity {
     private CharSequence mTitle;
 	
     private ProgressDialog pd;
+    
+    private boolean isRendering = false;
+    
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -196,98 +200,95 @@ public class MainActivity extends Activity {
 			}
 		});
 	}
-	
+
 	private void setMapStyle(final SupportedType type, final String filePath) {
-		
-		try{
-			final File file = new File(filePath);
-			if(!file.exists()){
-				Log.e(TAG, "filepath for map invalid");
-				return;
-			}
-			
-			//check existing layers
-			if(mapView.getLayerManager().getLayers().size() > 0){
-				Log.d(TAG, "removing map layer");
-				mapView.getLayerManager().getLayers().remove(0);
-			}
-			
-			switch (type) {
-			case MAPSFORGE:
-				//to create a mapsforge mapview layer in version > 0.4.0 a mapviewposition must be known priorly
-				//hence it is necessary to analyze the desired position before actually creating the layer
-				final MapPosition msfmp = getCenterForMapsforgeFile(filePath);
-				final MapViewPosition msfmvp = mapView.getModel().mapViewPosition;		
-				msfmvp.setMapPosition(msfmp);
-				
-				Layer mapsforgeLayer = new TileRendererLayer(tileCache, msfmvp, false, true, AndroidGraphicFactory.INSTANCE);
-				((TileRendererLayer) mapsforgeLayer).setMapFile(file);
-				((TileRendererLayer) mapsforgeLayer).setXmlRenderTheme(InternalRenderTheme.OSMARENDER);
-				mapView.getLayerManager().getLayers().add(0, mapsforgeLayer);
 
-				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) 20);
-				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) 8);
-				
-				break;
-			case MBTILES:
-				
-				final MapPosition mbtmp = getCenterForMBTilesFile(filePath);
-				final MapViewPosition mbtmvp = mapView.getModel().mapViewPosition;		
-				mbtmvp.setMapPosition(mbtmp);
-				
-				MBTilesRasterIO mbTilesRaster = new MBTilesRasterIO(getBaseContext(),filePath);
-				MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesRaster);
-				Layer mbTilesLayer = new RasterLayer(getBaseContext(), tileCache, mbtmvp, false, AndroidGraphicFactory.INSTANCE, mbTilesRenderer);
-				mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
-								
-//				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) mbTilesRaster.getMaxZoom());
-//				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) mbTilesRaster.getMinZoom());
-				
-				break;
-				
-			case RASTER:
-				
-				GDALRasterIO gdalRaster = new GDALRasterIO(filePath);
-				MColorMapProcessing mColorMapProcessing = new MColorMapProcessing(filePath);
-				final MapPosition gdalmp = getCenterForGDALFile(gdalRaster);
-				final MapViewPosition gdalmvp = mapView.getModel().mapViewPosition;		
-				gdalmvp.setMapPosition(gdalmp);
-				
-				final int tileSize = mapView.getModel().displayModel.getTileSize();
-				
-				DisplayMetrics displaymetrics = new DisplayMetrics();
-				getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-				int width = displaymetrics.widthPixels;
-				
-				GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE, gdalRaster, mColorMapProcessing, true);
-				byte zoomLevelMax = gdalFileRenderer.calculateZoomLevelsAndStartScale(tileSize,width,gdalRaster.getRasterWidth(),gdalRaster.getRasterHeight());
-				Layer rasterLayer = new RasterLayer(getBaseContext(),tileCache, gdalmvp, false, AndroidGraphicFactory.INSTANCE, gdalFileRenderer);
-				mapView.getLayerManager().getLayers().add(0, rasterLayer);
-				
-				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) 1);
-				mapView.getModel().mapViewPosition.setZoomLevelMax(zoomLevelMax);
-				
-				break;
-
-			default:
-				break;
-			}
-			
-			
-			if(mapView.getLayerManager().getLayers().size() > 0 ){
-				mapView.setClickable(true);
-				mapView.setBuiltInZoomControls(true);
-				mapView.getMapScaleBar().setVisible(true);
-			}else{
-				Log.d(TAG, "no layers created");
-			}
-			
-			invalidateOptionsMenu();
-			
-		}catch(Exception e){
-			Log.e(TAG, "error setting map style",e);
+		final File file = new File(filePath);
+		if(!file.exists()){
+			Log.e(TAG, "filepath for map invalid");
+			return;
 		}
-		
+
+		//check existing layers
+		if(mapView.getLayerManager().getLayers().size() > 0){
+			Log.d(TAG, "removing map layer");
+			mapView.getLayerManager().getLayers().remove(0);
+		}
+
+		switch (type) {
+		case MAPSFORGE:
+			//to create a mapsforge mapview layer in version > 0.4.0 a mapviewposition must be known priorly
+			//hence it is necessary to analyze the desired position before actually creating the layer
+			final MapPosition msfmp = getCenterForMapsforgeFile(filePath);
+			final MapViewPosition msfmvp = mapView.getModel().mapViewPosition;		
+			msfmvp.setMapPosition(msfmp);
+
+			Layer mapsforgeLayer = new TileRendererLayer(tileCache, msfmvp, false, true, AndroidGraphicFactory.INSTANCE);
+			((TileRendererLayer) mapsforgeLayer).setMapFile(file);
+			((TileRendererLayer) mapsforgeLayer).setXmlRenderTheme(InternalRenderTheme.OSMARENDER);
+			mapView.getLayerManager().getLayers().add(0, mapsforgeLayer);
+
+			mapView.getModel().mapViewPosition.setZoomLevelMax((byte) 20);
+			mapView.getModel().mapViewPosition.setZoomLevelMin((byte) 8);
+			mapView.getMapScaleBar().setVisible(true);
+			break;
+		case MBTILES:
+
+			final MapPosition mbtmp = getCenterForMBTilesFile(filePath);
+			final MapViewPosition mbtmvp = mapView.getModel().mapViewPosition;		
+			mbtmvp.setMapPosition(mbtmp);
+
+			MBTilesRasterIO mbTilesRaster = new MBTilesRasterIO(getBaseContext(),filePath);
+			MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesRaster);
+			Layer mbTilesLayer = new RasterLayer(getBaseContext(), tileCache, mbtmvp, false, AndroidGraphicFactory.INSTANCE, mbTilesRenderer, this);
+			mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
+
+			//				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) mbTilesRaster.getMaxZoom());
+			//				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) mbTilesRaster.getMinZoom());
+			mapView.getMapScaleBar().setVisible(false);
+			break;
+
+		case RASTER:
+
+			DisplayMetrics displaymetrics = new DisplayMetrics();
+			getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
+			int width = displaymetrics.widthPixels;
+			
+			GDALRasterIO gdalRaster = new GDALRasterIO(filePath);
+			MColorMapProcessing mColorMapProcessing = new MColorMapProcessing(filePath);
+			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE, gdalRaster, mColorMapProcessing, true);
+			final int tileSize = mapView.getModel().displayModel.getTileSize();
+			byte startZoomLevel = gdalFileRenderer.calculateStartZoomLevel(tileSize,width);
+			
+			final MapPosition gdalmp =  new MapPosition(new LatLong(0,0),startZoomLevel);
+			final MapViewPosition gdalmvp = mapView.getModel().mapViewPosition;		
+			gdalmvp.setMapPosition(gdalmp);
+
+
+			byte zoomLevelMax = gdalFileRenderer.calculateZoomLevelsAndStartScale(tileSize,width,gdalRaster.getRasterWidth(),gdalRaster.getRasterHeight());
+			Layer rasterLayer = new RasterLayer(getBaseContext(),tileCache, gdalmvp, false, AndroidGraphicFactory.INSTANCE, gdalFileRenderer, this);
+			mapView.getLayerManager().getLayers().add(0, rasterLayer);
+
+			mapView.getModel().mapViewPosition.setZoomLevelMin(startZoomLevel);
+			mapView.getModel().mapViewPosition.setZoomLevelMax(zoomLevelMax);
+			mapView.getMapScaleBar().setVisible(false);
+			break;
+
+		default:
+			break;
+		}
+
+
+		if(mapView.getLayerManager().getLayers().size() > 0 ){
+			mapView.setClickable(true);
+			mapView.setBuiltInZoomControls(true);
+			
+		}else{
+			Log.e(TAG, "no layers created");
+		}
+
+		invalidateOptionsMenu();
+
 	}
 	
 	public MapPosition getCenterForMapsforgeFile(final String filePath){
@@ -329,18 +330,6 @@ public class MainActivity extends Activity {
 		return new MapPosition(loc, zoom);
 	}
 	
-	public MapPosition getCenterForGDALFile(GDALRasterIO raster){
-
-//		Coordinate center = raster.getCenterPoint();
-//		Log.d(TAG, "normal center +" + center.x + " "+center.y);
-		LatLong latLong = new LatLong(0,0);
-		
-		
-//		final byte zoomLevel = raster.getStartZoomLevel(center,tileSize);
-//		Log.d(TAG, "calculated zoom "+zoomLevel);
-		
-		return new MapPosition(latLong, (byte) 1);
-	}
 	
 	@Override
     public void setTitle(CharSequence title) {
@@ -371,10 +360,15 @@ public class MainActivity extends Activity {
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.menu, menu);
+        if(isRendering){
+        	menu.findItem(R.id.menu_refresh).setActionView(  R.layout.actionbar_indeterminate_progress);
+        }else{
+        	menu.findItem(R.id.menu_refresh).setActionView(null);
+        }
         return super.onCreateOptionsMenu(menu);
     }
 
-    /* Called whenever we call invalidateOptionsMenu() */
+
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         // If the nav drawer is open, hide action items related to the content view
@@ -474,4 +468,21 @@ public class MainActivity extends Activity {
  	   mapView.getLayerManager().getLayers().get(0) instanceof RasterLayer && 
  	   ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer() instanceof GDALMapsforgeRenderer;
     }
+
+	@Override
+	public void isRendering() {
+		if(!isRendering){						
+			isRendering = true;
+			invalidateOptionsMenu();
+		}
+	}
+
+	@Override
+	public void renderingFinished() {
+		if(isRendering){						
+			isRendering = false;
+			invalidateOptionsMenu();
+		}
+		
+	}
 }

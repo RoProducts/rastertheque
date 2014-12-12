@@ -35,6 +35,43 @@ public class MColorMapProcessing implements ColorMapProcessing{
 		
 		return this.mColorMap != null;
 	}
+	
+	@Override
+	public int[] generateThreeBandedRGBPixels(ByteBuffer pBuffer,int bufferSize, DataType dataType) {
+		
+		final ByteBufferReader reader = new ByteBufferReader(pBuffer.array(), ByteOrder.nativeOrder());
+		
+		int pixelsCount = bufferSize / 3;
+		
+		int [] pixels = new int[pixelsCount];
+		
+		double[] pixelsR = new double[pixelsCount];
+		double[] pixelsG = new double[pixelsCount];
+		double[] pixelsB = new double[pixelsCount];
+           
+		for (int i = 0; i < pixelsCount; i++) {	
+			pixelsR[i] =  getValue(reader, dataType);
+		}
+		for (int j = 0; j < pixelsCount; j++) {	
+			pixelsG[j] =  getValue(reader, dataType);
+		}
+		for (int k = 0; k < pixelsCount; k++) {	
+			pixelsB[k] =  getValue(reader, dataType);
+		}
+		
+        for (int l = 0; l < pixelsCount; l++) {	
+        	
+        	double r = pixelsR[l];
+        	double g = pixelsG[l];
+        	double b = pixelsB[l];
+        	
+        	pixels[l] = 0xff000000 | ((((int) r) << 16) & 0xff0000) | ((((int) g) << 8) & 0xff00) | ((int) b);
+        }
+        
+
+        
+		return pixels;
+	}
 
 	/**
 	 * generates an array of colored pixels for a buffer of raster pixels according to a priorly loaded ColorMap
@@ -265,4 +302,6 @@ public class MColorMapProcessing implements ColorMapProcessing{
 	public void setColorMap(final ColorMap pColorMap){
 		this.mColorMap = pColorMap;
 	}
+
+
 }

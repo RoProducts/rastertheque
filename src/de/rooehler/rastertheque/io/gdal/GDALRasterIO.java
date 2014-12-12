@@ -1,11 +1,10 @@
 package de.rooehler.rastertheque.io.gdal;
 
-import java.io.EOFException;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Vector;
 import java.util.concurrent.Callable;
 
 import org.gdal.gdal.Band;
@@ -21,7 +20,6 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.RasterIO;
-import de.rooehler.rastertheque.core.DataContainer;
 import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.RasterDataSet;
 import de.rooehler.rastertheque.core.Rectangle;
@@ -61,6 +59,8 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 	private int mRasterHeight;
 
 	private DataType mDatatype;
+	
+	private double mNoData;
 
 	public GDALRasterIO(){
 		//for tests only
@@ -110,11 +110,20 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 		mDatatype = DataType.BYTE;
 		for (int i = 0 ; i < bands.size(); i++) {
 			Band band = bands.get(i);
+			
+			Double nodata[] = new Double[1];
+			band.GetNoDataValue(nodata);
+			
+			if(nodata[0] != null){				
+				mNoData = nodata[0];
+			}
+
 			DataType dt = DataType.getDatatype(band);
 			if (dt.compareTo(mDatatype) > 0) {
 				mDatatype = dt;
 			}
 		}
+		
 	}
 	@Override
 	public void close(){
@@ -137,7 +146,7 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 			readBands[i] = bands.get(i).GetBand();
 		}
 
-		if(readBands.length == 1){
+//		if(readBands.length == 1){
 			dataset.ReadRaster_Direct(
 					src.srcX,src.srcY, //src pos
 					src.width, src.height, //src dim
@@ -149,19 +158,20 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 					0, //The byte offset from the start of one scanline in the buffer to the start of the next. If defaulted the size of the datatype buf_type * buf_xsize is used.
 					0  //the byte offset from the start of one bands data to the start of the next. If defaulted (zero) the value will be nLineSpace * buf_ysize implying band sequential organization of the data buffer.
 					);
-		}else{
-
-			dataset.ReadRaster_Direct(src.srcX,src.srcY,
-					src.width, src.height,
-					dstDim.getWidth(),dstDim.getHeight(),
-					DataType.toGDAL(getDatatype()),
-					buffer,
-					readBands,
-					getDatatype().size(),
-					0, 
-					1 
-					);
-		}
+//		}else{
+//
+//			dataset.ReadRaster_Direct(
+//					src.srcX,src.srcY,
+//					src.width, src.height,
+//					dstDim.getWidth(),dstDim.getHeight(),
+//					DataType.toGDAL(getDatatype()),
+//					buffer,
+//					readBands,
+//					0,
+//					0, 
+//					0 
+//					);
+//		}
 
 
 	}
@@ -170,6 +180,7 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 	public void read(final Rectangle src,final ByteBuffer buffer){
 		read(src, new Dimension(src.width, src.height), buffer);
 	}
+	
 
 	public void applyProjection(String wkt){
 
@@ -207,6 +218,8 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 
 			}
 		};
+		
+		
 
 		return c;
 

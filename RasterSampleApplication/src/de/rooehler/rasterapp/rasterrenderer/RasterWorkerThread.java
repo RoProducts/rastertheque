@@ -5,6 +5,8 @@ import org.mapsforge.map.layer.Layer;
 import org.mapsforge.map.layer.cache.TileCache;
 import org.mapsforge.map.layer.queue.JobQueue;
 import org.mapsforge.map.util.PausableThread;
+
+import de.rooehler.rasterapp.interfaces.IWorkStatus;
 /**
  * A RasterWorkerThread handles RasterJobs in its JobQueue
  * 
@@ -20,13 +22,16 @@ public class RasterWorkerThread extends PausableThread {
 	private final TileCache tileCache;
 	private final RasterRenderer rasterRenderer;
 	private final JobQueue<RasterJob> jobQueue;
+	private final IWorkStatus mStatus;
 	
-	public RasterWorkerThread(TileCache tileCache, JobQueue<RasterJob> jobQueue, RasterRenderer pRasterRenderer,Layer layer) {
+	
+	public RasterWorkerThread(TileCache tileCache, JobQueue<RasterJob> jobQueue, RasterRenderer pRasterRenderer, Layer layer, IWorkStatus status) {
 
 		this.layer = layer;
 		this.tileCache = tileCache;
 		this.rasterRenderer = pRasterRenderer;
 		this.jobQueue = jobQueue;
+		this.mStatus = status;
 	}
 
 	@Override
@@ -34,10 +39,15 @@ public class RasterWorkerThread extends PausableThread {
 		RasterJob rendererJob = this.jobQueue.get();
 		try {
 			if (!this.tileCache.containsKey(rendererJob)) {
+		
+				mStatus.isRendering();
 				renderTile(rendererJob);
 			}
 		} finally {
 			this.jobQueue.remove(rendererJob);
+		}
+		if(this.jobQueue.size() == 0){
+			mStatus.renderingFinished();
 		}
 	}
 
