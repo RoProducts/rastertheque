@@ -7,7 +7,7 @@
     <string name="searching">Searching&#8230;</string>
 
     
-    <string name="menu_transform">Projection</string>
-    <string name="menu_color">Color</string>
+    <string name="menu_transform">Switch Projection</string>
+    <string name="menu_color">Toggle Color</string>
     <string name="menu_save">Save</string>
 </resources>

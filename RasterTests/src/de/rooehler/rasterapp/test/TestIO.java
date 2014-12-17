@@ -8,12 +8,14 @@ import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
 import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
 
-public class IOTest extends android.test.AndroidTestCase {
+public class TestIO extends android.test.AndroidTestCase {
 
 	
 	public final static String FILE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/GRAY_50M_SR_OB.tif";
 	
-	
+	/**
+	 * tests opening of the file
+	 */
 	public void testIO(){
 		
 		
@@ -36,7 +38,9 @@ public class IOTest extends android.test.AndroidTestCase {
 		io.close();
 		
 	}
-	
+	/*
+	 * tests reading a region of the file
+	 */
 	public void testRead(){
 		
 		GDALRasterIO io = new GDALRasterIO(FILE);

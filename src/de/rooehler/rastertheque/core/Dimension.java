@@ -18,5 +18,9 @@ public class Dimension {
 	public int getHeight() {
 		return height;
 	}
+	
+	public int getSize(){
+		return width * height;
+	}
 
 }

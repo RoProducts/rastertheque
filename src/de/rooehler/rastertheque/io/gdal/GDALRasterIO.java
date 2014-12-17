@@ -2,9 +2,7 @@ package de.rooehler.rastertheque.io.gdal;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Vector;
 import java.util.concurrent.Callable;
 
 import org.gdal.gdal.Band;
@@ -100,7 +98,7 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 		this.mRasterWidth = dataset.GetRasterXSize();
 
 		this.mRasterHeight = dataset.getRasterYSize();
-		//		
+			
 		//		SpatialReference hProj = new SpatialReference(dataset.GetProjectionRef());
 		//		
 		//		SpatialReference hLatLong =  hProj.CloneGeogCS();
@@ -153,10 +151,10 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 					dstDim.getWidth(),dstDim.getHeight(), //dst dim
 					DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
 					buffer, //buffer to write in
-					readBands, //the list of band numbers being read/written. Note band numbers are 1 based. This may be null to select the first nBandCount bands.
-					0, //The byte offset from the start of one pixel value in the buffer to the start of the next pixel value within a scanline. If defaulted (0) the size of the datatype buf_type is used.
-					0, //The byte offset from the start of one scanline in the buffer to the start of the next. If defaulted the size of the datatype buf_type * buf_xsize is used.
-					0  //the byte offset from the start of one bands data to the start of the next. If defaulted (zero) the value will be nLineSpace * buf_ysize implying band sequential organization of the data buffer.
+					readBands //the list of band numbers being read/written. Note band numbers are 1 based. This may be null to select the first nBandCount bands.
+				//	0, //The byte offset from the start of one pixel value in the buffer to the start of the next pixel value within a scanline. If defaulted (0) the size of the datatype buf_type is used.
+				//	0, //The byte offset from the start of one scanline in the buffer to the start of the next. If defaulted the size of the datatype buf_type * buf_xsize is used.
+				//	0  //the byte offset from the start of one bands data to the start of the next. If defaulted (zero) the value will be nLineSpace * buf_ysize implying band sequential organization of the data buffer.
 					);
 //		}else{
 //
@@ -179,6 +177,17 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 	@Override
 	public void read(final Rectangle src,final ByteBuffer buffer){
 		read(src, new Dimension(src.width, src.height), buffer);
+	}
+	
+	public void readFromBand(Band band, final Rectangle src,final Dimension dstDim,final ByteBuffer buffer){
+		
+		band.ReadRaster_Direct(
+				src.srcX,src.srcY, //src pos
+				src.width, src.height, //src dim
+				dstDim.getWidth(),dstDim.getHeight(), //dst dim
+				DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
+				buffer //buffer to write in
+				);
 	}
 	
 

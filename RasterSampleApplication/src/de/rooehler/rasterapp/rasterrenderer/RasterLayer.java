@@ -29,6 +29,8 @@ public class RasterLayer extends TileLayer<RasterJob>  {
 	private File rasterFile;
 	
 	private IWorkStatus mStatus;
+	
+	final int mProcCount;
 
 	public RasterLayer(Context context, TileCache tileCache, MapViewPosition mapViewPosition, boolean isTransparent,
 			GraphicFactory graphicFactory, final RasterRenderer pRasterRenderer, final IWorkStatus status) {
@@ -39,6 +41,8 @@ public class RasterLayer extends TileLayer<RasterJob>  {
 		this.rasterRenderer = pRasterRenderer;
 		
 		this.mStatus = status;
+		
+		this.mProcCount = Runtime.getRuntime().availableProcessors();
 	}
 
 	@Override

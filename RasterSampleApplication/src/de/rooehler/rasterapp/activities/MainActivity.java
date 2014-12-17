@@ -10,6 +10,7 @@ import java.util.concurrent.FutureTask;
 import org.gdal.gdal.Dataset;
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
+import org.mapsforge.core.util.MercatorProjection;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 import org.mapsforge.map.android.util.AndroidUtil;
 import org.mapsforge.map.android.view.MapView;
@@ -82,6 +83,8 @@ public class MainActivity extends Activity implements IWorkStatus{
     private ProgressDialog pd;
     
     private boolean isRendering = false;
+    
+    private long now;
     
 
 	@Override
@@ -260,7 +263,9 @@ public class MainActivity extends Activity implements IWorkStatus{
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
 			byte startZoomLevel = gdalFileRenderer.calculateStartZoomLevel(tileSize,width);
 			
-			final MapPosition gdalmp =  new MapPosition(new LatLong(0,0),startZoomLevel);
+			
+			
+			final MapPosition gdalmp =  new MapPosition(calculateStartPositionForRaster(gdalRaster.getRasterWidth(), gdalRaster.getRasterHeight()),startZoomLevel);
 			final MapViewPosition gdalmvp = mapView.getModel().mapViewPosition;		
 			gdalmvp.setMapPosition(gdalmp);
 
@@ -291,6 +296,22 @@ public class MainActivity extends Activity implements IWorkStatus{
 
 	}
 	
+	private LatLong calculateStartPositionForRaster(int rasterWidth, int rasterHeight) {
+		
+		if(rasterWidth == rasterHeight){
+			return new LatLong(0, 0);
+		}else if(rasterWidth > rasterHeight){
+			//wider --> increase lat
+			float ratio = 1- ((float) rasterHeight / rasterWidth);
+			Log.d(TAG, "calculated start pos : { "+(MercatorProjection.LATITUDE_MAX * ratio)+",0}");
+			return new LatLong(MercatorProjection.LATITUDE_MAX * ratio, 0);			
+		}else{
+			//taller
+			float ratio = 1- ((float)rasterWidth / rasterHeight);
+			return new LatLong(0, 180 * ratio);
+		}
+	}
+
 	public MapPosition getCenterForMapsforgeFile(final String filePath){
 		
 		final File file = new File(filePath);
@@ -411,9 +432,14 @@ public class MainActivity extends Activity implements IWorkStatus{
         case R.id.menu_colormap:
         		if(isEditableMap()){
         			GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
-        			renderer.toggleUseColorMap();
-        			tileCache.destroy();
-        			Toast.makeText(getBaseContext(), "Color Mode toggled",Toast.LENGTH_SHORT).show();
+        			if(renderer.canSwitchColorMap()){
+        				
+        				renderer.toggleUseColorMap();
+        				tileCache.destroy();
+        				Toast.makeText(getBaseContext(), "Color Mode toggled",Toast.LENGTH_SHORT).show();
+        			}else{
+        				Toast.makeText(getBaseContext(), "Cannot toggle color mode for this raster",Toast.LENGTH_SHORT).show();        				
+        			}
         			
         			mapView.getLayerManager().redrawLayers();
         		}
@@ -474,6 +500,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 		if(!isRendering){						
 			isRendering = true;
 			invalidateOptionsMenu();
+			now = System.currentTimeMillis();
 		}
 	}
 
@@ -482,6 +509,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 		if(isRendering){						
 			isRendering = false;
 			invalidateOptionsMenu();
+			Log.d(TAG, "This operation took "+ (System.currentTimeMillis() - now) / 1000f +" s");
 		}
 		
 	}
