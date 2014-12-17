@@ -37,7 +37,7 @@ public class MColorMapProcessing implements ColorMapProcessing{
 	}
 	
 	@Override
-	public int[] generateThreeBandedRGBPixels(final ByteBuffer pBuffer,int bufferSize,final DataType dataType) {
+	public int[] generateThreeBandedRGBPixels(final ByteBuffer pBuffer, final int bufferSize,final DataType dataType) {
 		
 		final ByteBufferReader reader = new ByteBufferReader(pBuffer.array(), ByteOrder.nativeOrder());
 		
@@ -111,6 +111,7 @@ public class MColorMapProcessing implements ColorMapProcessing{
 	 */
 	@Override
 	public int[] generateGrayScalePixelsCalculatingMinMax(final ByteBuffer pBuffer,final int bufferSize,final DataType dataType) {
+
 
 		int[] pixels = new int[bufferSize];
 	    double[] minMax = new double[2];
