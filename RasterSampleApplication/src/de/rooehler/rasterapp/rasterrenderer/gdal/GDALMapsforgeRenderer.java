@@ -1,6 +1,8 @@
 package de.rooehler.rasterapp.rasterrenderer.gdal;
 
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
@@ -9,7 +11,9 @@ import org.gdal.gdal.Band;
 import org.gdal.gdalconst.gdalconstConstants;
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
+import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 
+import android.graphics.Bitmap;
 import android.util.Log;
 import de.rooehler.rasterapp.rasterrenderer.RasterJob;
 import de.rooehler.rasterapp.rasterrenderer.RasterRenderer;
@@ -44,6 +48,8 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	private int mRasterBandCount;
 	
 	private boolean hasRGBBands;
+	
+	public int count = 0;
 
 	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALRasterIO pRaster, final ColorMapProcessing pColorMapProcessing, final boolean pUseColorMap) {
 		
@@ -159,6 +165,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	@Override
 	public TileBitmap executeJob(final RasterJob job) {
 		
+		
 		final int ts = job.tile.tileSize;
 		final byte zoom = job.tile.zoomLevel;
 		final int h = mRasterIO.getRasterHeight();
@@ -167,7 +174,8 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		long now = System.currentTimeMillis();
 
 		TileBitmap bitmap = this.graphicFactory.createTileBitmap(job.displayModel.getTileSize(), job.hasAlpha);
-        
+		
+
         final double scaleFactor = scaleFactorAccordingToZoom(zoom);
         
         int zoomedTS = (int) (ts * scaleFactor);  
@@ -224,7 +232,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         	}
 
         	final ByteBuffer buffer = readPixels(new Rectangle((int)readFromX,(int)readFromY, availableX, availableY), new Dimension(gdalTargetXSize, gdalTargetYSize),mRasterIO.getDatatype());
-        	int[] pixels = render(buffer, gdalTargetXSize *gdalTargetYSize, mRasterIO.getDatatype());
+        	int[] pixels = render(buffer, gdalTargetXSize, gdalTargetXSize * gdalTargetYSize, mRasterIO.getDatatype());
         	return createBoundsTile(bitmap, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
 
         }else{ //this rectangle is fully covered by the file
@@ -232,9 +240,10 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         }  
         
         final ByteBuffer buffer = readPixels(new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY), new Dimension(ts, ts),mRasterIO.getDatatype());
-		bitmap.setPixels(render(buffer,ts * ts, mRasterIO.getDatatype()), ts);
+		bitmap.setPixels(render(buffer,ts, ts * ts, mRasterIO.getDatatype()), ts);
 		
 		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
+
 		return bitmap;
 	}
 	/**
@@ -256,17 +265,17 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		return buffer;
 	}
 	
-	public int[] render(final ByteBuffer buffer, final int tilePixelAmount, final DataType dataType){
+	public int[] render(final ByteBuffer buffer,final int tileWidth, final int tilePixelAmount, final DataType dataType){
 		
 		int[] pixels = null;
 		
 		if(hasRGBBands){
-			pixels = mColorMapProcessing.generateThreeBandedRGBPixels(buffer, tilePixelAmount , mRasterIO.getDatatype());
+			pixels = mColorMapProcessing.generateThreeBandedRGBPixels(buffer,tileWidth, tilePixelAmount , mRasterIO.getDatatype());
 		}else if(mColorMapProcessing.hasColorMap() && mUseColorMap){
-			pixels = mColorMapProcessing.generatePixelsWithColorMap(buffer, tilePixelAmount, mRasterIO.getDatatype());
+			pixels = mColorMapProcessing.generatePixelsWithColorMap(buffer, tileWidth, tilePixelAmount, mRasterIO.getDatatype());
 		}else{        	
-			pixels = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, tilePixelAmount, mRasterIO.getDatatype());
-		} 
+			pixels = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, tileWidth, tilePixelAmount, mRasterIO.getDatatype());
+		}
 		
 		return pixels;
 	}
@@ -333,6 +342,40 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		bitmap.setPixels( pixels, destinationTileSize);
 		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - timestamp) / 1000.0f)+ " s");
 		return bitmap;
+	}
+	
+	/**
+	 * saves a created TileBitmap to the applications folder for debugging 
+	 * 
+	 * the file is saved in the folder of the "parent" raster
+	 * being named tile_x_y_zoom.png
+	 * 
+	 * @param tilebitmap
+	 * @param job
+	 */
+	@SuppressWarnings("unused")
+	private void saveBitmap(final TileBitmap tilebitmap,final RasterJob job){
+		
+		final String newFileName = String.format("tile_%d_%d_%d.png", job.tile.tileX, job.tile.tileY, job.tile.zoomLevel);
+		final String fileName = mRasterIO.getSource().substring(0, mRasterIO.getSource().lastIndexOf("/") + 1) + newFileName;
+		
+		FileOutputStream out = null;
+		try {
+
+		    out = new FileOutputStream(fileName);
+		    AndroidGraphicFactory.getBitmap(tilebitmap).compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
+		    // PNG is a lossless format, the compression factor (100) is ignored
+		} catch (Exception e) {
+		    Log.e(TAG, "error saving bitmap");
+		} finally {
+		    try {
+		        if (out != null) {
+		            out.close();
+		        }
+		    } catch (IOException e) {
+		    	Log.e(TAG, "error saving bitmap");
+		    }
+		}
 	}
 	
 	public GDALRasterIO getRaster(){

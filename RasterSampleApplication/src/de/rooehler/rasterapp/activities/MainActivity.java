@@ -497,19 +497,30 @@ public class MainActivity extends Activity implements IWorkStatus{
 
 	@Override
 	public void isRendering() {
-		if(!isRendering){						
-			isRendering = true;
-			invalidateOptionsMenu();
-			now = System.currentTimeMillis();
+		if(!isRendering){	
+			runOnUiThread(new Runnable() {		
+				@Override
+				public void run() {
+					isRendering = true;
+					invalidateOptionsMenu();
+					now = System.currentTimeMillis();
+					
+				}
+			});
 		}
 	}
 
 	@Override
 	public void renderingFinished() {
-		if(isRendering){						
-			isRendering = false;
-			invalidateOptionsMenu();
-			Log.d(TAG, "This operation took "+ (System.currentTimeMillis() - now) / 1000f +" s");
+		if(isRendering){	
+			runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					isRendering = false;
+					invalidateOptionsMenu();
+					Log.d(TAG, "This operation took "+ (System.currentTimeMillis() - now) / 1000f +" s");
+				}
+			});
 		}
 		
 	}

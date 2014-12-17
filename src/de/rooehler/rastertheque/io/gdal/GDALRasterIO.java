@@ -144,32 +144,23 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 			readBands[i] = bands.get(i).GetBand();
 		}
 
-//		if(readBands.length == 1){
-			dataset.ReadRaster_Direct(
+		if(readBands.length == 1){
+
+			bands.get(0).ReadRaster(
 					src.srcX,src.srcY, //src pos
 					src.width, src.height, //src dim
 					dstDim.getWidth(),dstDim.getHeight(), //dst dim
 					DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
-					buffer, //buffer to write in
-					readBands //the list of band numbers being read/written. Note band numbers are 1 based. This may be null to select the first nBandCount bands.
-				//	0, //The byte offset from the start of one pixel value in the buffer to the start of the next pixel value within a scanline. If defaulted (0) the size of the datatype buf_type is used.
-				//	0, //The byte offset from the start of one scanline in the buffer to the start of the next. If defaulted the size of the datatype buf_type * buf_xsize is used.
-				//	0  //the byte offset from the start of one bands data to the start of the next. If defaulted (zero) the value will be nLineSpace * buf_ysize implying band sequential organization of the data buffer.
-					);
-//		}else{
-//
-//			dataset.ReadRaster_Direct(
-//					src.srcX,src.srcY,
-//					src.width, src.height,
-//					dstDim.getWidth(),dstDim.getHeight(),
-//					DataType.toGDAL(getDatatype()),
-//					buffer,
-//					readBands,
-//					0,
-//					0, 
-//					0 
-//					);
-//		}
+					buffer.array());
+		}else{
+			dataset.ReadRaster(
+					src.srcX,src.srcY, //src pos
+					src.width, src.height, //src dim
+					dstDim.getWidth(),dstDim.getHeight(), //dst dim
+					DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
+					buffer.array(), //buffer to write in
+					readBands);
+		}
 
 
 	}
