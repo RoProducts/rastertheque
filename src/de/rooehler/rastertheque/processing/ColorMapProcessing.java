@@ -13,5 +13,4 @@ public interface ColorMapProcessing {
 	public int[] generatePixelsWithColorMap(final ByteBuffer pBuffer,final int bufferSize, final DataType dataType);
 	
 	public int[] generateThreeBandedRGBPixels(final ByteBuffer pBuffer,final int bufferSize, final DataType dataType);
-
 }

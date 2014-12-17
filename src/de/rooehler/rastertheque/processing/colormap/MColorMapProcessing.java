@@ -37,29 +37,27 @@ public class MColorMapProcessing implements ColorMapProcessing{
 	}
 	
 	@Override
-	public int[] generateThreeBandedRGBPixels(ByteBuffer pBuffer,int bufferSize, DataType dataType) {
+	public int[] generateThreeBandedRGBPixels(final ByteBuffer pBuffer,int bufferSize,final DataType dataType) {
 		
 		final ByteBufferReader reader = new ByteBufferReader(pBuffer.array(), ByteOrder.nativeOrder());
 		
-		int pixelsCount = bufferSize / 3;
+		int [] pixels = new int[bufferSize];
 		
-		int [] pixels = new int[pixelsCount];
-		
-		double[] pixelsR = new double[pixelsCount];
-		double[] pixelsG = new double[pixelsCount];
-		double[] pixelsB = new double[pixelsCount];
+		double[] pixelsR = new double[bufferSize];
+		double[] pixelsG = new double[bufferSize];
+		double[] pixelsB = new double[bufferSize];
            
-		for (int i = 0; i < pixelsCount; i++) {	
+		for (int i = 0; i < bufferSize; i++) {	
 			pixelsR[i] =  getValue(reader, dataType);
 		}
-		for (int j = 0; j < pixelsCount; j++) {	
+		for (int j = 0; j < bufferSize; j++) {	
 			pixelsG[j] =  getValue(reader, dataType);
 		}
-		for (int k = 0; k < pixelsCount; k++) {	
+		for (int k = 0; k < bufferSize; k++) {	
 			pixelsB[k] =  getValue(reader, dataType);
 		}
 		
-        for (int l = 0; l < pixelsCount; l++) {	
+        for (int l = 0; l < bufferSize; l++) {	
         	
         	double r = pixelsR[l];
         	double g = pixelsG[l];
@@ -67,8 +65,6 @@ public class MColorMapProcessing implements ColorMapProcessing{
         	
         	pixels[l] = 0xff000000 | ((((int) r) << 16) & 0xff0000) | ((((int) g) << 8) & 0xff00) | ((int) b);
         }
-        
-
         
 		return pixels;
 	}
@@ -82,6 +78,7 @@ public class MColorMapProcessing implements ColorMapProcessing{
 	 * @param dataType the dataType of the raster pixels
 	 * @return the array of color pixels
 	 */
+	@Override
 	public int[] generatePixelsWithColorMap(final ByteBuffer pBuffer,final int bufferSize, final DataType dataType){
 		
 		if(mColorMap == null){
@@ -113,7 +110,7 @@ public class MColorMapProcessing implements ColorMapProcessing{
 	 * @return the array of color pixels
 	 */
 	@Override
-	public int[] generateGrayScalePixelsCalculatingMinMax(final ByteBuffer pBuffer,int bufferSize, DataType dataType) {
+	public int[] generateGrayScalePixelsCalculatingMinMax(final ByteBuffer pBuffer,final int bufferSize,final DataType dataType) {
 
 		int[] pixels = new int[bufferSize];
 	    double[] minMax = new double[2];

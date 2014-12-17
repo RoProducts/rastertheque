@@ -12,28 +12,30 @@ import de.rooehler.rastertheque.processing.resampling.MBilinearInterpolator;
 
 public class TestProcessing extends android.test.AndroidTestCase  {
 	
-	public void testInterpolation(){
+	/**
+	 * tests and compares interpolations
+	 */
+	public void testInterpolation(){		
 		
+		final GDALRasterIO io = new GDALRasterIO(TestIO.FILE);
 		
-		GDALRasterIO io = new GDALRasterIO(IOTest.FILE);
+		final int width = io.getRasterWidth();
 		
-		int width = io.getRasterWidth();
-		
-		int height = io.getRasterHeight();
+		final int height = io.getRasterHeight();
 		
 		final int tileSize = Math.min(width, height) / 10;
 		
-		Rectangle rect = new Rectangle(0, 0, tileSize, tileSize);
+		final Rectangle rect = new Rectangle(0, 0, tileSize, tileSize);
 		
 		final int bufferSize = tileSize * tileSize * io.getDatatype().size();
 		
-        ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
+        final ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
         
         buffer.order(ByteOrder.nativeOrder()); 
         
         io.read(rect, buffer);
         
-        MColorMapProcessing cmp = new MColorMapProcessing(IOTest.FILE);
+        MColorMapProcessing cmp = new MColorMapProcessing(TestIO.FILE);
         
         int[] pixels  = cmp.generatePixelsWithColorMap(buffer, bufferSize, io.getDatatype());
         

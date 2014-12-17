@@ -11,7 +11,7 @@ public class SelectProjectionDialog {
 	public static void showProjectionSelectionDialog(final Activity act, final IProjectionSelected callback){
 		
 
-	    final CharSequence[] items = new CharSequence[]{"EPSG 4326","EPSG 3857"};
+	    final CharSequence[] items = new CharSequence[]{"EPSG 4326 (WGS84)","EPSG 3857(Web Mercator)"};
 
 		
 		final AlertDialog.Builder builder = new AlertDialog.Builder(act);

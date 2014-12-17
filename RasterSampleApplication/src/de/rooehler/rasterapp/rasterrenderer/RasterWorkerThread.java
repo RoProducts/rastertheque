@@ -50,6 +50,10 @@ public class RasterWorkerThread extends PausableThread {
 			mStatus.renderingFinished();
 		}
 	}
+	
+	public RasterRenderer getRasterRenderer(){
+		return this.rasterRenderer;
+	}
 
 	private void renderTile(RasterJob rendererJob) {
 	
