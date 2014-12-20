@@ -1,0 +1,47 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bordered_button"
+    android:orientation="horizontal"
+    android:padding="6dp" >
+
+    <ImageView
+        android:id="@+id/file_picker_image"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dip"
+        android:layout_marginLeft="2dip"
+        android:layout_marginTop="5dip"
+        android:scaleType="centerCrop"
+        android:layout_alignParentLeft="true"
+        android:src="@android:drawable/ic_menu_gallery" />
+
+    <TextView
+        android:id="@+id/file_picker_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="5dip"
+        android:layout_toRightOf="@+id/file_picker_image"
+        android:fontFamily="sans-serif-light"
+        android:singleLine="true"
+        android:text="fdfsldfnadlvnsjladjv.mbtiles"
+        android:textColor="#ff000000"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/file_picker_size"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:gravity="right"
+        android:layout_marginLeft="5dip"
+        android:layout_toRightOf="@+id/file_picker_text"
+        android:fontFamily="sans-serif-light"
+        android:singleLine="true"
+        android:text="123.5 MB"
+        android:textColor="#ff000000"
+        android:layout_alignParentRight="true"
+        android:textSize="13sp" />
+
+</RelativeLayout>

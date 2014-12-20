@@ -269,7 +269,11 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 			double[] minLatLong = ct.TransformPoint(minx, miny);
 
 			double[] maxLatLong = ct.TransformPoint(maxx, maxy);
-			return new Envelope(minLatLong[0],minLatLong[1], maxLatLong[0], maxLatLong[1]);
+			/**
+			 * Envelope(double x1, double x2, double y1, double y2) 
+          	   Creates an Envelope for a region defined by maximum and minimum values.
+			 */			
+			return new Envelope(minLatLong[0],maxLatLong[0],minLatLong[1], maxLatLong[1]);
 		}else{
 
 			Log.e(TAG, gdal.GetLastErrorMsg());	
@@ -277,6 +281,18 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 			return null;
 
 		}
+	}
+	
+	public double[] getBoundingBox(){
+		
+		Envelope e = getMEnvelope();
+		
+		return new double[]{
+				e.getMinX(),
+				e.getMinY(),
+				e.getMaxX(),
+				e.getMaxY()
+		};
 	}
 	
 	public Coordinate getCenterPoint(){
