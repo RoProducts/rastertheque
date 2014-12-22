@@ -17,14 +17,14 @@ import android.util.Log;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 
-import de.rooehler.rastertheque.RasterIO;
+import de.rooehler.rastertheque.io.IRasterIO;
 import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.RasterDataSet;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.proj.Proj;
 import de.rooehler.rastertheque.util.Constants;
 
-public class GDALRasterIO  implements RasterDataSet, RasterIO{
+public class GDALRasterIO  implements RasterDataSet, IRasterIO{
 
 	private static final String TAG = GDALRasterIO.class.getSimpleName();
 
@@ -124,6 +124,11 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 		
 	}
 	@Override
+	public String getProjection() {
+
+		return dataset.GetProjectionRef();
+	}
+	@Override
 	public void close(){
 		if (dataset != null) {
 			dataset.delete();
@@ -219,12 +224,7 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 
 			}
 		};
-		
-		
-
 		return c;
-
-
 	}
 
 
@@ -343,47 +343,6 @@ public class GDALRasterIO  implements RasterDataSet, RasterIO{
 
 		return (float) rasterWidth / rasterHeight;
 	}
-
-//	public byte getStartZoomLevel(Coordinate center, final int tileSize){
-//
-//		double[] adfGeoTransform = new double[6];
-//
-//		dataset.GetGeoTransform(adfGeoTransform);
-//
-//		if (adfGeoTransform[2] == 0.0 && adfGeoTransform[4] == 0.0) {
-//
-//			SpatialReference sr = new SpatialReference(dataset.GetProjectionRef());
-//			Log.d(TAG, "Unit " + sr.GetLinearUnitsName());
-//
-//
-//			int width =  dataset.GetRasterXSize();
-//			int height =  dataset.GetRasterYSize();
-//
-//			int max = Math.max(width, height);
-//
-//			double tilesEnter = (double) max / tileSize;
-//
-//			double zoom = Math.log(tilesEnter) / Math.log(2);
-//
-//			return (byte) Math.max(2,Math.round(zoom));
-//
-//
-//
-//			//				 if(sr.GetLinearUnitsName().toLowerCase().equals("degree")){
-//			//					 Log.d(TAG,"Pixel Size = (" + adfGeoTransform[1] + "," + adfGeoTransform[5] + ")");
-//			//					 float xResInMeters = (float) (adfGeoTransform[1] * distanceOfOneDegreeOfLongitudeAccordingToLatitude(center.latitude));
-//			//					 float yResInMeters = (float) (adfGeoTransform[5] * Constants.DEGREE_IN_METERS_AT_EQUATOR);
-//			//					 Log.d(TAG,"(xResInMeters " + xResInMeters + ", yResInMeters " + Math.abs(yResInMeters) + ")");
-//			//					 return zoomLevelAccordingToMetersPerPixel(Math.min(Math.abs(xResInMeters), Math.abs(yResInMeters)));
-//			//				 }else if(sr.GetLinearUnitsName().toLowerCase().equals("metre") || sr.GetLinearUnitsName().toLowerCase().equals("meter")){
-//			//					 return zoomLevelAccordingToMetersPerPixel((float)Math.min(Math.abs(adfGeoTransform[1]),Math.abs(adfGeoTransform[5])));
-//			//				 }
-//
-//		}
-//		//invalid data	 
-//		throw new IllegalArgumentException("unexpected transformation");
-//
-//	}
 
 	public int getRasterWidth() {
 		return mRasterWidth;

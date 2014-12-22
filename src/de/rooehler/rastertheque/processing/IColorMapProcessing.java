@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 
 import de.rooehler.rastertheque.io.gdal.DataType;
 
-public interface ColorMapProcessing {
+public interface IColorMapProcessing {
 	
 	public boolean hasColorMap();
 	

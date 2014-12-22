@@ -9,9 +9,9 @@ import java.nio.ByteOrder;
 import android.util.Log;
 import de.rooehler.rastertheque.io.gdal.ByteBufferReader;
 import de.rooehler.rastertheque.io.gdal.DataType;
-import de.rooehler.rastertheque.processing.ColorMapProcessing;
+import de.rooehler.rastertheque.processing.IColorMapProcessing;
 
-public class MColorMapProcessing implements ColorMapProcessing{
+public class MColorMapProcessing implements IColorMapProcessing{
 	
 	private final static String TAG = MColorMapProcessing.class.getSimpleName();
 	

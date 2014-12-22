@@ -9,44 +9,38 @@ import org.gdal.gdal.Band;
 import org.gdal.gdalconst.gdalconstConstants;
 
 import uk.co.senab.bitmapcache.CacheableBitmapDrawable;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Point;
 import android.graphics.PointF;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
 
-import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.geometry.BoundingBox;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.tileprovider.MapTile;
 import com.mapbox.mapboxsdk.tileprovider.modules.MapTileDownloader;
 import com.mapbox.mapboxsdk.tileprovider.tilesource.TileLayer;
 import com.mapbox.mapboxsdk.views.util.Projection;
-import com.mapbox.mapboxsdk.views.util.constants.MapViewConstants;
 
+import de.rooehler.rastertheque.io.IRasterIO;
 import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.DataType;
 import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
-import de.rooehler.rastertheque.processing.ColorMapProcessing;
+import de.rooehler.rastertheque.processing.IColorMapProcessing;
 import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
+import de.rooehler.rastertheque.util.Formulae;
 
-public class GDALTileLayer extends TileLayer implements MapViewConstants, MapboxConstants{
+public class GDALTileLayer extends TileLayer {
 	
 	private final static String TAG = GDALTileLayer.class.getSimpleName();
 	
 	private byte mInternalZoom = 1;
 	
-	private final byte NATIVE_ZOOM_RANGE = 5;
-	
-	private boolean isWorking = true;
-	
 	private GDALRasterIO mRasterIO;
 	
-	private ColorMapProcessing mColorMapProcessing;
+	private IColorMapProcessing mColorMapProcessing;
 	
 	private boolean mUseColorMap;
 	
@@ -58,8 +52,6 @@ public class GDALTileLayer extends TileLayer implements MapViewConstants, Mapbox
 	
 	private final String mSource;
 	
-	private Context mContext;
-	
 	private int mStartZoomLevel;
 	
 	private LatLng mStartPos;
@@ -70,10 +62,8 @@ public class GDALTileLayer extends TileLayer implements MapViewConstants, Mapbox
 	
 	private static final int NO_DATA_COLOR = 0xff000000;
 	
-	public GDALTileLayer(final Context context,final File file, final GDALRasterIO gdalRaster,final MColorMapProcessing pColorMapProcessing, final int pScreenWidth, final boolean pUseColormap, final Projection pProj) {
+	public GDALTileLayer(final File file, final GDALRasterIO gdalRaster,final MColorMapProcessing pColorMapProcessing, final int pScreenWidth, final boolean pUseColormap, final Projection pProj) {
 		super(file.getName(), file.getAbsolutePath());
-
-		mContext = context;
 
 		mSource = file.getAbsolutePath();
 
@@ -111,13 +101,20 @@ public class GDALTileLayer extends TileLayer implements MapViewConstants, Mapbox
 		LatLng sw = new LatLng(bb[1],bb[0]); 
 		LatLng ne = new LatLng(bb[3],bb[2]); 
 
-//		mStartZoomLevel = 12;
-		//TODO calculate
-		mInternalZoom = 2;
+		double res_in_Meters = Formulae.distanceBetweenInMeters(bb[1],bb[0], bb[3],bb[2]) / Math.hypot(mRasterIO.getRasterHeight(),mRasterIO.getRasterWidth()); //lon pp
 		
-		mMaximumZoomLevel = 20;//zoomLevelMax;
-		//TODO calculate
-		mMinimumZoomLevel = mStartZoomLevel = 8;
+		mInternalZoom = 1;
+		int startZoomLevel = 2;
+		while(res_in_Meters < 1000){
+			res_in_Meters *= 2;
+			startZoomLevel++;
+		}
+	
+		
+		
+		mMinimumZoomLevel = mStartZoomLevel = startZoomLevel;
+		
+		mMaximumZoomLevel = startZoomLevel + 8;
 
 		mName = mSource;
 		mDescription = "GDALLayer";
@@ -129,46 +126,74 @@ public class GDALTileLayer extends TileLayer implements MapViewConstants, Mapbox
 
 
     @Override
-    public void detach() {
-        
-    	mRasterIO.close();
-    }
-
-    @Override
     public Drawable getDrawableFromTile(final MapTileDownloader downloader, final MapTile aTile, boolean hdpi) {
 
-    	final int ts = aTile.getTileRect().right - aTile.getTileRect().left;  	
+    	int ts = mTileSize;
+    	if(aTile .getTileRect() != null){
+    		ts = aTile.getTileRect().right - aTile.getTileRect().left;  	
+    	}
     	final int zoom = aTile.getZ();
     	final int h = mRasterIO.getRasterHeight();
     	final int w = mRasterIO.getRasterWidth();
 
     	long now = System.currentTimeMillis();
+    	
+    	//1. where is tile which should be displayed
+    	final Point t = Projection.tileXYToPixelXY(aTile.getX(), aTile.getY(), null);
+    	final Point t2  =Projection.tileXYToPixelXY(aTile.getX() + 1, aTile.getY() , null);
+    	
+    	final PointF northWest = Projection.latLongToPixelXY(mBoundingBox.getLatNorth(), mBoundingBox.getLonWest(), zoom, null);
+    	final PointF southEast = Projection.latLongToPixelXY(mBoundingBox.getLatSouth(), mBoundingBox.getLonEast(), zoom, null);
+    	
+    	//2. calculate the relative position of this point inside the bounds of this raster
+    	final double xRatio = (t.x - northWest.x) / (southEast.x - northWest.x);
+    	final double yRatio = (t.y - northWest.y) / (southEast.y - northWest.y);
+    	final double xRatio2 = (t2.x - northWest.x) / (southEast.x - northWest.x);
+    	
+    	//3. interpolate x and y to read from
+    	double readFromX =   w * xRatio;
+    	double readFromY =   h * yRatio;
+    	double readFromX2 =  w * xRatio2;
 
-    	final double scaleFactor = scaleFactorAccordingToZoom(zoom);   
-
-    	Point t = Projection.tileXYToPixelXY(aTile.getX(), aTile.getY(), null);
-    	Point t2 = Projection.tileXYToPixelXY(aTile.getX() + 1, aTile.getY() + 1, null);
-
-    	LatLng desiredPoint = Projection.pixelXYToLatLong(t.x, t.y, zoom);
-    	LatLng oneOff = Projection.pixelXYToLatLong(t2.x, t2.y, zoom);
-
-    	final double xRatio = (desiredPoint.getLongitude() - mBoundingBox.getLonWest()) / (mBoundingBox.getLonEast() - mBoundingBox.getLonWest());
-    	final double yRatio = (desiredPoint.getLatitude() - mBoundingBox.getLatNorth()) / (mBoundingBox.getLatSouth() - mBoundingBox.getLatNorth());
-    	final double xRatio2 = (oneOff.getLongitude() - mBoundingBox.getLonWest()) / (mBoundingBox.getLonEast() - mBoundingBox.getLonWest());
-
-    	long readFromX = (long) (w * xRatio);
-    	long readFromY = (long) (h * yRatio);
-    	long readFromX2 = (long) (w * xRatio2);
-
+    	//4. TODO improve calculate the amount to read
     	int zoomedTS = (int) (readFromX2 - readFromX);// (int) (ts * scaleFactor);  
+    	final float scaleFactor = (float) zoomedTS / ts;
 
-    	final int readAmountX = zoomedTS;
-    	final int readAmountY = zoomedTS;
+    	int readAmountX = zoomedTS;
+    	int readAmountY = 0;
+    	
+    	final String proj_ = mRasterIO.getProjection();
+//
+//    	CoordinateReferenceSystem crs = null;
+//		try {
+//			crs = new ProjWKTParser().parse(proj_);
+//		} catch (ParseException e) {
+//			Log.e(TAG, "doh");
+//		}
+    	
 
-        Log.d(TAG, String.format("tile %d %d zoom %d read from %d %d amount %d %d",aTile.getX(), aTile.getY(),aTile.getZ(), aTile.getZ(),readFromX,readFromY,readAmountX,readAmountY));   
+//    	if(Proj.equal(crs, Proj.EPSG_900913)){
+//    		Log.i(TAG, "is a 900913 dataset");
+    		readAmountY = zoomedTS;
+//
+//    	}else{ 		
+//    		Log.i(TAG, "is not a 900913 dataset");
+//    		readAmountY = (int) (zoomedTS * ((float) h / w));
+//    	}
+    	
+    	if(zoomedTS < 0){
+    		return returnNoDataTile(downloader, aTile, ts, now);
+    	}else{
+    		Log.e(TAG, "wanted "+ts +" reading "+zoomedTS);
+//    		Log.i(TAG, "ts : " + ts + " zoomedTS is : " + zoomedTS +" zoom "+ zoom+ " scaleFactor : "+scaleFactor);
+    		
+    	}
+    
+    	
+
+//        Log.d(TAG, String.format("tile %d %d zoom %d read from %d %d amount %d %d",aTile.getX(), aTile.getY(),aTile.getZ(), aTile.getZ(),readFromX,readFromY,readAmountX,readAmountY));   
         
         if(readFromX < 0 || readFromX + readAmountX > w ||  readFromY < 0 || readFromY + readAmountY > h){
-        	Log.e(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");
 
         	//if entirely out of bounds -> return white tile
         	if(readFromX + readAmountX <= 0 || readFromX  > w ||
@@ -198,17 +223,18 @@ public class GDALTileLayer extends TileLayer implements MapViewConstants, Mapbox
         		//min x or y bounds hit
         		if(readFromX < 0){        			
         			availableX = (int) (readAmountX - Math.abs(readFromX));
-        			coveredXOrigin = (int) (ts - (availableX * scaleFactor));
+        			coveredXOrigin = Math.round((readAmountX - availableX) /  scaleFactor);
         			gdalTargetXSize = (int) (availableX * (1 /  scaleFactor));
         			readFromX = 0;
         		}
         		if(readFromY < 0){        			
         			availableY = (int) (readAmountY - Math.abs(readFromY));
-        			coveredYOrigin = (int) (ts - (availableY * scaleFactor));
+        			coveredYOrigin = Math.round((readAmountY - availableY) / scaleFactor);
         			gdalTargetYSize = (int) (availableY * (1 / scaleFactor));
         			readFromY = 0;
         		}
         	}
+//        	Log.e(TAG, "reading of ("+availableX+","+availableY +") from "+readFromX+","+readFromY+" target {"+gdalTargetXSize+","+gdalTargetYSize+"}, covered: X"+coveredXOrigin+", Y "+coveredYOrigin);
 
         	final ByteBuffer buffer = readPixels(new Rectangle((int)readFromX,(int)readFromY, availableX, availableY), new Dimension(gdalTargetXSize, gdalTargetYSize),mRasterIO.getDatatype());
 
@@ -226,7 +252,7 @@ public class GDALTileLayer extends TileLayer implements MapViewConstants, Mapbox
         bitmap.setPixels(render(buffer,ts * ts, mRasterIO.getDatatype()), 0, ts, 0, 0, ts, ts);
 
 
-        Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
+//        Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 
         CacheableBitmapDrawable result = downloader.getCache().putTileBitmap(aTile, bitmap);
         if (result == null) {
@@ -320,7 +346,7 @@ public class GDALTileLayer extends TileLayer implements MapViewConstants, Mapbox
 		Bitmap bitmap = Bitmap.createBitmap(destinationTileSize, destinationTileSize, Config.ARGB_8888);
 		bitmap.setPixels(pixels, 0, destinationTileSize, 0, 0, destinationTileSize, destinationTileSize);
 
-		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - timestamp) / 1000.0f)+ " s");
+//		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - timestamp) / 1000.0f)+ " s");
 
 
 		CacheableBitmapDrawable result = downloader.getCache().putTileBitmap(aTile, bitmap);
@@ -364,8 +390,7 @@ public class GDALTileLayer extends TileLayer implements MapViewConstants, Mapbox
 		
 		return Math.pow(2,  -diff);
 		
-	}
-	
+	}	
 	
 	private boolean checkIfHasRGBBands() {
 		
@@ -376,7 +401,15 @@ public class GDALTileLayer extends TileLayer implements MapViewConstants, Mapbox
 			   bands.get(1).GetColorInterpretation() == gdalconstConstants.GCI_GreenBand &&
 			   bands.get(2).GetColorInterpretation() == gdalconstConstants.GCI_BlueBand;
 	}
-	
+
+
+    @Override
+    public void detach() {
+    }
+	public void close(){
+		mRasterIO.close();
+				
+	}
 	
 	public int getStartZoomLevel(){
 		return mStartZoomLevel;
@@ -384,5 +417,8 @@ public class GDALTileLayer extends TileLayer implements MapViewConstants, Mapbox
 	
 	public LatLng getStartPos(){
 		return mStartPos;
+	}
+	public IRasterIO getRasterIO(){
+		return mRasterIO;
 	}
 }

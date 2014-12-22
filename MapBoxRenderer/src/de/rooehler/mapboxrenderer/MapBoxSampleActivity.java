@@ -28,10 +28,9 @@ import com.mapbox.mapboxsdk.tileprovider.tilesource.MBTilesLayer;
 import com.mapbox.mapboxsdk.tileprovider.tilesource.MapboxTileLayer;
 import com.mapbox.mapboxsdk.views.MapView;
 
-import de.rooehler.mapboxrenderer.R;
 import de.rooehler.mapboxrenderer.fileselection.FilePickerDialog;
-import de.rooehler.mapboxrenderer.fileselection.SupportedType;
 import de.rooehler.mapboxrenderer.fileselection.FilePickerDialog.FilePathPickCallback;
+import de.rooehler.mapboxrenderer.fileselection.SupportedType;
 import de.rooehler.mapboxrenderer.renderer.GDALTileLayer;
 import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
 import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
@@ -47,12 +46,14 @@ public class MapBoxSampleActivity extends Activity {
 	
 	private MapView mv;
 	private String currentMap = null;
+	private ITileLayer mCurrentLayer;
 	
 	private DrawerLayout mDrawerLayout;
 	private ListView mDrawerList;
 	private ActionBarDrawerToggle mDrawerToggle;
 	private CharSequence mDrawerTitle;
     private CharSequence mTitle;
+    
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -237,40 +238,44 @@ public class MapBoxSampleActivity extends Activity {
 	}
 
 	private void replaceWithGDAL(final String filePath) {
-		
-//    	final String filePath = Environment.getExternalStorageDirectory()+"/rastertheque/HN+24_900913.tif";
-//		final String filePath = Environment.getExternalStorageDirectory()+"/rastertheque/GRAY_50M_SR_OB.tif";
-//		final String filePath = Environment.getExternalStorageDirectory()+"/rastertheque/soilmoisture.tif";
-//    	final String filePath = Environment.getExternalStorageDirectory()+"/rastertheque/dem.tif";
     	
-    	DisplayMetrics displaymetrics = new DisplayMetrics();
+		if(mCurrentLayer != null && mCurrentLayer instanceof GDALTileLayer){
+			((GDALTileLayer) mCurrentLayer).close();
+
+		}
+
+		DisplayMetrics displaymetrics = new DisplayMetrics();
 		getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
 		int screenWidth = displaymetrics.widthPixels;
-		
+
 		final boolean useColorMap = true;
-    	
-    	GDALRasterIO gdalRaster = new GDALRasterIO(filePath);
+
+		GDALRasterIO gdalRaster = new GDALRasterIO(filePath);
 		MColorMapProcessing mColorMapProcessing = new MColorMapProcessing(filePath);
-		GDALTileLayer source = new GDALTileLayer(getBaseContext(), new File(filePath), gdalRaster, mColorMapProcessing, screenWidth, useColorMap,mv.getProjection());
+		mCurrentLayer = new GDALTileLayer(new File(filePath), gdalRaster, mColorMapProcessing, screenWidth, useColorMap,mv.getProjection());
 
-		mv.setZoom(source.getStartZoomLevel());
-		mv.setCenter(source.getCenterCoordinate());
-
+		Log.e(TAG, "setting zoom for new file to "+ (((GDALTileLayer) mCurrentLayer).getStartZoomLevel()));
+		mv.setZoom(((GDALTileLayer) mCurrentLayer).getStartZoomLevel());
+		mv.setCenter(mCurrentLayer.getCenterCoordinate());
 		
-	    mv.setTileSource(source);
-	    BoundingBox box = source.getBoundingBox();
-        mv.setScrollableAreaLimit(box);
-        mv.setMinZoomLevel(mv.getTileProvider().getMinimumZoomLevel());
-        mv.setMaxZoomLevel(mv.getTileProvider().getMaximumZoomLevel());
+		BoundingBox box = mCurrentLayer.getBoundingBox();
+		mv.setScrollableAreaLimit(box);
+		mv.setMinZoomLevel(mv.getTileProvider().getMinimumZoomLevel());
+		mv.setMaxZoomLevel(mv.getTileProvider().getMaximumZoomLevel());
 		currentMap = filePath;
+		
+		mv.setTileSource(mCurrentLayer);
+		
+		//DEBUG
+		MapView.setDebugMode(true);
 	}
 	
 	private void replaceWithMBTiles(final String filePath) {
 		
-    	MBTilesLayer source = new MBTilesLayer(new File(filePath));
+		mCurrentLayer = new MBTilesLayer(new File(filePath));
     	
-        mv.setTileSource(source);
-        BoundingBox box = source.getBoundingBox();
+        mv.setTileSource(mCurrentLayer);
+        BoundingBox box = mCurrentLayer.getBoundingBox();
         mv.setScrollableAreaLimit(box);
         mv.setMinZoomLevel(mv.getTileProvider().getMinimumZoomLevel());
         mv.setMaxZoomLevel(mv.getTileProvider().getMaximumZoomLevel());
@@ -284,28 +289,17 @@ public class MapBoxSampleActivity extends Activity {
 			return;
 		}
 
-        ITileLayer source;
-        BoundingBox box;
 
-        source = new MapboxTileLayer(layer);
+        mCurrentLayer = new MapboxTileLayer(layer);
 
-        mv.setTileSource(source);
-        box = source.getBoundingBox();
-        mv.setScrollableAreaLimit(box);
+        mv.setTileSource(mCurrentLayer);
+        mv.setScrollableAreaLimit(mCurrentLayer.getBoundingBox());
         mv.setMinZoomLevel(mv.getTileProvider().getMinimumZoomLevel());
         mv.setMaxZoomLevel(mv.getTileProvider().getMaximumZoomLevel());
 		currentMap = layer;
 		
-		
-/*
-        mv.setCenter(mv.getTileProvider().getCenterCoordinate());
-        mv.setZoom(0);
-*/
-    }
 
-//    private Button changeButtonTypeface(Button button) {
-//        return button;
-//    }
+    }
 
     public LatLng getMapCenter() {
         return mv.getCenter();
@@ -314,36 +308,4 @@ public class MapBoxSampleActivity extends Activity {
     public void setMapCenter(ILatLng center) {
         mv.setCenter(center);
     }
-
-//    /**
-//     * Method to show settings  in alert dialog
-//     * On pressing Settings button will lauch Settings Options - GPS
-//     */
-//    public void showSettingsAlert() {
-//        AlertDialog.Builder alertDialog = new AlertDialog.Builder(getBaseContext());
-//
-//        // Setting Dialog Title
-//        alertDialog.setTitle("GPS settings");
-//
-//        // Setting Dialog Message
-//        alertDialog.setMessage("GPS is not enabled. Do you want to go to settings menu?");
-//
-//        // On pressing Settings button
-//        alertDialog.setPositiveButton("Settings", new DialogInterface.OnClickListener() {
-//            public void onClick(DialogInterface dialog, int which) {
-//                Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-//                getBaseContext().startActivity(intent);
-//            }
-//        });
-//
-//        // on pressing cancel button
-//        alertDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-//            public void onClick(DialogInterface dialog, int which) {
-//                dialog.cancel();
-//            }
-//        });
-//
-//        // Showing Alert Message
-//        alertDialog.show();
-//    }
 }

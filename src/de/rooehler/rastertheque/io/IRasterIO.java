@@ -1,13 +1,11 @@
-package de.rooehler.rastertheque;
+package de.rooehler.rastertheque.io;
 
 import java.nio.ByteBuffer;
-
-import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
 
-public interface RasterIO {
+public interface IRasterIO {
 	
 	/**
 	 * Opens a file
@@ -15,6 +13,8 @@ public interface RasterIO {
 	 * @return true if opening was successfull, false otherwise
 	 */
 	public boolean open(String filePath);
+	
+	public String getProjection();
 	
 	/**
 	 * read from a file 

@@ -21,7 +21,7 @@ import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.DataType;
 import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
-import de.rooehler.rastertheque.processing.ColorMapProcessing;
+import de.rooehler.rastertheque.processing.IColorMapProcessing;
 /**
  * A Renderer of gdal data for Mapsforge
  * @author Robert Oehler
@@ -41,7 +41,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	
 	private GDALRasterIO mRasterIO;
 	
-	private ColorMapProcessing mColorMapProcessing;
+	private IColorMapProcessing mColorMapProcessing;
 	
 	private boolean mUseColorMap;
 	
@@ -50,7 +50,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	private boolean hasRGBBands;
 
 
-	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALRasterIO pRaster, final ColorMapProcessing pColorMapProcessing, final boolean pUseColorMap) {
+	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALRasterIO pRaster, final IColorMapProcessing pColorMapProcessing, final boolean pUseColorMap) {
 		
 		this.graphicFactory = graphicFactory;
 		
