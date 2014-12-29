@@ -32,7 +32,7 @@ import de.rooehler.mapboxrenderer.fileselection.FilePickerDialog;
 import de.rooehler.mapboxrenderer.fileselection.FilePickerDialog.FilePathPickCallback;
 import de.rooehler.mapboxrenderer.fileselection.SupportedType;
 import de.rooehler.mapboxrenderer.renderer.GDALTileLayer;
-import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
+import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
 
 
@@ -250,9 +250,9 @@ public class MapBoxSampleActivity extends Activity {
 
 		final boolean useColorMap = true;
 
-		GDALRasterIO gdalRaster = new GDALRasterIO(filePath);
+		GDALDataset gdalDataset = new GDALDataset(filePath);
 		MColorMapProcessing mColorMapProcessing = new MColorMapProcessing(filePath);
-		mCurrentLayer = new GDALTileLayer(new File(filePath), gdalRaster, mColorMapProcessing, screenWidth, useColorMap,mv.getProjection());
+		mCurrentLayer = new GDALTileLayer(new File(filePath), gdalDataset, mColorMapProcessing, screenWidth, useColorMap,mv.getProjection());
 
 		Log.e(TAG, "setting zoom for new file to "+ (((GDALTileLayer) mCurrentLayer).getStartZoomLevel()));
 		mv.setZoom(((GDALTileLayer) mCurrentLayer).getStartZoomLevel());

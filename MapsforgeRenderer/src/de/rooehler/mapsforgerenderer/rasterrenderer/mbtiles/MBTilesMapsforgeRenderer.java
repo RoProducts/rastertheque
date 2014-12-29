@@ -7,9 +7,8 @@ import org.mapsforge.core.model.Tile;
 import android.graphics.BitmapFactory;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterJob;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterRenderer;
-import de.rooehler.rastertheque.io.mbtiles.MBTilesRasterIO;
+import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
 import de.rooehler.rastertheque.processing.resampling.JAI_Interpolation;
-import de.rooehler.rastertheque.processing.resampling.MBilinearInterpolator;
 
 public class MBTilesMapsforgeRenderer implements RasterRenderer{
 
@@ -19,11 +18,11 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 	
 	private GraphicFactory graphicFactory;
 	
-	private final MBTilesRasterIO mRaster;
+	private final MBTilesDataset mDataset;
 
-	public MBTilesMapsforgeRenderer(GraphicFactory graphicFactory, final MBTilesRasterIO pRaster) {
+	public MBTilesMapsforgeRenderer(GraphicFactory graphicFactory, final MBTilesDataset pRaster) {
 		
-		this.mRaster = pRaster;
+		this.mDataset = pRaster;
 		
 		this.graphicFactory = graphicFactory;
 	}
@@ -45,14 +44,14 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 		TileBitmap bitmap = this.graphicFactory.createTileBitmap(job.displayModel.getTileSize(), job.hasAlpha);
 
 		// conversion needed to fit the MbTiles coordinate system
-		final int[] tmsTileXY = mRaster.googleTile2TmsTile(localTileX, localTileY, tile.zoomLevel);
+		final int[] tmsTileXY = mDataset.googleTile2TmsTile(localTileX, localTileY, tile.zoomLevel);
 
 		byte[] rasterBytes = null;
 		android.graphics.Bitmap decodedBitmap = null;
 		int[] pixels = new int[tileSize * tileSize];
 		int[] mbTilesPixels = new int[MBTILES_SIZE * MBTILES_SIZE];
 
-		rasterBytes = mRaster.getDB().getTileAsBytes(String.valueOf(tmsTileXY[0]), String.valueOf(tmsTileXY[1]), Byte.toString(tile.zoomLevel));
+		rasterBytes = mDataset.getDB().getTileAsBytes(String.valueOf(tmsTileXY[0]), String.valueOf(tmsTileXY[1]), Byte.toString(tile.zoomLevel));
 
 		if (rasterBytes == null) {
 
@@ -96,31 +95,31 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 	@Override
 	public void start() {
 
-		this.mRaster.start();
+		this.mDataset.start();
 
 	}
 	@Override
 	public void stop() {
 
-		this.mRaster.close();
+		this.mDataset.close();
 	}
 	@Override
 	public boolean isWorking() {
 
-		return this.mRaster.isWorking();
+		return this.mDataset.isWorking();
 	}
 
 	@Override
 	public String getFilePath() {
 		
-		return this.mRaster.getSource();
+		return this.mDataset.getSource();
 		
 	}
 
 	@Override
 	public void destroy() {
 		
-		this.mRaster.destroy();
+		this.mDataset.destroy();
 		
 	}
 

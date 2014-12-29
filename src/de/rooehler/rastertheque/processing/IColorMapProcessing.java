@@ -2,7 +2,7 @@ package de.rooehler.rastertheque.processing;
 
 import java.nio.ByteBuffer;
 
-import de.rooehler.rastertheque.io.gdal.DataType;
+import de.rooehler.rastertheque.core.DataType;
 
 public interface IColorMapProcessing {
 	

@@ -4,8 +4,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import android.util.Log;
-import de.rooehler.rastertheque.core.Rectangle;
-import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
+import de.rooehler.rastertheque.core.Raster;
+import de.rooehler.rastertheque.core.RasterQuery;
+import de.rooehler.rastertheque.core.model.Dimension;
+import de.rooehler.rastertheque.core.model.Rectangle;
+import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
 import de.rooehler.rastertheque.processing.resampling.JAI_Interpolation;
 import de.rooehler.rastertheque.processing.resampling.MBilinearInterpolator;
@@ -17,27 +20,30 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 	 */
 	public void testInterpolation(){		
 		
-		final GDALRasterIO io = new GDALRasterIO(TestIO.FILE);
+		final GDALDataset dataset = new GDALDataset(TestIO.FILE);
 		
-		final int width = io.getRasterWidth();
+		final int width = dataset.getRasterWidth();
 		
-		final int height = io.getRasterHeight();
+		final int height = dataset.getRasterHeight();
 		
 		final int tileSize = Math.min(width, height) / 10;
 		
 		final Rectangle rect = new Rectangle(0, 0, tileSize, tileSize);
-		
-		final int bufferSize = tileSize * tileSize * io.getDatatype().size();
-		
-        final ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
+			     
+        final RasterQuery query = new RasterQuery(
+        		rect,
+        		dataset.getBands(),
+        		new Dimension(rect.width, rect.height),
+        		dataset.getDatatype());
         
-        buffer.order(ByteOrder.nativeOrder()); 
+        final Raster raster = dataset.read(query);
         
-        io.read(rect, buffer);
+        final MColorMapProcessing cmp = new MColorMapProcessing(TestIO.FILE);
         
-        MColorMapProcessing cmp = new MColorMapProcessing(TestIO.FILE);
-        
-        int[] pixels  = cmp.generatePixelsWithColorMap(buffer, bufferSize, io.getDatatype());
+        final int[] pixels  = cmp.generatePixelsWithColorMap(
+        		raster.getData(),
+        		raster.getDimension().getSize(),
+        		dataset.getDatatype());
         
         assertNotNull(pixels);
         
@@ -45,8 +51,8 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         final int resampledSize = tileSize * resamplingFactor;
         
-        int[] mResampled = new int[resampledSize * resampledSize];
-        int[] jaiResampled = new int[resampledSize * resampledSize];
+        final int[] mResampled = new int[resampledSize * resampledSize];
+        final int[] jaiResampled = new int[resampledSize * resampledSize];
         
         long now = System.currentTimeMillis();
         
@@ -63,16 +69,16 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         assertTrue(mResampled.length == pixels.length * resamplingFactor * resamplingFactor);
         
         //check a pixel
-        int mPixel = mResampled[resampledSize / 2];
-        int jaiPixel = jaiResampled[resampledSize / 2];
+        final int mPixel = mResampled[resampledSize / 2];
+        final int jaiPixel = jaiResampled[resampledSize / 2];
         
-        int mRed = (mPixel >> 16) & 0xff;
-        int mGreen = (mPixel >> 8) & 0xff;
-        int mBlue = (mPixel) & 0xff;
+        final int mRed = (mPixel >> 16) & 0xff;
+        final int mGreen = (mPixel >> 8) & 0xff;
+        final int mBlue = (mPixel) & 0xff;
         
-        int jaiRed = (jaiPixel >> 16) & 0xff;
-        int jaiGreen = (jaiPixel >> 8) & 0xff;
-        int jaiBlue = (jaiPixel) & 0xff;
+        final int jaiRed = (jaiPixel >> 16) & 0xff;
+        final int jaiGreen = (jaiPixel >> 8) & 0xff;
+        final int jaiBlue = (jaiPixel) & 0xff;
         
         //valid values
         assertTrue(mRed >= 0 && mRed <= 255);

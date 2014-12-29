@@ -2,7 +2,6 @@ package de.rooehler.mapboxrenderer.renderer;
 
 import java.io.File;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.List;
 
 import org.gdal.gdal.Band;
@@ -23,22 +22,30 @@ import com.mapbox.mapboxsdk.tileprovider.modules.MapTileDownloader;
 import com.mapbox.mapboxsdk.tileprovider.tilesource.TileLayer;
 import com.mapbox.mapboxsdk.views.util.Projection;
 
-import de.rooehler.rastertheque.io.IRasterIO;
-import de.rooehler.rastertheque.core.Dimension;
-import de.rooehler.rastertheque.core.Rectangle;
-import de.rooehler.rastertheque.io.gdal.DataType;
-import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
+import de.rooehler.rastertheque.core.DataType;
+import de.rooehler.rastertheque.core.Raster;
+import de.rooehler.rastertheque.core.RasterDataset;
+import de.rooehler.rastertheque.core.RasterQuery;
+import de.rooehler.rastertheque.core.model.Dimension;
+import de.rooehler.rastertheque.core.model.Rectangle;
+import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.IColorMapProcessing;
 import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
 import de.rooehler.rastertheque.util.Formulae;
-
+/**
+ * A GDALTileLayer extends the Mapbox TileLayer to extract Tiles out of the
+ * GDAL raster data
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class GDALTileLayer extends TileLayer {
 	
 	private final static String TAG = GDALTileLayer.class.getSimpleName();
 	
 	private byte mInternalZoom = 1;
 	
-	private GDALRasterIO mRasterIO;
+	private GDALDataset mRasterDataset;
 	
 	private IColorMapProcessing mColorMapProcessing;
 	
@@ -62,12 +69,12 @@ public class GDALTileLayer extends TileLayer {
 	
 	private static final int NO_DATA_COLOR = 0xff000000;
 	
-	public GDALTileLayer(final File file, final GDALRasterIO gdalRaster,final MColorMapProcessing pColorMapProcessing, final int pScreenWidth, final boolean pUseColormap, final Projection pProj) {
+	public GDALTileLayer(final File file, final GDALDataset gdalRaster,final MColorMapProcessing pColorMapProcessing, final int pScreenWidth, final boolean pUseColormap, final Projection pProj) {
 		super(file.getName(), file.getAbsolutePath());
 
 		mSource = file.getAbsolutePath();
 
-		mRasterIO = gdalRaster;
+		mRasterDataset = gdalRaster;
 
 		mColorMapProcessing = pColorMapProcessing;
 		
@@ -83,25 +90,27 @@ public class GDALTileLayer extends TileLayer {
 	
 
 	/**
-     * Reads and opens a MBTiles file and loads its tiles into this layer.
-     * @param file
+     * initializes this reader by setting up, intial zoom, internal scale and the boundingbox
      */
     private void initialize() {
     	
 		this.mTileSize = getTileSizePixels();
 
-		this.mRasterBandCount = this.mRasterIO.getBands().size();
+		this.mRasterBandCount = this.mRasterDataset.getBands().size();
 
 		if(mRasterBandCount == 3){
 			hasRGBBands = checkIfHasRGBBands();
 		}
     	
-		double[] bb = mRasterIO.getBoundingBox();
+		final de.rooehler.rastertheque.core.model.BoundingBox bb = mRasterDataset.getBoundingBox();
 
-		LatLng sw = new LatLng(bb[1],bb[0]); 
-		LatLng ne = new LatLng(bb[3],bb[2]); 
+		final LatLng sw = new LatLng(bb.getMinY(),bb.getMinX()); 
+		final LatLng ne = new LatLng(bb.getMaxY(),bb.getMaxX()); 
 
-		double res_in_Meters = Formulae.distanceBetweenInMeters(bb[1],bb[0], bb[3],bb[2]) / Math.hypot(mRasterIO.getRasterHeight(),mRasterIO.getRasterWidth()); //lon pp
+		//meters per pixel of this raster
+		double res_in_Meters = Formulae.distanceBetweenInMeters(
+				bb.getMinY(),bb.getMinX(), bb.getMaxY(),bb.getMaxX()) /
+				Math.hypot(mRasterDataset.getRasterHeight(),mRasterDataset.getRasterWidth()); //dist in m / pixel of hyp
 		
 		mInternalZoom = 1;
 		int startZoomLevel = 2;
@@ -110,7 +119,6 @@ public class GDALTileLayer extends TileLayer {
 			startZoomLevel++;
 		}
 	
-		
 		
 		mMinimumZoomLevel = mStartZoomLevel = startZoomLevel;
 		
@@ -124,7 +132,9 @@ public class GDALTileLayer extends TileLayer {
 
     }
 
-
+    /**
+     * calculates a Drawable
+     */
     @Override
     public Drawable getDrawableFromTile(final MapTileDownloader downloader, final MapTile aTile, boolean hdpi) {
 
@@ -133,8 +143,8 @@ public class GDALTileLayer extends TileLayer {
     		ts = aTile.getTileRect().right - aTile.getTileRect().left;  	
     	}
     	final int zoom = aTile.getZ();
-    	final int h = mRasterIO.getRasterHeight();
-    	final int w = mRasterIO.getRasterWidth();
+    	final int h = mRasterDataset.getRasterHeight();
+    	final int w = mRasterDataset.getRasterWidth();
 
     	long now = System.currentTimeMillis();
     	
@@ -162,7 +172,7 @@ public class GDALTileLayer extends TileLayer {
     	int readAmountX = zoomedTS;
     	int readAmountY = 0;
     	
-    	final String proj_ = mRasterIO.getProjection();
+    	final String proj_ = mRasterDataset.getProjection();
 //
 //    	CoordinateReferenceSystem crs = null;
 //		try {
@@ -236,9 +246,18 @@ public class GDALTileLayer extends TileLayer {
         	}
 //        	Log.e(TAG, "reading of ("+availableX+","+availableY +") from "+readFromX+","+readFromY+" target {"+gdalTargetXSize+","+gdalTargetYSize+"}, covered: X"+coveredXOrigin+", Y "+coveredYOrigin);
 
-        	final ByteBuffer buffer = readPixels(new Rectangle((int)readFromX,(int)readFromY, availableX, availableY), new Dimension(gdalTargetXSize, gdalTargetYSize),mRasterIO.getDatatype());
+        	final RasterQuery query = new RasterQuery(
+        			new Rectangle((int)readFromX,(int)readFromY, availableX, availableY),
+        			mRasterDataset.getBands(), 
+        			new Dimension(gdalTargetXSize, gdalTargetYSize), 
+        			mRasterDataset.getDatatype());
+        	
+        	 Raster raster = null;
+             synchronized(this){
+             	 raster = mRasterDataset.read(query);
+             }
 
-        	int[] pixels = render(buffer, gdalTargetXSize *gdalTargetYSize, mRasterIO.getDatatype());
+        	int[] pixels = render(raster.getData(), raster.getDimension().getSize(), mRasterDataset.getDatatype());
 
         	return createBoundsTile(downloader, aTile, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
 
@@ -246,11 +265,19 @@ public class GDALTileLayer extends TileLayer {
         	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
         }  
         
-        final ByteBuffer buffer = readPixels(new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY), new Dimension(ts, ts),mRasterIO.getDatatype());
-
+        final RasterQuery query = new RasterQuery(
+        		new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY),
+        		mRasterDataset.getBands(), 
+        		new Dimension(ts, ts),
+        		mRasterDataset.getDatatype());
+        
+        Raster raster = null;
+        synchronized(this){
+        	 raster = mRasterDataset.read(query);
+        }
+        
         Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
-        bitmap.setPixels(render(buffer,ts * ts, mRasterIO.getDatatype()), 0, ts, 0, 0, ts, ts);
-
+        bitmap.setPixels(render(raster.getData(),raster.getDimension().getSize(), mRasterDataset.getDatatype()), 0, ts, 0, 0, ts, ts);
 
 //        Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 
@@ -264,38 +291,51 @@ public class GDALTileLayer extends TileLayer {
 
     }
     
-	/**
-	 * read a region @param src from this raster
-	 * and scale the resulting area to the dimension @param dst
-	 * according to the datatype @param datatype
-	 * @param src the region to read
-	 * @param dst the desired destination dimension
-	 * @return a ByteBuffer containing the read data 
-	 */
-	public ByteBuffer readPixels(final Rectangle src, final Dimension dst,final DataType dataType){
-		
-		final int bufferSize = dst.getSize() * mRasterIO.getDatatype().size() * mRasterBandCount;
-		ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
-		buffer.order(ByteOrder.nativeOrder()); 
-		synchronized(this){			
-			mRasterIO.read(src, dst, buffer);
-		}
-
-		return buffer;
-	}
+//	/**
+//	 * read a region @param src from this raster
+//	 * and scale the resulting area to the dimension @param dst
+//	 * according to the datatype @param datatype
+//	 * @param src the region to read
+//	 * @param dst the desired destination dimension
+//	 * @return a ByteBuffer containing the read data 
+//	 */
+//	public ByteBuffer readPixels(final Rectangle src, final Dimension dst,final DataType dataType){
+//		
+//		final int bufferSize = dst.getSize() * mRasterIO.getDatatype().size() * mRasterBandCount;
+//		ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
+//		buffer.order(ByteOrder.nativeOrder()); 
+//		synchronized(this){			
+//			mRasterIO.read(src, dst, buffer);
+//		}
+//
+//		return buffer;
+//	}
 	
-
+	/**
+	 * render the data contained in @param buffer
+	 * Currently this will, depending on the data
+	 * <ol>
+	 *   <li>if the raster contains 3 bands R, G and B use these bands to render</li>
+	 *   <li>if there is an according colormap to this raster file use this colormap to render</li>
+	 *   <li>if none of the before will interpolate a gray scale image</li>
+	 * </ol>  
+	 *   
+	 * @param buffer the data to render
+	 * @param tilePixelAmount the size of the resulting pixel array
+	 * @param dataType the type of the data
+	 * @return an array containing the rendered pixels in top left first order
+	 */
 	public int[] render(final ByteBuffer buffer, final int tilePixelAmount, final DataType dataType){
 
 		
 		int[] pixels = null;
 		
 		if(hasRGBBands){
-			pixels = mColorMapProcessing.generateThreeBandedRGBPixels(buffer, tilePixelAmount , mRasterIO.getDatatype());
+			pixels = mColorMapProcessing.generateThreeBandedRGBPixels(buffer, tilePixelAmount , mRasterDataset.getDatatype());
 		}else if(mColorMapProcessing.hasColorMap() && mUseColorMap){
-			pixels = mColorMapProcessing.generatePixelsWithColorMap(buffer, tilePixelAmount, mRasterIO.getDatatype());
+			pixels = mColorMapProcessing.generatePixelsWithColorMap(buffer, tilePixelAmount, mRasterDataset.getDatatype());
 		}else{        	
-			pixels = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, tilePixelAmount, mRasterIO.getDatatype());
+			pixels = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, tilePixelAmount, mRasterDataset.getDatatype());
 		} 
 
 		
@@ -303,16 +343,18 @@ public class GDALTileLayer extends TileLayer {
 	}
 	
 	/**
-	 * returns a tile which partially contains raster data, the rest is filled with white pixels
-	 * @param bitmap to modify the pixels
-	 * @param gdalPixels the pixels with the raster data
+	 * returns a tile which partially contains raster data, the rest is filled with pixels according to the nodata value
+	 * @param downloader the downloader of this layer,
+	 * @param aTile the tile to render
+	 * @param gdalPixels the rendered pixels of the raster data
 	 * @param coveredOriginX the x coord of the covered area's origin
 	 * @param coveredOriginY the y coord of the covered area's origin
 	 * @param coveredAreaX the covered area's width
 	 * @param coveredAreaY the covered area's height
 	 * @param destinationTileSize the destination tileSize
 	 * @param timestamp when the creation of this tile started
-	 * @return the modified bitmap
+	 * @return the pixels of destTileSize*destTileSize,
+	 *  containing the rendered pixels filled up with nodata pixels
 	 */
 	public Drawable createBoundsTile(
 			final MapTileDownloader downloader,
@@ -394,7 +436,7 @@ public class GDALTileLayer extends TileLayer {
 	
 	private boolean checkIfHasRGBBands() {
 		
-		List<Band> bands = mRasterIO.getBands();
+		List<Band> bands = mRasterDataset.getBands();
 		
 		return bands.size() == 3 &&
 			   bands.get(0).GetColorInterpretation() == gdalconstConstants.GCI_RedBand &&
@@ -407,7 +449,7 @@ public class GDALTileLayer extends TileLayer {
     public void detach() {
     }
 	public void close(){
-		mRasterIO.close();
+		mRasterDataset.close();
 				
 	}
 	
@@ -418,7 +460,8 @@ public class GDALTileLayer extends TileLayer {
 	public LatLng getStartPos(){
 		return mStartPos;
 	}
-	public IRasterIO getRasterIO(){
-		return mRasterIO;
+	
+	public RasterDataset getRasterDataset(){
+		return mRasterDataset;
 	}
 }

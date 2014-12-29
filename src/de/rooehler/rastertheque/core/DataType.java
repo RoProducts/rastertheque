@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.io.gdal;
+package de.rooehler.rastertheque.core;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -94,7 +94,6 @@ public enum DataType {
 			b = pBuffer.asCharBuffer();
 		case BYTE:
 			b = pBuffer;
-
 		case SHORT:
 			b =  pBuffer.asShortBuffer();
 		case INT:

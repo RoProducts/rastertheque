@@ -17,10 +17,12 @@ import android.graphics.Bitmap;
 import android.util.Log;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterJob;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterRenderer;
-import de.rooehler.rastertheque.core.Dimension;
-import de.rooehler.rastertheque.core.Rectangle;
-import de.rooehler.rastertheque.io.gdal.DataType;
-import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
+import de.rooehler.rastertheque.core.model.Dimension;
+import de.rooehler.rastertheque.core.model.Rectangle;
+import de.rooehler.rastertheque.core.DataType;
+import de.rooehler.rastertheque.core.Raster;
+import de.rooehler.rastertheque.core.RasterQuery;
+import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.IColorMapProcessing;
 /**
  * A Renderer of gdal data for Mapsforge
@@ -39,7 +41,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	
 	private boolean isWorking = true;
 	
-	private GDALRasterIO mRasterIO;
+	private GDALDataset mRasterDataset;
 	
 	private IColorMapProcessing mColorMapProcessing;
 	
@@ -50,17 +52,17 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	private boolean hasRGBBands;
 
 
-	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALRasterIO pRaster, final IColorMapProcessing pColorMapProcessing, final boolean pUseColorMap) {
+	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster, final IColorMapProcessing pColorMapProcessing, final boolean pUseColorMap) {
 		
 		this.graphicFactory = graphicFactory;
 		
-		this.mRasterIO = pRaster;
+		this.mRasterDataset = pRaster;
 		
 		this.mColorMapProcessing = pColorMapProcessing;
 		
 		this.mUseColorMap = pUseColorMap;
 		
-		this.mRasterBandCount = this.mRasterIO.getBands().size();
+		this.mRasterBandCount = this.mRasterDataset.getBands().size();
 		
 		if(mRasterBandCount == 3){
 			hasRGBBands = checkIfHasRGBBands();
@@ -70,7 +72,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	
 	private boolean checkIfHasRGBBands() {
 		
-		List<Band> bands = mRasterIO.getBands();
+		List<Band> bands = mRasterDataset.getBands();
 		
 		return bands.size() == 3 &&
 			   bands.get(0).GetColorInterpretation() == gdalconstConstants.GCI_RedBand &&
@@ -166,14 +168,13 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		
 		final int ts = job.tile.tileSize;
 		final byte zoom = job.tile.zoomLevel;
-		final int h = mRasterIO.getRasterHeight();
-		final int w = mRasterIO.getRasterWidth();
+		final int h = mRasterDataset.getRasterHeight();
+		final int w = mRasterDataset.getRasterWidth();
 		
 		long now = System.currentTimeMillis();
 
 		TileBitmap bitmap = this.graphicFactory.createTileBitmap(job.displayModel.getTileSize(), job.hasAlpha);
 		
-
         final double scaleFactor = scaleFactorAccordingToZoom(zoom);
         
         int zoomedTS = (int) (ts * scaleFactor);  
@@ -228,44 +229,56 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         			readFromY = 0;
         		}
         	}
+        	final RasterQuery query = new RasterQuery(
+        			new Rectangle((int)readFromX,(int)readFromY, availableX, availableY),
+        			mRasterDataset.getBands(), 
+        			new Dimension(gdalTargetXSize, gdalTargetYSize), 
+        			mRasterDataset.getDatatype());
 
-        	final ByteBuffer buffer = readPixels(new Rectangle((int)readFromX,(int)readFromY, availableX, availableY), new Dimension(gdalTargetXSize, gdalTargetYSize),mRasterIO.getDatatype());
+        	final Raster raster = mRasterDataset.read(query);
 
-        	int[] pixels = render(buffer, gdalTargetXSize *gdalTargetYSize, mRasterIO.getDatatype());
+        	int[] pixels = render(raster.getData(), raster.getDimension().getSize(), mRasterDataset.getDatatype());
 
         	return createBoundsTile(bitmap, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
 
         }else{ //this rectangle is fully covered by the file
         	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
-        }  
+        } 
         
-        final ByteBuffer buffer = readPixels(new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY), new Dimension(ts, ts),mRasterIO.getDatatype());
+        final RasterQuery query = new RasterQuery(
+        		new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY),
+        		mRasterDataset.getBands(), 
+        		new Dimension(ts, ts),
+        		mRasterDataset.getDatatype());
+        
+        final Raster raster = mRasterDataset.read(query);
 
-		bitmap.setPixels(render(buffer,ts * ts, mRasterIO.getDatatype()), ts);
-
+		bitmap.setPixels(render(raster.getData(),ts * ts, mRasterDataset.getDatatype()), ts);
 		
 		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 
 		return bitmap;
 	}
-	/**
-	 * read a region @param src from this raster
-	 * and scale the resulting area to the dimension @param dst
-	 * according to the datatype @param datatype
-	 * @param src the region to read
-	 * @param dst the desired destination dimension
-	 * @return a ByteBuffer containing the read data 
-	 */
-	public ByteBuffer readPixels(final Rectangle src, final Dimension dst,final DataType dataType){
-		
-		final int bufferSize = dst.getSize() * mRasterIO.getDatatype().size() * mRasterBandCount;
-		ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
-		buffer.order(ByteOrder.nativeOrder()); 
-
-		mRasterIO.read(src, dst, buffer);
-
-		return buffer;
-	}
+//	/**
+//	 * read a region @param src from this raster
+//	 * and scale the resulting area to the dimension @param dst
+//	 * according to the datatype @param datatype
+//	 * @param src the region to read
+//	 * @param dst the desired destination dimension
+//	 * @return a ByteBuffer containing the read data 
+//	 */
+//	public Raster readPixels(final Rectangle src, final Dimension dst,final DataType dataType){
+//		
+//		
+//		
+////		ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
+////		buffer.order(ByteOrder.nativeOrder()); 
+//
+////		mRasterIO.read(src, dst, buffer);
+//		
+//
+//		return mRasterIO.read(query);
+//	}
 	
 
 	public int[] render(final ByteBuffer buffer, final int tilePixelAmount, final DataType dataType){
@@ -274,11 +287,11 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		int[] pixels = null;
 		
 		if(hasRGBBands){
-			pixels = mColorMapProcessing.generateThreeBandedRGBPixels(buffer, tilePixelAmount , mRasterIO.getDatatype());
+			pixels = mColorMapProcessing.generateThreeBandedRGBPixels(buffer, tilePixelAmount , mRasterDataset.getDatatype());
 		}else if(mColorMapProcessing.hasColorMap() && mUseColorMap){
-			pixels = mColorMapProcessing.generatePixelsWithColorMap(buffer, tilePixelAmount, mRasterIO.getDatatype());
+			pixels = mColorMapProcessing.generatePixelsWithColorMap(buffer, tilePixelAmount, mRasterDataset.getDatatype());
 		}else{        	
-			pixels = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, tilePixelAmount, mRasterIO.getDatatype());
+			pixels = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, tilePixelAmount, mRasterDataset.getDatatype());
 		} 
 
 		
@@ -362,7 +375,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	private void saveBitmap(final TileBitmap tilebitmap,final RasterJob job){
 		
 		final String newFileName = String.format("tile_%d_%d_%d.png", job.tile.tileX, job.tile.tileY, job.tile.zoomLevel);
-		final String fileName = mRasterIO.getSource().substring(0, mRasterIO.getSource().lastIndexOf("/") + 1) + newFileName;
+		final String fileName = mRasterDataset.getSource().substring(0, mRasterDataset.getSource().lastIndexOf("/") + 1) + newFileName;
 		
 		FileOutputStream out = null;
 		try {
@@ -383,8 +396,8 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		}
 	}
 	
-	public GDALRasterIO getRaster(){
-		return mRasterIO;
+	public GDALDataset getRaster(){
+		return mRasterDataset;
 	}
 
 	@Override
@@ -428,7 +441,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	@Override
 	public String getFilePath() {
 		
-		return mRasterIO.getSource();
+		return mRasterDataset.getSource();
 	}
 	
 	public boolean canSwitchColorMap(){

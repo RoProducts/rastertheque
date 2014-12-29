@@ -1,6 +1,7 @@
 package de.rooehler.raster_jai;
 
 import javax.media.jai.InterpolationBilinear;
+import javax.media.jai.ParameterBlockJAI;
 
 public class JaiInterpolate {
 
@@ -25,7 +26,7 @@ public class JaiInterpolate {
 		//		BufferedImage bi = rescaled.getAsBufferedImage();
 		//		
 		//		dstPixels = ((DataBufferInt) bi.getRaster().getDataBuffer()).getData();
-
+		
 		InterpolationBilinear ib = new InterpolationBilinear();
 
 		int a, b, c, d, x, y, index;
@@ -80,6 +81,10 @@ public class JaiInterpolate {
 						((int) blue);
 			}
 		}
+		
+
+
+//		ParameterBlockJAI obj = new ParameterBlockJAI("Scale");
 
 	}
 

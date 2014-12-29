@@ -7,8 +7,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import android.util.Log;
+import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.io.gdal.ByteBufferReader;
-import de.rooehler.rastertheque.io.gdal.DataType;
 import de.rooehler.rastertheque.processing.IColorMapProcessing;
 
 public class MColorMapProcessing implements IColorMapProcessing{

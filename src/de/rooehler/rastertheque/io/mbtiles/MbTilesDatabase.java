@@ -1,7 +1,5 @@
 package de.rooehler.rastertheque.io.mbtiles;
 
-import java.nio.ByteBuffer;
-
 import android.content.Context;
 import android.database.Cursor;
 import android.database.SQLException;
@@ -9,8 +7,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-
-import com.vividsolutions.jts.geom.Envelope;
+import de.rooehler.rastertheque.core.model.BoundingBox;
 
 /**
  * class which connects to a database from downloaded zip bundle on the sdcard. If it is not yet installed in the
@@ -131,7 +128,7 @@ public class MbTilesDatabase extends SQLiteOpenHelper {
 	 * 
 	 * @return the Envelope of the data in this database file in order {xMin,yMin,xMax,yMax}
 	 */
-	public Envelope getEnvelope() {
+	public BoundingBox getBoundingBox() {
 
 		try {
 			final Cursor c = this.mDataBase.rawQuery("select value from metadata where name=?",
@@ -152,7 +149,7 @@ public class MbTilesDatabase extends SQLiteOpenHelper {
 			double maxlat = Double.parseDouble(split[3]);
 			c.close();
 
-			return new Envelope( minlon,maxlon, minlat,maxlat);
+			return new BoundingBox(minlon, minlat, maxlon, maxlat);
 
 		} catch (NullPointerException e) {
 			Log.e(TAG, "NPE retrieving boundingbox from db", e);

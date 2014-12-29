@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.core;
+package de.rooehler.rastertheque.core.model;
 
 public class Dimension {
 	

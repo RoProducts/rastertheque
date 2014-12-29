@@ -44,21 +44,19 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
-
-import com.vividsolutions.jts.geom.Coordinate;
-
+import de.rooehler.mapsforgerenderer.R;
 import de.rooehler.mapsforgerenderer.dialog.FilePickerDialog;
-import de.rooehler.mapsforgerenderer.dialog.SelectProjectionDialog;
 import de.rooehler.mapsforgerenderer.dialog.FilePickerDialog.FilePathPickCallback;
+import de.rooehler.mapsforgerenderer.dialog.SelectProjectionDialog;
 import de.rooehler.mapsforgerenderer.dialog.SelectProjectionDialog.IProjectionSelected;
 import de.rooehler.mapsforgerenderer.interfaces.IWorkStatus;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterLayer;
 import de.rooehler.mapsforgerenderer.rasterrenderer.gdal.GDALMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.rasterrenderer.mbtiles.MBTilesMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.util.SupportedType;
-import de.rooehler.mapsforgerenderer.R;
-import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
-import de.rooehler.rastertheque.io.mbtiles.MBTilesRasterIO;
+import de.rooehler.rastertheque.core.model.Coordinate;
+import de.rooehler.rastertheque.io.gdal.GDALDataset;
+import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
 import de.rooehler.rastertheque.io.mbtiles.MbTilesDatabase;
 import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
 
@@ -241,8 +239,8 @@ public class MainActivity extends Activity implements IWorkStatus{
 			final MapViewPosition mbtmvp = mapView.getModel().mapViewPosition;		
 			mbtmvp.setMapPosition(mbtmp);
 
-			MBTilesRasterIO mbTilesRaster = new MBTilesRasterIO(getBaseContext(),filePath);
-			MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesRaster);
+			MBTilesDataset mbTilesDataset = new MBTilesDataset(getBaseContext(),filePath);
+			MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesDataset);
 			Layer mbTilesLayer = new RasterLayer(getBaseContext(), tileCache, mbtmvp, false, AndroidGraphicFactory.INSTANCE, mbTilesRenderer, this);
 			mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
 
@@ -257,20 +255,20 @@ public class MainActivity extends Activity implements IWorkStatus{
 			getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
 			int width = displaymetrics.widthPixels;
 			
-			GDALRasterIO gdalRaster = new GDALRasterIO(filePath);
+			GDALDataset gdalDataset = new GDALDataset(filePath);
 			MColorMapProcessing mColorMapProcessing = new MColorMapProcessing(filePath);
-			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE, gdalRaster, mColorMapProcessing, true);
+			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE, gdalDataset, mColorMapProcessing, true);
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
 			byte startZoomLevel = gdalFileRenderer.calculateStartZoomLevel(tileSize,width);
 			
 			
 			
-			final MapPosition gdalmp =  new MapPosition(calculateStartPositionForRaster(gdalRaster.getRasterWidth(), gdalRaster.getRasterHeight()),startZoomLevel);
+			final MapPosition gdalmp =  new MapPosition(calculateStartPositionForRaster(gdalDataset.getRasterWidth(), gdalDataset.getRasterHeight()),startZoomLevel);
 			final MapViewPosition gdalmvp = mapView.getModel().mapViewPosition;		
 			gdalmvp.setMapPosition(gdalmp);
 
 
-			byte zoomLevelMax = gdalFileRenderer.calculateZoomLevelsAndStartScale(tileSize,width,gdalRaster.getRasterWidth(),gdalRaster.getRasterHeight());
+			byte zoomLevelMax = gdalFileRenderer.calculateZoomLevelsAndStartScale(tileSize,width,gdalDataset.getRasterWidth(),gdalDataset.getRasterHeight());
 			Layer rasterLayer = new RasterLayer(getBaseContext(),tileCache, gdalmvp, false, AndroidGraphicFactory.INSTANCE, gdalFileRenderer, this);
 			mapView.getLayerManager().getLayers().add(0, rasterLayer);
 
@@ -342,8 +340,8 @@ public class MainActivity extends Activity implements IWorkStatus{
 		
 		MbTilesDatabase db = new MbTilesDatabase(getBaseContext(), filePath);
 		db.openDataBase();
-		Coordinate coord = db.getEnvelope().centre();
-		LatLong loc = new LatLong(coord.y, coord.x);
+		Coordinate coord = db.getBoundingBox().getCenter();
+		LatLong loc = new LatLong(coord.getY(), coord.getX());
 		int[] zoomMinMax = db.getMinMaxZoom(); 
 		db.close();
 		db = null;

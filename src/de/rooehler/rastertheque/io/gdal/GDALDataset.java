@@ -1,6 +1,7 @@
 package de.rooehler.rastertheque.io.gdal;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -13,20 +14,21 @@ import org.gdal.osr.SpatialReference;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.util.Log;
-
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Envelope;
-
-import de.rooehler.rastertheque.io.IRasterIO;
-import de.rooehler.rastertheque.core.Dimension;
-import de.rooehler.rastertheque.core.RasterDataSet;
-import de.rooehler.rastertheque.core.Rectangle;
+import de.rooehler.rastertheque.core.DataType;
+import de.rooehler.rastertheque.core.Driver;
+import de.rooehler.rastertheque.core.Raster;
+import de.rooehler.rastertheque.core.RasterDataset;
+import de.rooehler.rastertheque.core.RasterQuery;
+import de.rooehler.rastertheque.core.model.BoundingBox;
+import de.rooehler.rastertheque.core.model.Coordinate;
+import de.rooehler.rastertheque.core.model.Dimension;
+import de.rooehler.rastertheque.core.model.Rectangle;
 import de.rooehler.rastertheque.proj.Proj;
 import de.rooehler.rastertheque.util.Constants;
 
-public class GDALRasterIO  implements RasterDataSet, IRasterIO{
+public class GDALDataset  implements RasterDataset{
 
-	private static final String TAG = GDALRasterIO.class.getSimpleName();
+	private static final String TAG = GDALDataset.class.getSimpleName();
 
 	private static Dataset dataset;
 
@@ -60,10 +62,10 @@ public class GDALRasterIO  implements RasterDataSet, IRasterIO{
 	
 	private double mNoData;
 
-	public GDALRasterIO(){
+	public GDALDataset(){
 		//for tests only
 	}
-	public GDALRasterIO(final String pFilePath){
+	public GDALDataset(final String pFilePath){
 
 		open(pFilePath);
 
@@ -71,7 +73,7 @@ public class GDALRasterIO  implements RasterDataSet, IRasterIO{
 		
 	}
 	
-	@Override
+
 	public boolean open(String filePath){
 
 		dataset = gdal.Open(filePath);
@@ -123,7 +125,7 @@ public class GDALRasterIO  implements RasterDataSet, IRasterIO{
 		}
 		
 	}
-	@Override
+
 	public String getProjection() {
 
 		return dataset.GetProjectionRef();
@@ -136,56 +138,56 @@ public class GDALRasterIO  implements RasterDataSet, IRasterIO{
 		}
 	}
 
-	@Override
-	public void read(
-			final Rectangle src,
-			final Dimension dstDim,
-			final ByteBuffer buffer){
-		
-
-		List<Band> bands = getBands();
-		int[] readBands = new int[bands.size()];
-		for(int i = 0; i < bands.size();i++){
-			readBands[i] = bands.get(i).GetBand();
-		}
-
-		if(readBands.length == 1){
-
-			bands.get(0).ReadRaster(
-					src.srcX,src.srcY, //src pos
-					src.width, src.height, //src dim
-					dstDim.getWidth(),dstDim.getHeight(), //dst dim
-					DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
-					buffer.array());
-		}else{
-			dataset.ReadRaster(
-					src.srcX,src.srcY, //src pos
-					src.width, src.height, //src dim
-					dstDim.getWidth(),dstDim.getHeight(), //dst dim
-					DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
-					buffer.array(), //buffer to write in
-					readBands);
-		}
-
-
-
-	}
-
-	@Override
-	public void read(final Rectangle src,final ByteBuffer buffer){
-		read(src, new Dimension(src.width, src.height), buffer);
-	}
+//	@Override
+//	public void read(
+//			final Rectangle src,
+//			final Dimension dstDim,
+//			final ByteBuffer buffer){
+//		
+//
+//		List<Band> bands = getBands();
+//		int[] readBands = new int[bands.size()];
+//		for(int i = 0; i < bands.size();i++){
+//			readBands[i] = bands.get(i).GetBand();
+//		}
+//
+//		if(readBands.length == 1){
+//
+//			bands.get(0).ReadRaster(
+//					src.srcX,src.srcY, //src pos
+//					src.width, src.height, //src dim
+//					dstDim.getWidth(),dstDim.getHeight(), //dst dim
+//					DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
+//					buffer.array());
+//		}else{
+//			dataset.ReadRaster(
+//					src.srcX,src.srcY, //src pos
+//					src.width, src.height, //src dim
+//					dstDim.getWidth(),dstDim.getHeight(), //dst dim
+//					DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
+//					buffer.array(), //buffer to write in
+//					readBands);
+//		}
+//
+//
+//
+//	}
+//
+//	@Override
+//	public void read(final Rectangle src,final ByteBuffer buffer){
+//		read(src, new Dimension(src.width, src.height), buffer);
+//	}
 	
-	public void readFromBand(Band band, final Rectangle src,final Dimension dstDim,final ByteBuffer buffer){
-		
-		band.ReadRaster_Direct(
-				src.srcX,src.srcY, //src pos
-				src.width, src.height, //src dim
-				dstDim.getWidth(),dstDim.getHeight(), //dst dim
-				DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
-				buffer //buffer to write in
-				);
-	}
+//	public void readFromBand(Band band, final Rectangle src,final Dimension dstDim,final ByteBuffer buffer){
+//		
+//		band.ReadRaster_Direct(
+//				src.srcX,src.srcY, //src pos
+//				src.width, src.height, //src dim
+//				dstDim.getWidth(),dstDim.getHeight(), //dst dim
+//				DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
+//				buffer //buffer to write in
+//				);
+//	}
 	
 
 	public void applyProjection(String wkt){
@@ -227,7 +229,7 @@ public class GDALRasterIO  implements RasterDataSet, IRasterIO{
 		return c;
 	}
 
-
+	@Override
 	public List<Band> getBands(){
 		int nbands = dataset.GetRasterCount();
 
@@ -243,8 +245,8 @@ public class GDALRasterIO  implements RasterDataSet, IRasterIO{
 		return mDatatype;
 	}
 
-
-	private Envelope getMEnvelope(){
+	@Override
+	public BoundingBox getBoundingBox(){
 
 
 		int width  = dataset.getRasterXSize();
@@ -269,11 +271,8 @@ public class GDALRasterIO  implements RasterDataSet, IRasterIO{
 			double[] minLatLong = ct.TransformPoint(minx, miny);
 
 			double[] maxLatLong = ct.TransformPoint(maxx, maxy);
-			/**
-			 * Envelope(double x1, double x2, double y1, double y2) 
-          	   Creates an Envelope for a region defined by maximum and minimum values.
-			 */			
-			return new Envelope(minLatLong[0],maxLatLong[0],minLatLong[1], maxLatLong[1]);
+	
+			return new BoundingBox(minLatLong[0], minLatLong[1], maxLatLong[0], maxLatLong[1]);
 		}else{
 
 			Log.e(TAG, gdal.GetLastErrorMsg());	
@@ -281,18 +280,6 @@ public class GDALRasterIO  implements RasterDataSet, IRasterIO{
 			return null;
 
 		}
-	}
-	
-	public double[] getBoundingBox(){
-		
-		Envelope e = getMEnvelope();
-		
-		return new double[]{
-				e.getMinX(),
-				e.getMinY(),
-				e.getMaxX(),
-				e.getMaxY()
-		};
 	}
 	
 	public Coordinate getCenterPoint(){
@@ -369,8 +356,58 @@ public class GDALRasterIO  implements RasterDataSet, IRasterIO{
 		return null;
 	}
 	@Override
-	public Envelope getEnvelope() {
+	public Driver getDriver() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	@Override
+	public String getName() {
+	
+		return mSource.substring(mSource.lastIndexOf("/") + 1);
+	}
+	@Override
+	public String getDescription() {
 		
-		return getMEnvelope();
+		return dataset.GetDescription();
+	}
+	@Override
+	public Dimension getDimension() {
+		
+		return new Dimension(mRasterWidth, mRasterHeight);
+	}
+	@Override
+	public Raster read(RasterQuery query) {
+		
+		Rectangle src = query.getBounds();
+		Dimension dstDim = query.getSize();
+		
+		final int bufferSize = dstDim.getSize() * query.getDataType().size() * query.getBands().size();
+		
+		final ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
+		buffer.order(ByteOrder.nativeOrder()); 
+
+		if(query.getBands().size() == 1){
+
+			query.getBands().get(0).ReadRaster(
+					src.srcX,src.srcY, //src pos
+					src.width, src.height, //src dim
+					dstDim.getWidth(),dstDim.getHeight(), //dst dim
+					DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
+					buffer.array());
+		}else{
+			int[] readBands = new int[query.getBands().size()];
+			for(int i = 0; i < query.getBands().size();i++){
+				readBands[i] = query.getBands().get(i).GetBand();
+			}
+			dataset.ReadRaster(
+					src.srcX,src.srcY, //src pos
+					src.width, src.height, //src dim
+					dstDim.getWidth(),dstDim.getHeight(), //dst dim
+					DataType.toGDAL(getDatatype()), // the type of the pixel values in the array. 
+					buffer.array(), //buffer to write in
+					readBands);
+		}
+		//TODO what about the crs ?
+		return new Raster(buffer, dstDim, query.getBands());
 	}
 }

@@ -3,13 +3,12 @@ package de.rooehler.rastertheque.io.mbtiles;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.content.Context;
-
-import com.vividsolutions.jts.geom.Envelope;
-
-import de.rooehler.rastertheque.core.RasterDataSet;
+import de.rooehler.rastertheque.core.Dataset;
+import de.rooehler.rastertheque.core.Driver;
+import de.rooehler.rastertheque.core.model.BoundingBox;
 import de.rooehler.rastertheque.proj.Proj;
 
-public class MBTilesRasterIO implements RasterDataSet {
+public class MBTilesDataset implements Dataset {
 	
 	private MbTilesDatabase db;
 
@@ -21,7 +20,7 @@ public class MBTilesRasterIO implements RasterDataSet {
 	
 
 	
-	public MBTilesRasterIO(final Context pContext,final String pFilePath){
+	public MBTilesDataset(final Context pContext,final String pFilePath){
 		
 		this.mSource = pFilePath;
 		
@@ -88,21 +87,38 @@ public class MBTilesRasterIO implements RasterDataSet {
 	}
 
 	@Override
-	public String getSource() {
-		
-		return mSource;
-	}
-
-	@Override
 	public CoordinateReferenceSystem getCRS() {
 		
 		 return Proj.EPSG_900913;
 	}
 
 	@Override
-	public Envelope getEnvelope() {
+	public BoundingBox getBoundingBox() {
 
-		return db.getEnvelope();
+		return db.getBoundingBox();
+	}
+
+	@Override
+	public Driver getDriver() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String getName() {
+		
+		return mSource.substring(mSource.lastIndexOf("/") + 1);
+	}
+
+	@Override
+	public String getDescription() {
+		// TODO return description
+		return null;
+	}
+
+	@Override
+	public String getSource() {
+		return mSource;
 	}
 
 

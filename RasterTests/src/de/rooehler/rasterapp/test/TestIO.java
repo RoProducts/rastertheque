@@ -4,8 +4,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import android.os.Environment;
-import de.rooehler.rastertheque.core.Rectangle;
-import de.rooehler.rastertheque.io.gdal.GDALRasterIO;
+import de.rooehler.rastertheque.core.Raster;
+import de.rooehler.rastertheque.core.RasterQuery;
+import de.rooehler.rastertheque.core.model.Dimension;
+import de.rooehler.rastertheque.core.model.Rectangle;
+import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
 
 public class TestIO extends android.test.AndroidTestCase {
@@ -19,23 +22,23 @@ public class TestIO extends android.test.AndroidTestCase {
 	public void testIO(){
 		
 		
-		GDALRasterIO io = new GDALRasterIO();
+		GDALDataset dataset = new GDALDataset();
 		
-		assertTrue(io.open(FILE));
+		assertTrue(dataset.open(FILE));
 		
-		io.setup(FILE);
+		dataset.setup(FILE);
 		
-		assertNotNull(io.getCenterPoint());
+		assertNotNull(dataset.getCenterPoint());
 		
-		assertNotNull(io.getEnvelope());
+		assertNotNull(dataset.getBoundingBox());
 		
-		assertNotNull(io.getCRS());
+		assertNotNull(dataset.getCRS());
 		
-		assertTrue(io.getRasterWidth() > 0);
+		assertTrue(dataset.getRasterWidth() > 0);
 		
-		assertTrue(io.getRasterHeight() > 0);
+		assertTrue(dataset.getRasterHeight() > 0);
 		
-		io.close();
+		dataset.close();
 		
 	}
 	/*
@@ -43,34 +46,37 @@ public class TestIO extends android.test.AndroidTestCase {
 	 */
 	public void testRead(){
 		
-		GDALRasterIO io = new GDALRasterIO(FILE);
+		GDALDataset dataset = new GDALDataset(FILE);
 		
-		int width = io.getRasterWidth();
+		int width = dataset.getRasterWidth();
 		
-		int height = io.getRasterHeight();
+		int height = dataset.getRasterHeight();
 		
-		Rectangle rect = new Rectangle(0, 0, width / 10, height / 10);
-		
-		final int bufferSize = width / 10 * height / 10 * io.getDatatype().size();
-		
-        ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
+		final Rectangle rect = new Rectangle(0, 0, width / 10, height / 10);
+		     
+        final RasterQuery query = new RasterQuery(
+        		rect,
+        		dataset.getBands(),
+        		new Dimension(rect.width, rect.height),
+        		dataset.getDatatype());
         
-        buffer.order(ByteOrder.nativeOrder()); 
+        final Raster raster = dataset.read(query);
         
-        io.read(rect, buffer);
+        final MColorMapProcessing cmp = new MColorMapProcessing(FILE);
         
-        MColorMapProcessing cmp = new MColorMapProcessing(FILE);
-        
-        int[] pixels  = cmp.generateGrayScalePixelsCalculatingMinMax(buffer, bufferSize, io.getDatatype());
+        final int[] pixels  = cmp.generateGrayScalePixelsCalculatingMinMax(
+        		raster.getData(),
+        		raster.getDimension().getSize(),
+        		dataset.getDatatype());
         
         assertNotNull(pixels);
         
         //check a pixel
-        int pixel = pixels[bufferSize / 2];
+        final int pixel = pixels[raster.getDimension().getSize() / 2];
         
-        int red = (pixel >> 16) & 0xff;
-        int green = (pixel >> 8) & 0xff;
-        int blue = (pixel) & 0xff;
+        final int red = (pixel >> 16) & 0xff;
+        final int green = (pixel >> 8) & 0xff;
+        final int blue = (pixel) & 0xff;
         
         //valid values
         assertTrue(red >= 0 && red <= 255);
