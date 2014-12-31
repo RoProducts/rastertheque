@@ -4,9 +4,6 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import org.gdal.gdal.Band;
-import org.gdal.gdalconst.gdalconstConstants;
-
 import uk.co.senab.bitmapcache.CacheableBitmapDrawable;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -22,6 +19,7 @@ import com.mapbox.mapboxsdk.tileprovider.modules.MapTileDownloader;
 import com.mapbox.mapboxsdk.tileprovider.tilesource.TileLayer;
 import com.mapbox.mapboxsdk.views.util.Projection;
 
+import de.rooehler.rastertheque.core.Band.Color;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
@@ -65,7 +63,7 @@ public class GDALTileLayer extends TileLayer {
 	
 	private int mTileSize;
 
-	private Projection mProj;
+//	private Projection mProj;
 	
 	private static final int NO_DATA_COLOR = 0xff000000;
 	
@@ -78,7 +76,7 @@ public class GDALTileLayer extends TileLayer {
 
 		mColorMapProcessing = pColorMapProcessing;
 		
-		this.mProj = pProj;
+//		this.mProj = pProj;
 
 		this.mScreenWidth = pScreenWidth;
 
@@ -110,7 +108,7 @@ public class GDALTileLayer extends TileLayer {
 		//meters per pixel of this raster
 		double res_in_Meters = Formulae.distanceBetweenInMeters(
 				bb.getMinY(),bb.getMinX(), bb.getMaxY(),bb.getMaxX()) /
-				Math.hypot(mRasterDataset.getRasterHeight(),mRasterDataset.getRasterWidth()); //dist in m / pixel of hyp
+				Math.hypot(mRasterDataset.getDimension().getHeight(),mRasterDataset.getDimension().getWidth()); //dist in m / pixel of hyp
 		
 		mInternalZoom = 1;
 		int startZoomLevel = 2;
@@ -143,9 +141,13 @@ public class GDALTileLayer extends TileLayer {
     		ts = aTile.getTileRect().right - aTile.getTileRect().left;  	
     	}
     	final int zoom = aTile.getZ();
-    	final int h = mRasterDataset.getRasterHeight();
-    	final int w = mRasterDataset.getRasterWidth();
 
+		final Dimension dim = mRasterDataset.getDimension();
+		final int h = dim.getHeight();
+		final int w = dim.getWidth();
+		
+		final DataType datatype = mRasterDataset.getBands().get(0).datatype();
+		
     	long now = System.currentTimeMillis();
     	
     	//1. where is tile which should be displayed
@@ -172,7 +174,7 @@ public class GDALTileLayer extends TileLayer {
     	int readAmountX = zoomedTS;
     	int readAmountY = 0;
     	
-    	final String proj_ = mRasterDataset.getProjection();
+//    	final String proj_ = mRasterDataset.getProjection();
 //
 //    	CoordinateReferenceSystem crs = null;
 //		try {
@@ -250,14 +252,14 @@ public class GDALTileLayer extends TileLayer {
         			new Rectangle((int)readFromX,(int)readFromY, availableX, availableY),
         			mRasterDataset.getBands(), 
         			new Dimension(gdalTargetXSize, gdalTargetYSize), 
-        			mRasterDataset.getDatatype());
+        			datatype);
         	
         	 Raster raster = null;
              synchronized(this){
              	 raster = mRasterDataset.read(query);
              }
 
-        	int[] pixels = render(raster.getData(), raster.getDimension().getSize(), mRasterDataset.getDatatype());
+        	int[] pixels = render(raster.getData(), raster.getDimension().getSize(), datatype);
 
         	return createBoundsTile(downloader, aTile, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
 
@@ -269,7 +271,7 @@ public class GDALTileLayer extends TileLayer {
         		new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY),
         		mRasterDataset.getBands(), 
         		new Dimension(ts, ts),
-        		mRasterDataset.getDatatype());
+        		datatype);
         
         Raster raster = null;
         synchronized(this){
@@ -277,7 +279,7 @@ public class GDALTileLayer extends TileLayer {
         }
         
         Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
-        bitmap.setPixels(render(raster.getData(),raster.getDimension().getSize(), mRasterDataset.getDatatype()), 0, ts, 0, 0, ts, ts);
+        bitmap.setPixels(render(raster.getData(),raster.getDimension().getSize(), datatype), 0, ts, 0, 0, ts, ts);
 
 //        Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 
@@ -325,17 +327,17 @@ public class GDALTileLayer extends TileLayer {
 	 * @param dataType the type of the data
 	 * @return an array containing the rendered pixels in top left first order
 	 */
-	public int[] render(final ByteBuffer buffer, final int tilePixelAmount, final DataType dataType){
+	public int[] render(final ByteBuffer buffer, final int tilePixelAmount, final DataType datatype){
 
 		
 		int[] pixels = null;
 		
 		if(hasRGBBands){
-			pixels = mColorMapProcessing.generateThreeBandedRGBPixels(buffer, tilePixelAmount , mRasterDataset.getDatatype());
+			pixels = mColorMapProcessing.generateThreeBandedRGBPixels(buffer, tilePixelAmount , datatype);
 		}else if(mColorMapProcessing.hasColorMap() && mUseColorMap){
-			pixels = mColorMapProcessing.generatePixelsWithColorMap(buffer, tilePixelAmount, mRasterDataset.getDatatype());
+			pixels = mColorMapProcessing.generatePixelsWithColorMap(buffer, tilePixelAmount, datatype);
 		}else{        	
-			pixels = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, tilePixelAmount, mRasterDataset.getDatatype());
+			pixels = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, tilePixelAmount, datatype);
 		} 
 
 		
@@ -436,12 +438,12 @@ public class GDALTileLayer extends TileLayer {
 	
 	private boolean checkIfHasRGBBands() {
 		
-		List<Band> bands = mRasterDataset.getBands();
+		List<de.rooehler.rastertheque.core.Band> bands = mRasterDataset.getBands();
 		
 		return bands.size() == 3 &&
-			   bands.get(0).GetColorInterpretation() == gdalconstConstants.GCI_RedBand &&
-			   bands.get(1).GetColorInterpretation() == gdalconstConstants.GCI_GreenBand &&
-			   bands.get(2).GetColorInterpretation() == gdalconstConstants.GCI_BlueBand;
+			   bands.get(0).color() == Color.RED &&
+			   bands.get(1).color() == Color.GREEN &&
+			   bands.get(2).color() == Color.BLUE;
 	}
 
 

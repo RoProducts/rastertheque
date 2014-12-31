@@ -4,10 +4,8 @@ package de.rooehler.mapsforgerenderer.rasterrenderer.gdal;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.List;
 
-import org.gdal.gdal.Band;
 import org.gdal.gdalconst.gdalconstConstants;
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
@@ -17,11 +15,14 @@ import android.graphics.Bitmap;
 import android.util.Log;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterJob;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterRenderer;
-import de.rooehler.rastertheque.core.model.Dimension;
-import de.rooehler.rastertheque.core.model.Rectangle;
+import de.rooehler.rastertheque.core.Band;
+import de.rooehler.rastertheque.core.Band.Color;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
+import de.rooehler.rastertheque.core.model.Dimension;
+import de.rooehler.rastertheque.core.model.Rectangle;
+import de.rooehler.rastertheque.io.gdal.GDALBand;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.IColorMapProcessing;
 /**
@@ -72,12 +73,12 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	
 	private boolean checkIfHasRGBBands() {
 		
-		List<Band> bands = mRasterDataset.getBands();
+		List<de.rooehler.rastertheque.core.Band> bands = mRasterDataset.getBands();
 		
 		return bands.size() == 3 &&
-			   bands.get(0).GetColorInterpretation() == gdalconstConstants.GCI_RedBand &&
-			   bands.get(1).GetColorInterpretation() == gdalconstConstants.GCI_GreenBand &&
-			   bands.get(2).GetColorInterpretation() == gdalconstConstants.GCI_BlueBand;
+			   bands.get(0).color() == Color.RED &&
+			   bands.get(1).color() == Color.GREEN &&
+			   bands.get(2).color() == Color.BLUE;
 	}
 	/**
 	 * calculates an appropriate first zoom level for this raster, i.e. :
@@ -168,8 +169,10 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		
 		final int ts = job.tile.tileSize;
 		final byte zoom = job.tile.zoomLevel;
-		final int h = mRasterDataset.getRasterHeight();
-		final int w = mRasterDataset.getRasterWidth();
+		final Dimension dim = mRasterDataset.getDimension();
+		final int h = dim.getHeight();
+		final int w = dim.getWidth();
+		final DataType datatype = mRasterDataset.getBands().get(0).datatype();
 		
 		long now = System.currentTimeMillis();
 
@@ -184,6 +187,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         
         long readFromX = job.tile.tileX * readAmountX;
         long readFromY = job.tile.tileY * readAmountY;
+        
         
 //        Log.d(TAG, String.format("tile %d %d zoom %d read from %d %d amount %d %d",job.tile.tileX,job.tile.tileY,job.tile.zoomLevel,readFromX,readFromY,readAmountX,readAmountY));   
         
@@ -229,15 +233,17 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         			readFromY = 0;
         		}
         	}
+
+        	
         	final RasterQuery query = new RasterQuery(
         			new Rectangle((int)readFromX,(int)readFromY, availableX, availableY),
         			mRasterDataset.getBands(), 
         			new Dimension(gdalTargetXSize, gdalTargetYSize), 
-        			mRasterDataset.getDatatype());
+        			datatype);
 
         	final Raster raster = mRasterDataset.read(query);
 
-        	int[] pixels = render(raster.getData(), raster.getDimension().getSize(), mRasterDataset.getDatatype());
+        	int[] pixels = render(raster.getData(), raster.getDimension().getSize(), datatype);
 
         	return createBoundsTile(bitmap, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
 
@@ -249,11 +255,11 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         		new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY),
         		mRasterDataset.getBands(), 
         		new Dimension(ts, ts),
-        		mRasterDataset.getDatatype());
+        		datatype);
         
         final Raster raster = mRasterDataset.read(query);
 
-		bitmap.setPixels(render(raster.getData(),ts * ts, mRasterDataset.getDatatype()), ts);
+		bitmap.setPixels(render(raster.getData(),ts * ts, datatype), ts);
 		
 		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 
@@ -281,17 +287,17 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 //	}
 	
 
-	public int[] render(final ByteBuffer buffer, final int tilePixelAmount, final DataType dataType){
+	public int[] render(final ByteBuffer buffer, final int tilePixelAmount, final DataType datatype){
 
 		
 		int[] pixels = null;
 		
 		if(hasRGBBands){
-			pixels = mColorMapProcessing.generateThreeBandedRGBPixels(buffer, tilePixelAmount , mRasterDataset.getDatatype());
+			pixels = mColorMapProcessing.generateThreeBandedRGBPixels(buffer, tilePixelAmount , datatype);
 		}else if(mColorMapProcessing.hasColorMap() && mUseColorMap){
-			pixels = mColorMapProcessing.generatePixelsWithColorMap(buffer, tilePixelAmount, mRasterDataset.getDatatype());
+			pixels = mColorMapProcessing.generatePixelsWithColorMap(buffer, tilePixelAmount, datatype);
 		}else{        	
-			pixels = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, tilePixelAmount, mRasterDataset.getDatatype());
+			pixels = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, tilePixelAmount, datatype);
 		} 
 
 		

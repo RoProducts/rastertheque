@@ -3,7 +3,6 @@ package de.rooehler.rastertheque.core;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import org.gdal.gdal.Band;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import de.rooehler.rastertheque.core.model.BoundingBox;

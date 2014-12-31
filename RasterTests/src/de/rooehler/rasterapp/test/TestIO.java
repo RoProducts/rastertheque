@@ -1,8 +1,5 @@
 package de.rooehler.rasterapp.test;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
 import android.os.Environment;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
@@ -22,21 +19,19 @@ public class TestIO extends android.test.AndroidTestCase {
 	public void testIO(){
 		
 		
-		GDALDataset dataset = new GDALDataset();
-		
-		assertTrue(dataset.open(FILE));
-		
-		dataset.setup(FILE);
-		
+		GDALDataset dataset = new GDALDataset(FILE);
+				
 		assertNotNull(dataset.getCenterPoint());
 		
 		assertNotNull(dataset.getBoundingBox());
 		
 		assertNotNull(dataset.getCRS());
 		
-		assertTrue(dataset.getRasterWidth() > 0);
+		final Dimension dim = dataset.getDimension();
 		
-		assertTrue(dataset.getRasterHeight() > 0);
+		assertTrue(dim.getWidth() > 0);
+		
+		assertTrue(dim.getHeight() > 0);
 		
 		dataset.close();
 		
@@ -48,9 +43,9 @@ public class TestIO extends android.test.AndroidTestCase {
 		
 		GDALDataset dataset = new GDALDataset(FILE);
 		
-		int width = dataset.getRasterWidth();
-		
-		int height = dataset.getRasterHeight();
+		final Dimension dim = dataset.getDimension();
+		final int height = dim.getHeight();
+		final int width = dim.getWidth();
 		
 		final Rectangle rect = new Rectangle(0, 0, width / 10, height / 10);
 		     
@@ -58,7 +53,7 @@ public class TestIO extends android.test.AndroidTestCase {
         		rect,
         		dataset.getBands(),
         		new Dimension(rect.width, rect.height),
-        		dataset.getDatatype());
+        		dataset.getBands().get(0).datatype());
         
         final Raster raster = dataset.read(query);
         
@@ -67,7 +62,7 @@ public class TestIO extends android.test.AndroidTestCase {
         final int[] pixels  = cmp.generateGrayScalePixelsCalculatingMinMax(
         		raster.getData(),
         		raster.getDimension().getSize(),
-        		dataset.getDatatype());
+        		dataset.getBands().get(0).datatype());
         
         assertNotNull(pixels);
         
@@ -86,6 +81,8 @@ public class TestIO extends android.test.AndroidTestCase {
         //this should be a grey pixel, hence
         assertTrue(red == green);
         assertTrue(green == blue);
+        
+        dataset.close();
         
 	}
 }

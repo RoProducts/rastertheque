@@ -1,8 +1,5 @@
 package de.rooehler.rasterapp.test;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
 import android.util.Log;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
@@ -22,9 +19,9 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		
 		final GDALDataset dataset = new GDALDataset(TestIO.FILE);
 		
-		final int width = dataset.getRasterWidth();
-		
-		final int height = dataset.getRasterHeight();
+		final Dimension dim = dataset.getDimension();
+		final int height = dim.getHeight();
+		final int width = dim.getWidth();
 		
 		final int tileSize = Math.min(width, height) / 10;
 		
@@ -34,7 +31,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         		rect,
         		dataset.getBands(),
         		new Dimension(rect.width, rect.height),
-        		dataset.getDatatype());
+        		dataset.getBands().get(0).datatype());
         
         final Raster raster = dataset.read(query);
         
@@ -43,7 +40,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         final int[] pixels  = cmp.generatePixelsWithColorMap(
         		raster.getData(),
         		raster.getDimension().getSize(),
-        		dataset.getDatatype());
+        		dataset.getBands().get(0).datatype());
         
         assertNotNull(pixels);
         
@@ -88,6 +85,8 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         assertTrue(mRed == jaiRed);
         assertTrue(mGreen == jaiGreen);
         assertTrue(mBlue == jaiBlue);
+        
+        dataset.close();
 	}
 
 }

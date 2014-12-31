@@ -1,13 +1,7 @@
 package de.rooehler.mapsforgerenderer.activities;
 
 import java.io.File;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
 
-import org.gdal.gdal.Dataset;
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
 import org.mapsforge.core.util.MercatorProjection;
@@ -55,6 +49,7 @@ import de.rooehler.mapsforgerenderer.rasterrenderer.gdal.GDALMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.rasterrenderer.mbtiles.MBTilesMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.util.SupportedType;
 import de.rooehler.rastertheque.core.model.Coordinate;
+import de.rooehler.rastertheque.core.model.Dimension;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
 import de.rooehler.rastertheque.io.mbtiles.MbTilesDatabase;
@@ -261,14 +256,16 @@ public class MainActivity extends Activity implements IWorkStatus{
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
 			byte startZoomLevel = gdalFileRenderer.calculateStartZoomLevel(tileSize,width);
 			
+			final Dimension dim = gdalDataset.getDimension();
+			final int h = dim.getHeight();
+			final int w = dim.getWidth();
 			
-			
-			final MapPosition gdalmp =  new MapPosition(calculateStartPositionForRaster(gdalDataset.getRasterWidth(), gdalDataset.getRasterHeight()),startZoomLevel);
+			final MapPosition gdalmp =  new MapPosition(calculateStartPositionForRaster(w, h),startZoomLevel);
 			final MapViewPosition gdalmvp = mapView.getModel().mapViewPosition;		
 			gdalmvp.setMapPosition(gdalmp);
 
 
-			byte zoomLevelMax = gdalFileRenderer.calculateZoomLevelsAndStartScale(tileSize,width,gdalDataset.getRasterWidth(),gdalDataset.getRasterHeight());
+			byte zoomLevelMax = gdalFileRenderer.calculateZoomLevelsAndStartScale(tileSize, width, w, h);
 			Layer rasterLayer = new RasterLayer(getBaseContext(),tileCache, gdalmvp, false, AndroidGraphicFactory.INSTANCE, gdalFileRenderer, this);
 			mapView.getLayerManager().getLayers().add(0, rasterLayer);
 
@@ -394,9 +391,9 @@ public class MainActivity extends Activity implements IWorkStatus{
 //        boolean drawerOpen = mDrawerLayout.isDrawerOpen(mDrawerList);
     	boolean isEditableMap = isEditableMap();
     	
-    	menu.findItem(R.id.menu_transform).setVisible(isEditableMap);
+//    	menu.findItem(R.id.menu_transform).setVisible(isEditableMap);
     	menu.findItem(R.id.menu_colormap).setVisible(isEditableMap);
-        menu.findItem(R.id.menu_save).setVisible(isEditableMap);
+//        menu.findItem(R.id.menu_save).setVisible(isEditableMap);
         
         return super.onPrepareOptionsMenu(menu);
     }
@@ -411,22 +408,22 @@ public class MainActivity extends Activity implements IWorkStatus{
         // Handle action buttons
         switch(item.getItemId()) {
         
-        case R.id.menu_transform:
-        		if(isEditableMap()){
-        			SelectProjectionDialog.showProjectionSelectionDialog(MainActivity.this, new IProjectionSelected() {
-						
-						@Override
-						public void selected(String proj) {
-							
-							GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
-							Log.d(TAG, "Selected : "+proj);
-							tileCache.destroy();
-							renderer.getRaster().applyProjection(proj);
-							mapView.getLayerManager().redrawLayers();
-						}
-					});
-        		}
-        	break;
+//        case R.id.menu_transform:
+//        		if(isEditableMap()){
+//        			SelectProjectionDialog.showProjectionSelectionDialog(MainActivity.this, new IProjectionSelected() {
+//						
+//						@Override
+//						public void selected(String proj) {
+//							
+//							GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
+//							Log.d(TAG, "Selected : "+proj);
+//							tileCache.destroy();
+//							renderer.getRaster().applyProjection(proj);
+//							mapView.getLayerManager().redrawLayers();
+//						}
+//					});
+//        		}
+//        	break;
         case R.id.menu_colormap:
         		if(isEditableMap()){
         			GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
@@ -442,46 +439,46 @@ public class MainActivity extends Activity implements IWorkStatus{
         			mapView.getLayerManager().redrawLayers();
         		}
         	break;
-        case R.id.menu_save:
-        	if(isEditableMap()){
-        		
-        		GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
-    			
-        		final Callable<Dataset> c = renderer.getRaster().saveCurrentProjectionToFile("reproject.tif");
-    			
-    			pd = new ProgressDialog(this);
-        		pd.setCancelable(false);
-        		pd.setTitle(getString(R.string.app_name));
-        		pd.setMessage("Saving");
-        		pd.setIcon(R.drawable.ic_launcher);
-        		pd.setCanceledOnTouchOutside(false);
-        		pd.show();
-    			
-        		FutureTask<Dataset> future = new FutureTask<Dataset>(c);
-        	 
-        	    ExecutorService executor = Executors.newFixedThreadPool(1);
-        	    executor.execute(future);
-        	    
-        	    while (true) {
-                    try {
-                        if(future.isDone() ){
-                            Log.d(TAG, "done saving");
-                            executor.shutdown();
-                            break;
-                        }
-                         
-                        if(!future.isDone()){
-                        //wait indefinitely for future task to complete
-                        	Log.d(TAG, "FutureTask "+future.get());
-                        }
-  
-                    } catch (InterruptedException | ExecutionException e) {
-                    	Log.e(TAG, "error");
-                    }
-                }
-    			pd.dismiss();		
-    					
-        	}
+//        case R.id.menu_save:
+//        	if(isEditableMap()){
+//        		
+//        		GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
+//    			
+//        		final Callable<Dataset> c = renderer.getRaster().saveCurrentProjectionToFile("reproject.tif");
+//    			
+//    			pd = new ProgressDialog(this);
+//        		pd.setCancelable(false);
+//        		pd.setTitle(getString(R.string.app_name));
+//        		pd.setMessage("Saving");
+//        		pd.setIcon(R.drawable.ic_launcher);
+//        		pd.setCanceledOnTouchOutside(false);
+//        		pd.show();
+//    			
+//        		FutureTask<Dataset> future = new FutureTask<Dataset>(c);
+//        	 
+//        	    ExecutorService executor = Executors.newFixedThreadPool(1);
+//        	    executor.execute(future);
+//        	    
+//        	    while (true) {
+//                    try {
+//                        if(future.isDone() ){
+//                            Log.d(TAG, "done saving");
+//                            executor.shutdown();
+//                            break;
+//                        }
+//                         
+//                        if(!future.isDone()){
+//                        //wait indefinitely for future task to complete
+//                        	Log.d(TAG, "FutureTask "+future.get());
+//                        }
+//  
+//                    } catch (InterruptedException | ExecutionException e) {
+//                    	Log.e(TAG, "error");
+//                    }
+//                }
+//    			pd.dismiss();		
+//    					
+//        	}
 
         }
         return super.onOptionsItemSelected(item);

@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.io.gdal;
+package de.rooehler.rastertheque.core.util;
 
 import java.io.DataInput;
 import java.io.DataOutput;

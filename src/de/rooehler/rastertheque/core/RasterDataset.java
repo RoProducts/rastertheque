@@ -2,8 +2,6 @@ package de.rooehler.rastertheque.core;
 
 import java.util.List;
 
-import org.gdal.gdal.Band;
-
 import de.rooehler.rastertheque.core.model.Dimension;
 
 
