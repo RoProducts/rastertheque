@@ -36,13 +36,6 @@ public class GDALDriver implements Driver<GDALDataset> {
 		
 		return "GDAL Driver";
 	}
-	
-
-//	@Override
-//	public List getAliases() {
-//		
-//		return Arrays.asList("tif","tiff","dem");
-//	}
 
 	@Override
 	public boolean canOpen(String filePath) {

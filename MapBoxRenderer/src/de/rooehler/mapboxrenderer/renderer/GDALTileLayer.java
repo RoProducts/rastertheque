@@ -20,13 +20,14 @@ import com.mapbox.mapboxsdk.views.util.Projection;
 
 import de.rooehler.rastertheque.core.Band.Color;
 import de.rooehler.rastertheque.core.DataType;
+import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.Rendering;
+import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.colormap.MRendering;
 import de.rooehler.rastertheque.util.Formulae;
 /**
@@ -46,6 +47,8 @@ public class GDALTileLayer extends TileLayer {
 	
 	private Rendering mRendering;
 	
+	private Resampler mResampler;
+	
 	private boolean mUseColorMap;
 	
 	private int mRasterBandCount = 1;
@@ -64,7 +67,7 @@ public class GDALTileLayer extends TileLayer {
 	
 	private static final int NO_DATA_COLOR = 0xff000000;
 	
-	public GDALTileLayer(final File file, final GDALDataset gdalRaster,final MRendering pRendering, final boolean pUseColormap) {
+	public GDALTileLayer(final File file, final GDALDataset gdalRaster,final Resampler pResampler,final MRendering pRendering, final boolean pUseColormap) {
 		super(file.getName(), file.getAbsolutePath());
 
 		mSource = file.getAbsolutePath();
@@ -72,6 +75,8 @@ public class GDALTileLayer extends TileLayer {
 		mRasterDataset = gdalRaster;
 
 		mRendering = pRendering;
+		
+		mResampler = pResampler;
 
 //		this.mScreenWidth = pScreenWidth;
 
@@ -165,26 +170,7 @@ public class GDALTileLayer extends TileLayer {
     	final float scaleFactor = (float) zoomedTS / ts;
 
     	int readAmountX = zoomedTS;
-    	int readAmountY = 0;
-    	
-//    	final String proj_ = mRasterDataset.getProjection();
-//
-//    	CoordinateReferenceSystem crs = null;
-//		try {
-//			crs = new ProjWKTParser().parse(proj_);
-//		} catch (ParseException e) {
-//			Log.e(TAG, "doh");
-//		}
-    	
-
-//    	if(Proj.equal(crs, Proj.EPSG_900913)){
-//    		Log.i(TAG, "is a 900913 dataset");
-    		readAmountY = zoomedTS;
-//
-//    	}else{ 		
-//    		Log.i(TAG, "is not a 900913 dataset");
-//    		readAmountY = (int) (zoomedTS * ((float) h / w));
-//    	}
+    	int readAmountY = zoomedTS;
     	
     	if(zoomedTS < 0){
     		return returnNoDataTile(downloader, aTile, ts, now);
@@ -193,8 +179,6 @@ public class GDALTileLayer extends TileLayer {
 //    		Log.i(TAG, "ts : " + ts + " zoomedTS is : " + zoomedTS +" zoom "+ zoom+ " scaleFactor : "+scaleFactor);
     		
     	}
-    
-    	
 
 //        Log.d(TAG, String.format("tile %d %d zoom %d read from %d %d amount %d %d",aTile.getX(), aTile.getY(),aTile.getZ(), aTile.getZ(),readFromX,readFromY,readAmountX,readAmountY));   
         
@@ -241,40 +225,33 @@ public class GDALTileLayer extends TileLayer {
         	}
 //        	Log.e(TAG, "reading of ("+availableX+","+availableY +") from "+readFromX+","+readFromY+" target {"+gdalTargetXSize+","+gdalTargetYSize+"}, covered: X"+coveredXOrigin+", Y "+coveredYOrigin);
 
-        	final RasterQuery query = new RasterQuery(
-        			new Rectangle((int)readFromX,(int)readFromY, availableX, availableY),
-        			mRasterDataset.getCRS(),
-        			mRasterDataset.getBands(), 
-        			new Dimension(gdalTargetXSize, gdalTargetYSize), 
-        			datatype);
+        	final Dimension targetDim = mResampler == this ? new Dimension(gdalTargetXSize, gdalTargetYSize) : new Dimension(availableX,availableY);
         	
-        	 Raster raster = null;
-             synchronized(this){
-             	 raster = mRasterDataset.read(query);
-             }
+           	int pixels[] = executeQuery(
+        			new Rectangle((int)readFromX,(int)readFromY, availableX, availableY),
+             		targetDim,
+             		datatype,
+             		!(mResampler == this || gdalTargetXSize < availableX),
+             		gdalTargetXSize , gdalTargetYSize);
+           	
+           	return createBoundsTile(downloader, aTile, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
 
-        	int[] pixels = render(raster);
-
-        	return createBoundsTile(downloader, aTile, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
 
         }else{ //this rectangle is fully covered by the file
         	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
         }  
-        
-        final RasterQuery query = new RasterQuery(
+        final Dimension targetDim = mResampler == this ? new Dimension(ts,ts) : new Dimension(readAmountX,readAmountY);
+      
+        int pixels[] = executeQuery(
         		new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY),
-        		mRasterDataset.getCRS(),
-        		mRasterDataset.getBands(), 
-        		new Dimension(ts, ts),
-        		datatype);
-        
-        Raster raster = null;
-        synchronized(this){
-        	 raster = mRasterDataset.read(query);
-        }
-        
+        		targetDim,
+        		datatype,
+        		!(mResampler == this || ts < readAmountX),
+        		ts , ts);
+
         Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
-        bitmap.setPixels(render(raster), 0, ts, 0, 0, ts, ts);
+        bitmap.setPixels(pixels, 0, ts, 0, 0, ts, ts);
+        
 
 //        Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 
@@ -284,29 +261,32 @@ public class GDALTileLayer extends TileLayer {
         }
         
         return result;
-    	
 
     }
     
-//	/**
-//	 * read a region @param src from this raster
-//	 * and scale the resulting area to the dimension @param dst
-//	 * according to the datatype @param datatype
-//	 * @param src the region to read
-//	 * @param dst the desired destination dimension
-//	 * @return a ByteBuffer containing the read data 
-//	 */
-//	public ByteBuffer readPixels(final Rectangle src, final Dimension dst,final DataType dataType){
-//		
-//		final int bufferSize = dst.getSize() * mRasterIO.getDatatype().size() * mRasterBandCount;
-//		ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
-//		buffer.order(ByteOrder.nativeOrder()); 
-//		synchronized(this){			
-//			mRasterIO.read(src, dst, buffer);
-//		}
-//
-//		return buffer;
-//	}
+	public int[] executeQuery(final Rectangle rect, final Dimension readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
+		
+		final RasterQuery query = new RasterQuery(
+        		rect,
+        		mRasterDataset.getCRS(),
+        		mRasterDataset.getBands(), 
+        		readDim,
+        		datatype);
+        
+		 Raster raster = null;
+	        synchronized(this){
+	        	 raster = mRasterDataset.read(query);
+	        }
+
+        if(resample){
+            int pixels[] = render(raster);
+        	int[] resampledPixels = new int[targetWidth * targetHeight];
+        	mResampler.resampleBilinear(pixels, readDim.getWidth(),readDim.getHeight(), resampledPixels, targetWidth, targetHeight );
+        	return resampledPixels;
+        }else{
+        	return render(raster);
+        }
+	}
 	
 	/**
 	 * render the data contained in @param buffer

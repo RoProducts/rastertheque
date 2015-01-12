@@ -21,12 +21,13 @@ import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.Rendering;
+import de.rooehler.rastertheque.processing.Resampler;
 /**
  * A Renderer of gdal data for Mapsforge
  * @author Robert Oehler
  *
  */
-public class GDALMapsforgeRenderer implements RasterRenderer {
+public class GDALMapsforgeRenderer implements RasterRenderer, Resampler {
 
 	private final static String TAG = GDALMapsforgeRenderer.class.getSimpleName();
 
@@ -42,6 +43,8 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	
 	private Rendering mRendering;
 	
+	private Resampler mResampler;
+	
 	private boolean mUseColorMap;
 	
 	private int mRasterBandCount;
@@ -49,13 +52,15 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	private boolean hasRGBBands;
 
 
-	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster, final Rendering pRendering, final boolean pUseColorMap) {
+	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster, final Rendering pRendering,final Resampler pResampler, final boolean pUseColorMap) {
 		
 		this.graphicFactory = graphicFactory;
 		
 		this.mRasterDataset = pRaster;
 		
 		this.mRendering = pRendering;
+		
+		this.mResampler = pResampler;
 		
 		this.mUseColorMap = pUseColorMap;
 		
@@ -230,57 +235,58 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         		}
         	}
 
-        	
-        	final RasterQuery query = new RasterQuery(
+        	final Dimension targetDim = mResampler == this || gdalTargetXSize < availableX ? new Dimension(gdalTargetXSize, gdalTargetYSize) : new Dimension(availableX,availableY);
+        	int pixels[] = executeQuery(
         			new Rectangle((int)readFromX,(int)readFromY, availableX, availableY),
-        			mRasterDataset.getCRS(),
-        			mRasterDataset.getBands(), 
-        			new Dimension(gdalTargetXSize, gdalTargetYSize), 
-        			datatype);
+             		targetDim,
+             		datatype,
+             		!(mResampler == this || gdalTargetXSize < availableX),
+             		gdalTargetXSize , gdalTargetYSize);
 
-        	final Raster raster = mRasterDataset.read(query);
-
-        	return createBoundsTile(bitmap, render(raster), coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
+            	
+            return createBoundsTile(bitmap, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
+            
 
         }else{ //this rectangle is fully covered by the file
         	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
         } 
         
-        final RasterQuery query = new RasterQuery(
-        		new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY),
-        		mRasterDataset.getCRS(),
-        		mRasterDataset.getBands(), 
-        		new Dimension(ts, ts),
-        		datatype);
+        final Dimension targetDim = mResampler == this || ts < readAmountX ? new Dimension(ts,ts) : new Dimension(readAmountX,readAmountY);
         
-        final Raster raster = mRasterDataset.read(query);
+        int pixels[] = executeQuery(
+        		new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY),
+        		targetDim,
+        		datatype,
+        		!(mResampler == this || ts < readAmountX),
+        		ts , ts);
 
-		bitmap.setPixels(render(raster), ts);
+        bitmap.setPixels(pixels, ts);
 		
 		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 
 		return bitmap;
 	}
-//	/**
-//	 * read a region @param src from this raster
-//	 * and scale the resulting area to the dimension @param dst
-//	 * according to the datatype @param datatype
-//	 * @param src the region to read
-//	 * @param dst the desired destination dimension
-//	 * @return a ByteBuffer containing the read data 
-//	 */
-//	public Raster readPixels(final Rectangle src, final Dimension dst,final DataType dataType){
-//		
-//		
-//		
-////		ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
-////		buffer.order(ByteOrder.nativeOrder()); 
-//
-////		mRasterIO.read(src, dst, buffer);
-//		
-//
-//		return mRasterIO.read(query);
-//	}
+	
+	public int[] executeQuery(final Rectangle rect, final Dimension readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
+		
+		final RasterQuery query = new RasterQuery(
+        		rect,
+        		mRasterDataset.getCRS(),
+        		mRasterDataset.getBands(), 
+        		readDim,
+        		datatype);
+        
+        final Raster raster = mRasterDataset.read(query);
+
+        if(resample){
+            int pixels[] = render(raster);
+        	int[] resampledPixels = new int[targetWidth * targetHeight];
+        	mResampler.resampleBilinear(pixels, readDim.getWidth(),readDim.getHeight(), resampledPixels, targetWidth, targetHeight );
+        	return resampledPixels;
+        }else{
+        	return render(raster);
+        }
+	}
 	
 
 	public int[] render(final Raster raster){
@@ -449,6 +455,13 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	public boolean canSwitchColorMap(){
 		
 		return mRasterBandCount == 1;
+	}
+
+	@Override
+	public void resampleBilinear(int[] srcPixels, int srcWidth, int srcHeight,
+			int[] dstPixels, int dstWidth, int dstHeight) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

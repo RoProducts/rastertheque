@@ -3,15 +3,15 @@ package de.rooehler.rasterapp.test;
 import java.io.IOException;
 
 import android.util.Log;
+import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.processing.colormap.MRendering;
-import de.rooehler.rastertheque.processing.resampling.JAI_Interpolation;
-import de.rooehler.rastertheque.processing.resampling.MBilinearInterpolator;
+import de.rooehler.rastertheque.processing.resampling.JAIResampler;
+import de.rooehler.rastertheque.processing.resampling.MResampler;
 
 public class TestProcessing extends android.test.AndroidTestCase  {
 	
@@ -58,13 +58,13 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         long now = System.currentTimeMillis();
         
-        new MBilinearInterpolator().resampleBilinear(pixels, tileSize, mResampled, resampledSize);
+        new MResampler().resampleBilinear(pixels, tileSize,tileSize, mResampled, resampledSize, resampledSize);
         
         Log.d(TestProcessing.class.getSimpleName(), "MInterpolation took "+ (System.currentTimeMillis() - now));
         
         now = System.currentTimeMillis();
         
-        new JAI_Interpolation().resampleBilinear(pixels, tileSize, jaiResampled, resampledSize);
+        new JAIResampler().resampleBilinear(pixels, tileSize, tileSize, jaiResampled, resampledSize, resampledSize);
         
         Log.d(TestProcessing.class.getSimpleName(), "JAI took "+ (System.currentTimeMillis() - now));
         
@@ -163,10 +163,12 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         final int[] manualResampledTargetPixels = new int[targetSize * targetSize];
         
-        new MBilinearInterpolator().resampleBilinear(
+        new MResampler().resampleBilinear(
         		manualResampledSourcePixels,
         		readSize,
+        		readSize,
         		manualResampledTargetPixels,
+        		targetSize,
         		targetSize);
         
         Log.d(TestProcessing.class.getSimpleName(), "manual resampling took "+ (System.currentTimeMillis() - manualNow)+" ms");

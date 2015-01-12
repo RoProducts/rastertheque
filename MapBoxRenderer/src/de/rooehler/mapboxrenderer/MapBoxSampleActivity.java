@@ -36,6 +36,7 @@ import de.rooehler.mapboxrenderer.renderer.GDALTileLayer;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.processing.colormap.MRendering;
+import de.rooehler.rastertheque.processing.resampling.MResampler;
 
 
 
@@ -258,7 +259,9 @@ public class MapBoxSampleActivity extends Activity {
 			Log.e(TAG, "error opening file "+filePath);
 		}
 		MRendering rendering = new MRendering(filePath);
-		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset, rendering, useColorMap);
+		MResampler resampler = new MResampler();
+		
+		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset, resampler, rendering, useColorMap);
 
 		Log.e(TAG, "setting zoom for new file to "+ (((GDALTileLayer) mCurrentLayer).getStartZoomLevel()));
 		mv.setZoom(((GDALTileLayer) mCurrentLayer).getStartZoomLevel());
@@ -276,6 +279,10 @@ public class MapBoxSampleActivity extends Activity {
 		MapView.setDebugMode(true);
 	}
 	
+	/**
+	 * MapBox provides is "own" MBTiles driver, no need to use rastertheque
+	 * @param filePath
+	 */
 	private void replaceWithMBTiles(final String filePath) {
 		
 		mCurrentLayer = new MBTilesLayer(new File(filePath));

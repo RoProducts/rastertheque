@@ -48,12 +48,16 @@ import de.rooehler.mapsforgerenderer.rasterrenderer.gdal.GDALMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.rasterrenderer.mbtiles.MBTilesMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.util.SupportedType;
 import de.rooehler.rastertheque.core.Coordinate;
+import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
-import de.rooehler.rastertheque.io.mbtiles.MbTilesDatabase;
+import de.rooehler.rastertheque.io.mbtiles.MBTilesDriver;
+import de.rooehler.rastertheque.processing.Rendering;
+import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.colormap.MRendering;
+import de.rooehler.rastertheque.processing.resampling.MResampler;
 
 
 public class MainActivity extends Activity implements IWorkStatus{
@@ -76,6 +80,8 @@ public class MainActivity extends Activity implements IWorkStatus{
     private ProgressDialog pd;
     
     private boolean isRendering = false;
+    
+    private Dataset ds;
     
     private long now;
     
@@ -238,32 +244,52 @@ public class MainActivity extends Activity implements IWorkStatus{
 			break;
 		case MBTILES:
 
-			final MapPosition mbtmp = getCenterForMBTilesFile(filePath);
-			final MapViewPosition mbtmvp = mapView.getModel().mapViewPosition;		
-			mbtmvp.setMapPosition(mbtmp);
+			final MBTilesDriver mbtdriver = new MBTilesDriver(getBaseContext());
+			if(!mbtdriver.canOpen(filePath)){
+				Log.e(TAG, "cannot open "+ filePath+" with MBTiles driver");
+				return;
+			}
+			
+			try {
+				final MBTilesDataset mbTilesDataset = mbtdriver.open(filePath);
+				
+				final Coordinate coord = mbTilesDataset.getBoundingBox().getCenter();
+				LatLong loc = new LatLong(coord.getY(), coord.getX());
+				int[] zoomMinMax = mbTilesDataset.getMinMaxZoom(); 
+				byte zoom = zoomMinMax == null ? (byte) 8 : (byte) zoomMinMax[0];
+				final MapPosition mbtmp = new MapPosition(loc, zoom);
+				final MapViewPosition mbtmvp = mapView.getModel().mapViewPosition;		
+				mbtmvp.setMapPosition(mbtmp);
 
-			MBTilesDataset mbTilesDataset = new MBTilesDataset(getBaseContext(),filePath);
-			MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesDataset);
-			Layer mbTilesLayer = new RasterLayer(getBaseContext(), tileCache, mbtmvp, false, AndroidGraphicFactory.INSTANCE, mbTilesRenderer, this);
-			mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
-
-			//				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) mbTilesRaster.getMaxZoom());
-			//				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) mbTilesRaster.getMinZoom());
-			mapView.getMapScaleBar().setVisible(false);
+				MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesDataset, new MResampler());
+				Layer mbTilesLayer = new RasterLayer(getBaseContext(), tileCache, mbtmvp, false, AndroidGraphicFactory.INSTANCE, mbTilesRenderer, this);
+				
+				mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
+				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) zoomMinMax[0]);
+				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) zoomMinMax[1]);
+				mapView.getMapScaleBar().setVisible(false);
+				
+			} catch (IOException e) {
+				Log.e(TAG, "error opening "+ filePath+" with MBTiles driver");
+			}
 			break;
 
 		case RASTER:
+			
+			if(ds != null){
+				ds.close();
+			}
 
 			DisplayMetrics displaymetrics = new DisplayMetrics();
 			getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
 			int width = displaymetrics.widthPixels;
 			
 			GDALDriver driver = new GDALDriver();
-			GDALDataset dataset = null;
+
 			try{
 				if(driver.canOpen(filePath)){
 					
-					dataset = driver.open(filePath);
+					ds = driver.open(filePath);
 				}else{
 					Log.w(TAG, "cannot open file "+filePath);
 					return;
@@ -272,19 +298,22 @@ public class MainActivity extends Activity implements IWorkStatus{
 				Log.e(TAG, "error opening file "+filePath);
 			}
 			
-			MRendering rendering = new MRendering(filePath);
-			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE, dataset, rendering, true);
+			Rendering rendering = new MRendering(filePath);
+			Resampler resampler = new MResampler();
+			
+			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE,((GDALDataset) ds), rendering,resampler, true);
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
 			byte startZoomLevel = gdalFileRenderer.calculateStartZoomLevel(tileSize,width);
 			
-			final Dimension dim = dataset.getDimension();
+			final Dimension dim = ((GDALDataset) ds).getDimension();
 			final int h = dim.getHeight();
 			final int w = dim.getWidth();
+			Log.v(TAG, "width : "+w + " height : "+ h);
 			
 			final MapPosition gdalmp =  new MapPosition(calculateStartPositionForRaster(w, h),startZoomLevel);
 			final MapViewPosition gdalmvp = mapView.getModel().mapViewPosition;		
 			gdalmvp.setMapPosition(gdalmp);
-
+			mapView.getModel().mapViewPosition.setMapPosition(gdalmp);
 
 			byte zoomLevelMax = gdalFileRenderer.calculateZoomLevelsAndStartScale(tileSize, width, w, h);
 			Layer rasterLayer = new RasterLayer(getBaseContext(),tileCache, gdalmvp, false, AndroidGraphicFactory.INSTANCE, gdalFileRenderer, this);
@@ -353,20 +382,6 @@ public class MainActivity extends Activity implements IWorkStatus{
 		}
 		throw new IllegalArgumentException("Invalid Map File " + fileName); 
 	}
-	
-	public MapPosition getCenterForMBTilesFile(final String filePath){
-		
-		MbTilesDatabase db = new MbTilesDatabase(getBaseContext(), filePath);
-		db.openDataBase();
-		Coordinate coord = db.getBoundingBox().getCenter();
-		LatLong loc = new LatLong(coord.getY(), coord.getX());
-		int[] zoomMinMax = db.getMinMaxZoom(); 
-		db.close();
-		db = null;
-		byte zoom = zoomMinMax == null ? (byte) 8 : (byte) zoomMinMax[0];
-		return new MapPosition(loc, zoom);
-	}
-	
 	
 	@Override
     public void setTitle(CharSequence title) {

@@ -6,7 +6,7 @@ import de.rooehler.rastertheque.core.util.Disposable;
 
 public interface Dataset extends Disposable {
 	
-	Driver getDriver();
+	Driver<?> getDriver();
 	
 	String getName();
 	

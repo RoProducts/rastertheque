@@ -10,10 +10,9 @@
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </interface>  
-  <class id="2" language="java" name="de.rooehler.rastertheque.processing.resampling.JAI_Interpolation" 
-    project="rastertheque" 
-    file="/rastertheque/src/de/rooehler/rastertheque/processing/resampling/JAI_Interpolation.java" binary="false" 
-    corner="BOTTOM_RIGHT">    
+  <class id="2" language="java" name="de.rooehler.rastertheque.processing.resampling.JAIResampler" 
+    project="rastertheque" file="/rastertheque/src/de/rooehler/rastertheque/processing/resampling/JAIResampler.java" 
+    binary="false" corner="BOTTOM_RIGHT">    
     <position height="98" width="231" x="355" y="381"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
@@ -21,9 +20,8 @@
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </class>  
-  <class id="3" language="java" name="de.rooehler.rastertheque.processing.resampling.MBilinearInterpolator" 
-    project="rastertheque" 
-    file="/rastertheque/src/de/rooehler/rastertheque/processing/resampling/MBilinearInterpolator.java" binary="false" 
+  <class id="3" language="java" name="de.rooehler.rastertheque.processing.resampling.MResampler" project="rastertheque" 
+    file="/rastertheque/src/de/rooehler/rastertheque/processing/resampling/MResampler.java" binary="false" 
     corner="BOTTOM_RIGHT">    
     <position height="-1" width="-1" x="718" y="429"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
@@ -52,16 +50,12 @@
     </display>  
   </class>  
   <realization id="6">    
-    <end type="SOURCE" refId="5"/>    
-    <end type="TARGET" refId="4"/>  
-  </realization>  
-  <realization id="7">    
-    <end type="SOURCE" refId="3"/>    
-    <end type="TARGET" refId="1"/>  
-  </realization>  
-  <realization id="8">    
     <end type="SOURCE" refId="2"/>    
     <end type="TARGET" refId="1"/>  
+  </realization>  
+  <realization id="7">    
+    <end type="SOURCE" refId="5"/>    
+    <end type="TARGET" refId="4"/>  
   </realization>  
   <classifier-display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
     accessors="true" visibility="true">    

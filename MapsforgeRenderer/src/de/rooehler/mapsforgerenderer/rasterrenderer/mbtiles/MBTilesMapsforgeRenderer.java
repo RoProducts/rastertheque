@@ -8,7 +8,8 @@ import android.graphics.BitmapFactory;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterJob;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterRenderer;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
-import de.rooehler.rastertheque.processing.resampling.JAI_Interpolation;
+import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 
 public class MBTilesMapsforgeRenderer implements RasterRenderer{
 
@@ -19,12 +20,16 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 	private GraphicFactory graphicFactory;
 	
 	private final MBTilesDataset mDataset;
+	
+	private final Resampler mResampler;
 
-	public MBTilesMapsforgeRenderer(GraphicFactory graphicFactory, final MBTilesDataset pRaster) {
+	public MBTilesMapsforgeRenderer(GraphicFactory graphicFactory, final MBTilesDataset pRaster, final Resampler pResampler) {
 		
 		this.mDataset = pRaster;
 		
 		this.graphicFactory = graphicFactory;
+		
+		this.mResampler = pResampler;
 	}
 
 	/**
@@ -78,8 +83,7 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 
 		if (tileSize != MBTILES_SIZE) {
 
-			new JAI_Interpolation().resampleBilinear(mbTilesPixels, MBTILES_SIZE, pixels, tileSize);
-//			new MBilinearInterpolator().resampleBilinear(mbTilesPixels, MBTILES_SIZE, pixels, tileSize);
+			mResampler.resampleBilinear(mbTilesPixels, MBTILES_SIZE, MBTILES_SIZE, pixels, tileSize, tileSize);
 
 		} else {
 

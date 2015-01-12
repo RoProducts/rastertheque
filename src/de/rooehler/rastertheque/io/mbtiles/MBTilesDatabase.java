@@ -17,13 +17,15 @@ import de.rooehler.rastertheque.core.BoundingBox;
  * @author Robert Oehler
  */
 
-public class MbTilesDatabase extends SQLiteOpenHelper {
+public class MBTilesDatabase extends SQLiteOpenHelper {
 
-	private static final String TAG = MbTilesDatabase.class.getSimpleName();
+	private static final String TAG = MBTilesDatabase.class.getSimpleName();
 
 	private static String DB_Path;
 
 	private SQLiteDatabase mDataBase;
+	
+	static final String METADATA = "metadata";
 
 	/**
 	 * Constructor takes and keeps a reference of the passed context in order to access to the application assets and
@@ -34,7 +36,7 @@ public class MbTilesDatabase extends SQLiteOpenHelper {
 	 * @param pDbPath
 	 *            the path to the database on the sdcard of the device
 	 */
-	public MbTilesDatabase(Context context, final String pDbPath) {
+	public MBTilesDatabase(Context context, final String pDbPath) {
 
 		super(context, pDbPath, null, 1);
 
@@ -185,6 +187,11 @@ public class MbTilesDatabase extends SQLiteOpenHelper {
 			return null;
 		}
 
+	}
+	
+	public Cursor queryMetadata(final String field){
+		
+		return this.mDataBase.query(METADATA, new String[]{"value"}, "name = ?", new String[]{field}, null, null, null);
 	}
 
 }

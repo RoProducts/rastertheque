@@ -10,26 +10,25 @@ import de.rooehler.rastertheque.proj.Proj;
 
 public class MBTilesDataset implements Dataset {
 	
-	private MbTilesDatabase db;
+	private MBTilesDatabase db;
 
 	private boolean isDBOpen = false;
 	
 	private Context mContext;
 	
 	private String mSource;
-	
 
 	
 	public MBTilesDataset(final Context pContext,final String pFilePath){
 		
 		this.mSource = pFilePath;
 		
-		this.db = new MbTilesDatabase(mContext, mSource);
+		this.db = new MBTilesDatabase(mContext, mSource);
 		
 		this.mContext  = pContext;
 	}
 	
-	public MbTilesDatabase getDB(){
+	public MBTilesDatabase getDB(){
 		
 		return this.db;
 	}
@@ -94,33 +93,59 @@ public class MBTilesDataset implements Dataset {
 
 	@Override
 	public BoundingBox getBoundingBox() {
-
-		return db.getBoundingBox();
+		start();
+		final BoundingBox bb = db.getBoundingBox();
+		close();
+		return bb;
+	}
+	
+	public int[] getMinMaxZoom(){
+		
+		start();
+		final int[] minmax = db.getMinMaxZoom();
+		close();
+		return minmax;
 	}
 
 	@Override
-	public Driver getDriver() {
-		// TODO Auto-generated method stub
-		return null;
+	public Driver<?> getDriver() {
+		
+		return new MBTilesDriver(mContext);
 	}
 
 	@Override
 	public String getName() {
 		
-		return mSource.substring(mSource.lastIndexOf("/") + 1);
+		android.database.Cursor c = db.queryMetadata("name");
+        try {
+            if (c.moveToNext()) {
+                return c.getString(0);
+            }
+        }
+        finally {
+            c.close();
+        }
+
+        return null;
 	}
 
 	@Override
 	public String getDescription() {
-		// TODO return description
-		return null;
+		  android.database.Cursor c = db.queryMetadata("description");
+	        try {
+	            if (c.moveToNext()) {
+	                return c.getString(0);
+	            }
+	        }
+	        finally {
+	            c.close();
+	        }
+
+	        return null;
 	}
 
 	@Override
 	public String getSource() {
 		return mSource;
 	}
-
-
-
 }

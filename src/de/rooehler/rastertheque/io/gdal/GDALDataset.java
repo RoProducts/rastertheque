@@ -21,9 +21,10 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.core.Rectangle;
+import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.proj.Proj;
 
-public class GDALDataset implements RasterDataset{
+public class GDALDataset implements RasterDataset, Resampler{
 	
 	private static final String TAG = GDALDataset.class.getSimpleName();
 	
@@ -55,6 +56,9 @@ public class GDALDataset implements RasterDataset{
 		if (dataset != null) {
 			dataset.delete();
 			dataset = null;
+			mDimension = null;
+			mBB = null;
+			mCRS = null;
 		}
 	}	
 
@@ -214,6 +218,13 @@ public class GDALDataset implements RasterDataset{
 		}
 		//TODO what about the crs ?
 		return new Raster(buffer, dstDim, query.getBands());
+	}
+
+	@Override
+	public void resampleBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight) {
+		
+		//Nothing, is done while reading
+		
 	}
 	
 	

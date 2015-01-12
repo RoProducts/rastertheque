@@ -1,8 +1,9 @@
 package de.rooehler.rastertheque.processing.resampling;
 
-import de.rooehler.rastertheque.processing.Resampling;
 
-public class MBilinearInterpolator  implements Resampling{
+import de.rooehler.rastertheque.processing.Resampler;
+
+public class MResampler implements Resampler {
 	
 	/**
 	 * Bilinear interpolation http://en.wikipedia.org/wiki/Bilinear_interpolation
@@ -15,16 +16,21 @@ public class MBilinearInterpolator  implements Resampling{
 	 * @param dstSize the width/height of the resampled image
 	 */
 	@Override
-	public void resampleBilinear(int srcPixels[], int srcSize, int dstPixels[], int dstSize) {
+	public void resampleBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
+		
+		if(srcWidth == dstWidth && srcHeight == dstHeight){
+			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
+			return;
+		}
 
 		int a, b, c, d, x, y, index;
-		float x_ratio = ((float) (srcSize - 1)) / dstSize;
-		float y_ratio = ((float) (srcSize - 1)) / dstSize;
+		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
+		float y_ratio = ((float) (srcHeight - 1)) / dstHeight;
 		float x_diff, y_diff, blue, red, green;
 		int offset = 0;
 
-		for (int i = 0; i < dstSize; i++) {
-			for (int j = 0; j < dstSize; j++) {
+		for (int i = 0; i < dstHeight; i++) {
+			for (int j = 0; j < dstWidth; j++) {
 
 				// src pix coords
 				x = (int) (x_ratio * j);
@@ -35,12 +41,12 @@ public class MBilinearInterpolator  implements Resampling{
 				y_diff = (y_ratio * i) - y;
 
 				// current pos
-				index = (y * srcSize + x);
+				index = y * srcWidth + x;
 
 				a = srcPixels[index];
 				b = srcPixels[index + 1];
-				c = srcPixels[index + srcSize];
-				d = srcPixels[index + srcSize + 1];
+				c = srcPixels[index + srcWidth];
+				d = srcPixels[index + srcWidth + 1];
 
 				// having the four pixels, interpolate
 
