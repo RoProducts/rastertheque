@@ -1,6 +1,5 @@
 package de.rooehler.rastertheque.core;
 
-import de.rooehler.rastertheque.core.model.NoData;
 
 /**
  * A band or component of a raster dataset.

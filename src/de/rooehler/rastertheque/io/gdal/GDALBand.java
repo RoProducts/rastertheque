@@ -1,9 +1,8 @@
 package de.rooehler.rastertheque.io.gdal;
 
-import android.graphics.Color;
 import de.rooehler.rastertheque.core.Band;
 import de.rooehler.rastertheque.core.DataType;
-import de.rooehler.rastertheque.core.model.NoData;
+import de.rooehler.rastertheque.core.NoData;
 
 public class GDALBand implements Band{
 	

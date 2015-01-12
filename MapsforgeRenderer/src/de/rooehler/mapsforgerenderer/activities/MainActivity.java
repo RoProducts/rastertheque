@@ -1,6 +1,7 @@
 package de.rooehler.mapsforgerenderer.activities;
 
 import java.io.File;
+import java.io.IOException;
 
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
@@ -41,19 +42,18 @@ import android.widget.Toast;
 import de.rooehler.mapsforgerenderer.R;
 import de.rooehler.mapsforgerenderer.dialog.FilePickerDialog;
 import de.rooehler.mapsforgerenderer.dialog.FilePickerDialog.FilePathPickCallback;
-import de.rooehler.mapsforgerenderer.dialog.SelectProjectionDialog;
-import de.rooehler.mapsforgerenderer.dialog.SelectProjectionDialog.IProjectionSelected;
 import de.rooehler.mapsforgerenderer.interfaces.IWorkStatus;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterLayer;
 import de.rooehler.mapsforgerenderer.rasterrenderer.gdal.GDALMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.rasterrenderer.mbtiles.MBTilesMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.util.SupportedType;
-import de.rooehler.rastertheque.core.model.Coordinate;
-import de.rooehler.rastertheque.core.model.Dimension;
+import de.rooehler.rastertheque.core.Coordinate;
+import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
+import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
 import de.rooehler.rastertheque.io.mbtiles.MbTilesDatabase;
-import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
+import de.rooehler.rastertheque.processing.colormap.MRendering;
 
 
 public class MainActivity extends Activity implements IWorkStatus{
@@ -180,13 +180,14 @@ public class MainActivity extends Activity implements IWorkStatus{
 	
 	public void showFileSelectionDialog(final SupportedType type){
 		
-		new FilePickerDialog(MainActivity.this, "Select a file", SupportedType.getExtensionForType(type), new FilePathPickCallback() {
+		FilePickerDialog fpd = null;
+		
+		final FilePathPickCallback callback = new FilePathPickCallback() {
 			
 			@Override
 			public void filePathPicked(String filePath) {
-				
 				Log.d(TAG, "path selected "+filePath);
-																										
+				
 				setMapStyle(type, filePath);
 				
 				Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
@@ -194,7 +195,14 @@ public class MainActivity extends Activity implements IWorkStatus{
 				ed.putInt(PREFS_RENDERER_TYPE, type.ordinal());
 				ed.commit();
 			}
-		});
+		};
+		
+
+		fpd = new FilePickerDialog(this, "Select a file", SupportedType.getExtensions(type), callback);
+		
+		
+		fpd.show();
+
 	}
 
 	private void setMapStyle(final SupportedType type, final String filePath) {
@@ -250,13 +258,26 @@ public class MainActivity extends Activity implements IWorkStatus{
 			getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
 			int width = displaymetrics.widthPixels;
 			
-			GDALDataset gdalDataset = new GDALDataset(filePath);
-			MColorMapProcessing mColorMapProcessing = new MColorMapProcessing(filePath);
-			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE, gdalDataset, mColorMapProcessing, true);
+			GDALDriver driver = new GDALDriver();
+			GDALDataset dataset = null;
+			try{
+				if(driver.canOpen(filePath)){
+					
+					dataset = driver.open(filePath);
+				}else{
+					Log.w(TAG, "cannot open file "+filePath);
+					return;
+				}
+			}catch(IOException e){
+				Log.e(TAG, "error opening file "+filePath);
+			}
+			
+			MRendering rendering = new MRendering(filePath);
+			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE, dataset, rendering, true);
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
 			byte startZoomLevel = gdalFileRenderer.calculateStartZoomLevel(tileSize,width);
 			
-			final Dimension dim = gdalDataset.getDimension();
+			final Dimension dim = dataset.getDimension();
 			final int h = dim.getHeight();
 			final int w = dim.getWidth();
 			

@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.core.model;
+package de.rooehler.rastertheque.core;
 
 public class NoData {
 	

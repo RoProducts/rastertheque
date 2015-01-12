@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-import de.rooehler.rastertheque.core.model.BoundingBox;
+import de.rooehler.rastertheque.core.BoundingBox;
 
 /**
  * class which connects to a database from downloaded zip bundle on the sdcard. If it is not yet installed in the

@@ -1,12 +1,15 @@
 package de.rooehler.rasterapp.test;
 
+import java.io.IOException;
+
 import android.util.Log;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.core.model.Dimension;
-import de.rooehler.rastertheque.core.model.Rectangle;
+import de.rooehler.rastertheque.core.Dimension;
+import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
+import de.rooehler.rastertheque.io.gdal.GDALDriver;
+import de.rooehler.rastertheque.processing.colormap.MRendering;
 import de.rooehler.rastertheque.processing.resampling.JAI_Interpolation;
 import de.rooehler.rastertheque.processing.resampling.MBilinearInterpolator;
 
@@ -15,9 +18,13 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 	/**
 	 * tests and compares interpolations
 	 */
-	public void testInterpolation(){		
+	public void testInterpolation() throws IOException{		
 		
-		final GDALDataset dataset = new GDALDataset(TestIO.FILE);
+		final GDALDriver driver = new GDALDriver();
+		
+		assertTrue(driver.canOpen(TestIO.FILE));
+		
+		final GDALDataset dataset = driver.open(TestIO.FILE);
 		
 		final Dimension dim = dataset.getDimension();
 		final int height = dim.getHeight();
@@ -29,18 +36,16 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 			     
         final RasterQuery query = new RasterQuery(
         		rect,
+        		dataset.getCRS(),
         		dataset.getBands(),
         		new Dimension(rect.width, rect.height),
         		dataset.getBands().get(0).datatype());
         
         final Raster raster = dataset.read(query);
         
-        final MColorMapProcessing cmp = new MColorMapProcessing(TestIO.FILE);
+        final MRendering rend = new MRendering(TestIO.FILE);
         
-        final int[] pixels  = cmp.generatePixelsWithColorMap(
-        		raster.getData(),
-        		raster.getDimension().getSize(),
-        		dataset.getBands().get(0).datatype());
+        final int[] pixels  = rend.generatePixelsWithColorMap(raster);
         
         assertNotNull(pixels);
         
@@ -87,6 +92,89 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         assertTrue(mBlue == jaiBlue);
         
         dataset.close();
+	}
+	
+	/**
+	 * tests and compares resampling methods
+	 */
+	public void testResampling() throws IOException {
+				
+		final GDALDriver driver = new GDALDriver();
+		
+		assertTrue(driver.canOpen(TestIO.FILE));
+		
+		final GDALDataset dataset = driver.open(TestIO.FILE);
+
+		final int readSize = 256;
+		final int targetSize = 756;
+		
+		final Rectangle rect = new Rectangle(0, 0, 256, 256);
+
+        //1. Manually ///////////////
+		
+		int manual = resampleManually(rect, dataset, readSize, targetSize);
+
+        //2. with gdal ////////////
+        int gdal = resampleWithGDAL(rect, dataset, targetSize);
+       
+        assertEquals(manual, gdal);
+              
+		
+	}
+	
+	public int resampleWithGDAL(final Rectangle rect, final GDALDataset dataset, final int targetSize){
+		
+        final RasterQuery gdalResampleQuery = new RasterQuery(
+        		rect,
+        		dataset.getCRS(),
+        		dataset.getBands(),
+        		new Dimension(targetSize,targetSize),
+        		dataset.getBands().get(0).datatype());
+        
+        final long gdalNow = System.currentTimeMillis();
+        
+        final Raster raster = dataset.read(gdalResampleQuery);    
+		final MRendering rend = new MRendering(TestIO.FILE);
+		
+        final int[] gdalResampledPixels  = rend.generatePixelsWithColorMap(raster);
+        assertNotNull(gdalResampledPixels);
+        Log.d(TestProcessing.class.getSimpleName(), "GDAL resampling took "+ (System.currentTimeMillis() - gdalNow)+" ms");
+
+        return gdalResampledPixels.length;
+	}
+	public int resampleManually(final Rectangle rect, final GDALDataset dataset,final int readSize, final int targetSize){
+		
+        final RasterQuery manualResamplingQuery = new RasterQuery(
+        		rect,
+        		dataset.getCRS(),
+        		dataset.getBands(),
+        		new Dimension(readSize,readSize),
+        		dataset.getBands().get(0).datatype());
+        
+        final long manualNow = System.currentTimeMillis();
+        
+        final Raster manualRaster = dataset.read(manualResamplingQuery);
+		
+        Log.d(TestProcessing.class.getSimpleName(), "gdal read took "+ (System.currentTimeMillis() - manualNow)+" ms");
+        
+    	final MRendering rend = new MRendering(TestIO.FILE);
+        
+        final int[] manualResampledSourcePixels  = rend.generatePixelsWithColorMap(manualRaster);
+        
+        final int[] manualResampledTargetPixels = new int[targetSize * targetSize];
+        
+        new MBilinearInterpolator().resampleBilinear(
+        		manualResampledSourcePixels,
+        		readSize,
+        		manualResampledTargetPixels,
+        		targetSize);
+        
+        Log.d(TestProcessing.class.getSimpleName(), "manual resampling took "+ (System.currentTimeMillis() - manualNow)+" ms");
+        
+        
+        assertNotNull(manualResampledTargetPixels);
+        
+        return manualResampledTargetPixels.length;
 	}
 
 }

@@ -4,9 +4,6 @@ import java.util.List;
 
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
-import de.rooehler.rastertheque.core.model.Dimension;
-import de.rooehler.rastertheque.core.model.Rectangle;
-
 public class RasterQuery {
 	
     /**
@@ -43,15 +40,6 @@ public class RasterQuery {
 		this.size = size;
 		this.datatype = datatype;
 	}
-    
-    public RasterQuery(Rectangle bounds,List<Band> bands, Dimension size, DataType datatype) {
-		this.bounds = bounds;
-		this.bands = bands;
-		this.size = size;
-		this.datatype = datatype;
-		this.crs = null;
-	}
-
 
 	/**
      * Sets the bands to read from the raster dataset.
@@ -130,7 +118,7 @@ public class RasterQuery {
     /**
      * Target size for the raster being read.
      *
-     * @see #size(org.jeo.util.Dimension)
+     * @see #size(de.rooehler.rastertheque.core.jeo.util.Dimension)
      */
     public Dimension getSize() {
         return size;

@@ -35,22 +35,32 @@ public class FilePickerDialog {
 	private String mMessage;
 	private FilePathPickCallback mFilePathPickCallback;
 	
-	public FilePickerDialog(final Activity activity,final String message,final String[] extensions,final FilePathPickCallback filePickCallback) {
-
+	public FilePickerDialog(final Activity activity,final String message,final String[] extensions, final FilePathPickCallback filePickCallback) {
+		
 		mActivity = activity;
 		
 		mMessage = message;
 		
 		mFilePathPickCallback = filePickCallback;
-
+		
 		// Initialize the extensions array to allow any file extensions
 		acceptedFileExtensions = extensions;
 
-
-		refreshFilesList();
-
 	}
-
+	/**
+	 * Constructor which won't filter results and return all available files
+	 * @param activity
+	 * @param message
+	 * @param filePickCallback
+	 */
+	public FilePickerDialog(final Activity activity,final String message, final FilePathPickCallback filePickCallback) {
+		this(activity, message, new String[]{}, filePickCallback);
+	}
+	
+	public void show(){
+		
+		refreshFilesList();
+	}
 	
 	/**
 	 * Updates the list view to the current directory

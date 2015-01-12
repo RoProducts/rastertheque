@@ -1,8 +1,8 @@
 package de.rooehler.rastertheque.processing.resampling;
 
-import de.rooehler.rastertheque.processing.IResampling;
+import de.rooehler.rastertheque.processing.Resampling;
 
-public class MBilinearInterpolator  implements IResampling{
+public class MBilinearInterpolator  implements Resampling{
 	
 	/**
 	 * Bilinear interpolation http://en.wikipedia.org/wiki/Bilinear_interpolation

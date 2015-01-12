@@ -1,6 +1,7 @@
 package de.rooehler.mapboxrenderer;
 
 import java.io.File;
+import java.io.IOException;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
@@ -33,7 +34,8 @@ import de.rooehler.mapboxrenderer.fileselection.FilePickerDialog.FilePathPickCal
 import de.rooehler.mapboxrenderer.fileselection.SupportedType;
 import de.rooehler.mapboxrenderer.renderer.GDALTileLayer;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
+import de.rooehler.rastertheque.io.gdal.GDALDriver;
+import de.rooehler.rastertheque.processing.colormap.MRendering;
 
 
 
@@ -172,15 +174,20 @@ public class MapBoxSampleActivity extends Activity {
 		switch(type){
 		
 		case MBTILES:
+		case RASTER:
 			{
-				new FilePickerDialog(MapBoxSampleActivity.this, "Select a file", SupportedType.getExtensionForType(type), new FilePathPickCallback() {
+				final FilePathPickCallback callback = new FilePathPickCallback() {
 					
 					@Override
 					public void filePathPicked(String filePath) {
 						
 						Log.d(TAG, "path selected "+filePath);
 						
-						replaceWithMBTiles(filePath);
+						if(type == SupportedType.RASTER){
+							replaceWithGDAL(filePath);
+						}else if(type == SupportedType.MBTILES){							
+							replaceWithMBTiles(filePath);
+						}						
 						
 						Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
 						ed.putString(PREFS_FILEPATH, filePath);
@@ -188,28 +195,14 @@ public class MapBoxSampleActivity extends Activity {
 						ed.commit();
 						
 					}
-				});
+				};
+
+				final FilePickerDialog fpd  = new FilePickerDialog(this, "Select a file", SupportedType.getExtensions(type), callback);
+				
+				fpd.show();
+				
 				break;
 			}
-		case RASTER:
-		{
-			new FilePickerDialog(MapBoxSampleActivity.this, "Select a file", SupportedType.getExtensionForType(type), new FilePathPickCallback() {
-				
-				@Override
-				public void filePathPicked(String filePath) {
-					
-					Log.d(TAG, "path selected "+filePath);
-								
-					replaceWithGDAL(filePath);
-					
-					Editor ed = PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit();
-					ed.putString(PREFS_FILEPATH, filePath);
-					ed.putInt(PREFS_RENDERER_TYPE, type.ordinal());
-					ed.commit();
-				}
-			});
-			break;
-		}
 		case Outdoors:
 			replaceMapView(getString(R.string.outdoorsMapId));
 			break;
@@ -250,9 +243,22 @@ public class MapBoxSampleActivity extends Activity {
 
 		final boolean useColorMap = true;
 
-		GDALDataset gdalDataset = new GDALDataset(filePath);
-		MColorMapProcessing mColorMapProcessing = new MColorMapProcessing(filePath);
-		mCurrentLayer = new GDALTileLayer(new File(filePath), gdalDataset, mColorMapProcessing, screenWidth, useColorMap,mv.getProjection());
+		final GDALDriver driver = new GDALDriver();
+		
+		GDALDataset dataset = null;
+		try{
+			if(driver.canOpen(filePath)){
+				
+				dataset = driver.open(filePath);
+			}else{
+				Log.w(TAG, "cannot open file "+filePath);
+				return;
+			}
+		}catch(IOException e){
+			Log.e(TAG, "error opening file "+filePath);
+		}
+		MRendering rendering = new MRendering(filePath);
+		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset, rendering, useColorMap);
 
 		Log.e(TAG, "setting zoom for new file to "+ (((GDALTileLayer) mCurrentLayer).getStartZoomLevel()));
 		mv.setZoom(((GDALTileLayer) mCurrentLayer).getStartZoomLevel());

@@ -3,10 +3,8 @@ package de.rooehler.mapsforgerenderer.rasterrenderer.gdal;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 
-import org.gdal.gdalconst.gdalconstConstants;
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
@@ -15,16 +13,14 @@ import android.graphics.Bitmap;
 import android.util.Log;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterJob;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterRenderer;
-import de.rooehler.rastertheque.core.Band;
 import de.rooehler.rastertheque.core.Band.Color;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.core.model.Dimension;
-import de.rooehler.rastertheque.core.model.Rectangle;
-import de.rooehler.rastertheque.io.gdal.GDALBand;
+import de.rooehler.rastertheque.core.Dimension;
+import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.IColorMapProcessing;
+import de.rooehler.rastertheque.processing.Rendering;
 /**
  * A Renderer of gdal data for Mapsforge
  * @author Robert Oehler
@@ -44,7 +40,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	
 	private GDALDataset mRasterDataset;
 	
-	private IColorMapProcessing mColorMapProcessing;
+	private Rendering mRendering;
 	
 	private boolean mUseColorMap;
 	
@@ -53,13 +49,13 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	private boolean hasRGBBands;
 
 
-	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster, final IColorMapProcessing pColorMapProcessing, final boolean pUseColorMap) {
+	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster, final Rendering pRendering, final boolean pUseColorMap) {
 		
 		this.graphicFactory = graphicFactory;
 		
 		this.mRasterDataset = pRaster;
 		
-		this.mColorMapProcessing = pColorMapProcessing;
+		this.mRendering = pRendering;
 		
 		this.mUseColorMap = pUseColorMap;
 		
@@ -237,15 +233,14 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         	
         	final RasterQuery query = new RasterQuery(
         			new Rectangle((int)readFromX,(int)readFromY, availableX, availableY),
+        			mRasterDataset.getCRS(),
         			mRasterDataset.getBands(), 
         			new Dimension(gdalTargetXSize, gdalTargetYSize), 
         			datatype);
 
         	final Raster raster = mRasterDataset.read(query);
 
-        	int[] pixels = render(raster.getData(), raster.getDimension().getSize(), datatype);
-
-        	return createBoundsTile(bitmap, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
+        	return createBoundsTile(bitmap, render(raster), coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
 
         }else{ //this rectangle is fully covered by the file
         	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
@@ -253,13 +248,14 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         
         final RasterQuery query = new RasterQuery(
         		new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY),
+        		mRasterDataset.getCRS(),
         		mRasterDataset.getBands(), 
         		new Dimension(ts, ts),
         		datatype);
         
         final Raster raster = mRasterDataset.read(query);
 
-		bitmap.setPixels(render(raster.getData(),ts * ts, datatype), ts);
+		bitmap.setPixels(render(raster), ts);
 		
 		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 
@@ -287,17 +283,17 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 //	}
 	
 
-	public int[] render(final ByteBuffer buffer, final int tilePixelAmount, final DataType datatype){
+	public int[] render(final Raster raster){
 
 		
 		int[] pixels = null;
 		
 		if(hasRGBBands){
-			pixels = mColorMapProcessing.generateThreeBandedRGBPixels(buffer, tilePixelAmount , datatype);
-		}else if(mColorMapProcessing.hasColorMap() && mUseColorMap){
-			pixels = mColorMapProcessing.generatePixelsWithColorMap(buffer, tilePixelAmount, datatype);
+			pixels = mRendering.generateThreeBandedRGBPixels(raster);
+		}else if(mRendering.hasColorMap() && mUseColorMap){
+			pixels = mRendering.generatePixelsWithColorMap(raster);
 		}else{        	
-			pixels = mColorMapProcessing.generateGrayScalePixelsCalculatingMinMax(buffer, tilePixelAmount, datatype);
+			pixels = mRendering.generateGrayScalePixelsCalculatingMinMax(raster);
 		} 
 
 		

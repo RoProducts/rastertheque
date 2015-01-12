@@ -25,12 +25,24 @@
   </properties>
 
   <dependencies>
-  
-   <dependency>
-      <groupId>com.vividsolutions</groupId>
-      <artifactId>jts</artifactId>
-      <version>1.13</version>
-    </dependency>
+
+  <dependency>
+    <groupId>com.google.guava</groupId>
+    <artifactId>guava</artifactId>
+    <version>18.0</version>
+  </dependency>
+
+  <dependency>
+    <groupId>org.reflections</groupId>
+    <artifactId>reflections</artifactId>
+    <version>0.9.9-RC1</version>
+  </dependency>
+
+  <dependency>
+    <groupId>com.vividsolutions</groupId>
+    <artifactId>jts</artifactId>
+    <version>1.13</version>
+  </dependency>
     
   <dependency>
     <groupId>de.rooehler.raster_jai</groupId>

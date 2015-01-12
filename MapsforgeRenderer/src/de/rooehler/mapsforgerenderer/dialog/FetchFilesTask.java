@@ -74,17 +74,20 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 			}else{
 				do{			
 					String path = cursor.getString(cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA));
-
-					String extension = path.substring(path.lastIndexOf(".") + 1, path.length());
-					for(int i = 0; i < mExtensions.length;i++){
-						final String target = mExtensions[i];
-						if(extension.equals(target)){
-							File file = new File(path);
-							if(!tempResult.contains(path) && file.exists()){
-								tempResult.add(path);
-								Log.d(TAG, "adding path : "+path);
+					if(mExtensions != null && mExtensions.length > 0){
+						String extension = path.substring(path.lastIndexOf(".") + 1, path.length());
+						for(int i = 0; i < mExtensions.length;i++){
+							final String target = mExtensions[i];
+							if(extension.equals(target)){
+								File file = new File(path);
+								if(!tempResult.contains(path) && file.exists()){
+									tempResult.add(path);
+									Log.d(TAG, "adding path : "+path);
+								}
 							}
 						}
+					}else{
+						tempResult.add(path);
 					}
 				}while(cursor.moveToNext());
 			}
@@ -155,11 +158,15 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 				if (listFile[i].isDirectory()) {
 					walkdir(listFile[i],--level);
 				} else {
-					for(int j = 0; j < mExtensions.length;j++){
-						final String target = mExtensions[j];
-						if (listFile[i].getName().endsWith(target)){					
-							tempResult.add(listFile[i].getPath());
+					if(mExtensions != null && mExtensions.length > 0){
+						for(int j = 0; j < mExtensions.length;j++){
+							final String target = mExtensions[j];
+							if (listFile[i].getName().endsWith(target)){					
+								tempResult.add(listFile[i].getPath());
+							}
 						}
+					}else{
+						tempResult.add(listFile[i].getPath());
 					}
 				}
 			}

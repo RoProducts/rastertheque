@@ -11,7 +11,7 @@ public enum SupportedType {
 	public static final String TAG = SupportedType.class.getSimpleName();
 	
 	
-	public static String[] getExtensionForType(SupportedType type){
+	public static String[] getExtensions(SupportedType type){
 		
 		switch (type) {
 		case MAPSFORGE:		
@@ -19,7 +19,7 @@ public enum SupportedType {
 		case MBTILES:
 			return new String[]{"mbtiles"};
 		case RASTER:
-			return new String[]{"tif","tiff","dem"};
+			return new String[]{"tif","tiff","dem","img","rsw","mtw","vrt","mem","mpr","mpl","n1","ers","dt0","dt1","dt2","doq"};
 
 		default:
 			throw new IllegalArgumentException("unsupported type requested");

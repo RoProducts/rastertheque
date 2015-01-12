@@ -3,9 +3,9 @@ package de.rooehler.rastertheque.io.mbtiles;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.content.Context;
+import de.rooehler.rastertheque.core.BoundingBox;
 import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Driver;
-import de.rooehler.rastertheque.core.model.BoundingBox;
 import de.rooehler.rastertheque.proj.Proj;
 
 public class MBTilesDataset implements Dataset {

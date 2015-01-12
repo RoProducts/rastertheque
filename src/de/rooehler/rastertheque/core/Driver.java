@@ -15,29 +15,8 @@
 package de.rooehler.rastertheque.core;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
-import de.rooehler.rastertheque.core.util.Key;
-import de.rooehler.rastertheque.core.util.Messages;
 
 
-/**
- * Format driver.
- * <p>
- * The job of a driver is to create a "connection" to data in a particular format. A driver can 
- * return either one of a dataset, or a workspace containing many datasets. 
- * </p>
- * <p>
- * Driver implementations must adhere to the following guidelines:
- * <ul>
- *  <li>Be thread safe and ideally maintain no state</li>
- *  <li>Contain a single no argument constructor</li>
- * </ul>
- * </p>
- * 
- * @author Justin Deoliveira, OpenGeo
- */
 public interface Driver<T> {
 
     /**
@@ -50,36 +29,12 @@ public interface Driver<T> {
     String getName();
 
     /**
-     * Secondary names identifying the driver.
-     * <p>
-     * Aliases are typically shorter abbreviations for {@link #getName()}  
-     * </p>
-     */
-    List<String> getAliases();
-
-    /**
-     * Returns the class of object returned by the driver.
-     */
-    Class<T> getType();
-
-    /**
-     * Returns the keys supported by the driver.
-     */
-    List<Key<?>> getKeys();
-
-    /**
-     * Determines if this driver can open a connection to the data described by the specified
-     * options.
-     * <p>
-     * The <tt>messages</tt> list is optionally used for the driver to report back any messages
-     * or exceptions that prevent the driver from opening the specified data source.
-     * </p>
-     * @param opts Options describing the data.
-     * @param messages Messages reported from the driver, optionally <code>null</code>.
+     * Determines if this driver can open a connection to a given file
+     * @param file the file to open
      * 
-     * @return True if the driver can open the data, otherwise false.
+     * @return True if the driver can open the file, otherwise false.
      */
-    boolean canOpen(Map<?,Object> opts, Messages messages);
+    boolean canOpen(String filePath);
 
     /**
      * Opens a connection to data described by the specified options.
@@ -91,5 +46,5 @@ public interface Driver<T> {
      * @throws IOException In the event of a connection error such as a file system error or 
      *   database connection failure. 
      */
-    T open(Map<?,Object> opts) throws IOException;
+    T open(String filePath) throws IOException;
 }

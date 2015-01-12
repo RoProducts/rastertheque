@@ -2,8 +2,6 @@ package de.rooehler.rastertheque.core;
 
 import java.util.List;
 
-import de.rooehler.rastertheque.core.model.Dimension;
-
 
 public interface RasterDataset extends Dataset{
 	

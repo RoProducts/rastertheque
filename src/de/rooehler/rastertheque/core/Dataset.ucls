@@ -3,7 +3,7 @@
   associations="true" dependencies="false" nesting-relationships="true">  
   <interface id="1" language="java" name="de.rooehler.rastertheque.core.RasterDataset" project="rastertheque" 
     file="/rastertheque/src/de/rooehler/rastertheque/core/RasterDataset.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="646" y="158"/>    
+    <position height="-1" width="-1" x="708" y="211"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
@@ -12,7 +12,7 @@
   </interface>  
   <interface id="2" language="java" name="de.rooehler.rastertheque.core.Dataset" project="rastertheque" 
     file="/rastertheque/src/de/rooehler/rastertheque/core/Dataset.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="652" y="-34"/>    
+    <position height="-1" width="-1" x="707" y="15"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
@@ -21,166 +21,137 @@
   </interface>  
   <class id="3" language="java" name="de.rooehler.rastertheque.io.gdal.GDALDataset" project="rastertheque" 
     file="/rastertheque/src/de/rooehler/rastertheque/io/gdal/GDALDataset.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="602" width="263" x="138" y="97"/>    
+    <position height="-1" width="-1" x="710" y="508"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </class>  
-  <class id="4" language="java" name="de.rooehler.rastertheque.core.model.BoundingBox" project="rastertheque" 
-    file="/rastertheque/src/de/rooehler/rastertheque/core/model/BoundingBox.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="660" y="729"/>    
+  <class id="4" language="java" name="de.rooehler.rastertheque.core.Dimension" project="rastertheque" 
+    file="/rastertheque/src/de/rooehler/rastertheque/core/Dimension.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="1203" y="502"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </class>  
-  <class id="5" language="java" name="de.rooehler.rastertheque.core.RasterQuery" project="rastertheque" 
-    file="/rastertheque/src/de/rooehler/rastertheque/core/RasterQuery.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="1173" y="691"/>    
+  <class id="5" language="java" name="de.rooehler.rastertheque.core.BoundingBox" project="rastertheque" 
+    file="/rastertheque/src/de/rooehler/rastertheque/core/BoundingBox.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="1246" y="245"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </class>  
-  <class id="6" language="java" name="de.rooehler.rastertheque.core.Raster" project="rastertheque" 
-    file="/rastertheque/src/de/rooehler/rastertheque/core/Raster.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="1225" y="199"/>    
+  <class id="6" language="java" name="de.rooehler.rastertheque.core.Coordinate" project="rastertheque" 
+    file="/rastertheque/src/de/rooehler/rastertheque/core/Coordinate.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="1545" y="245"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </class>  
-  <class id="7" language="java" name="de.rooehler.rastertheque.core.model.Rectangle" project="rastertheque" 
-    file="/rastertheque/src/de/rooehler/rastertheque/core/model/Rectangle.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="779" y="1058"/>    
+  <class id="7" language="java" name="de.rooehler.rastertheque.io.gdal.GDALDriver" project="rastertheque" 
+    file="/rastertheque/src/de/rooehler/rastertheque/io/gdal/GDALDriver.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="860" y="906"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </class>  
-  <class id="8" language="java" name="de.rooehler.rastertheque.core.model.Coordinate" project="rastertheque" 
-    file="/rastertheque/src/de/rooehler/rastertheque/core/model/Coordinate.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="544" y="1051"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
-      visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </class>  
-  <class id="9" language="java" name="de.rooehler.rastertheque.core.model.Dimension" project="rastertheque" 
-    file="/rastertheque/src/de/rooehler/rastertheque/core/model/Dimension.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="1694" y="483"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
-      visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </class>  
-  <class id="10" language="java" name="de.rooehler.rastertheque.io.gdal.GDALBand" project="rastertheque" 
-    file="/rastertheque/src/de/rooehler/rastertheque/io/gdal/GDALBand.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="1914" y="974"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
-      visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </class>  
-  <enumeration id="11" language="java" name="de.rooehler.rastertheque.core.Band.Color" project="rastertheque" 
-    file="/rastertheque/src/de/rooehler/rastertheque/core/Band.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="1650" y="1113"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
-      visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </enumeration>  
-  <interface id="12" language="java" name="de.rooehler.rastertheque.core.Band" project="rastertheque" 
-    file="/rastertheque/src/de/rooehler/rastertheque/core/Band.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="134" width="148" x="1550" y="751"/>    
+  <interface id="8" language="java" name="de.rooehler.rastertheque.core.Driver" project="rastertheque" 
+    file="/rastertheque/src/de/rooehler/rastertheque/core/Driver.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="1167" y="926"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </interface>  
-  <realization id="13">    
-    <end type="SOURCE" refId="3"/>    
-    <end type="TARGET" refId="1"/>  
-  </realization>  
-  <realization id="14">    
-    <end type="SOURCE" refId="10"/>    
-    <end type="TARGET" refId="12"/>  
-  </realization>  
-  <association id="15">    
-    <end type="SOURCE" refId="6" navigable="false">      
-      <attribute id="16" name="bands"/>      
-      <multiplicity id="17" minimum="0" maximum="2147483647"/>    
-    </end>    
-    <end type="TARGET" refId="12" navigable="true"/>    
-    <display labels="true" multiplicity="true"/>  
-  </association>  
-  <association id="18">    
-    <end type="SOURCE" refId="5" navigable="false">      
-      <attribute id="19" name="bounds"/>      
-      <multiplicity id="20" minimum="0" maximum="1"/>    
+  <class id="9" language="java" name="de.rooehler.rastertheque.io.gdal.GDALBand" project="rastertheque" 
+    file="/rastertheque/src/de/rooehler/rastertheque/io/gdal/GDALBand.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="1167" y="738"/>    
+    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
+      visibility="true">      
+      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
+      <operations public="true" package="true" protected="true" private="true" static="true"/>    
+    </display>  
+  </class>  
+  <enumeration id="10" language="java" name="de.rooehler.rastertheque.core.Band.Color" project="rastertheque" 
+    file="/rastertheque/src/de/rooehler/rastertheque/core/Band.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="1532" y="892"/>    
+    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
+      visibility="true">      
+      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
+      <operations public="true" package="true" protected="true" private="true" static="true"/>    
+    </display>  
+  </enumeration>  
+  <interface id="11" language="java" name="de.rooehler.rastertheque.core.Band" project="rastertheque" 
+    file="/rastertheque/src/de/rooehler/rastertheque/core/Band.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="1532" y="691"/>    
+    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
+      visibility="true">      
+      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
+      <operations public="true" package="true" protected="true" private="true" static="true"/>    
+    </display>  
+  </interface>  
+  <association id="12">    
+    <end type="SOURCE" refId="3" navigable="false">      
+      <attribute id="13" name="mDriver"/>      
+      <multiplicity id="14" minimum="0" maximum="1"/>    
     </end>    
     <end type="TARGET" refId="7" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
+  <nesting id="15">    
+    <end type="SOURCE" refId="11"/>    
+    <end type="TARGET" refId="10"/>  
+  </nesting>  
+  <realization id="16">    
+    <end type="SOURCE" refId="9"/>    
+    <end type="TARGET" refId="11"/>  
+  </realization>  
+  <association id="17">    
+    <end type="SOURCE" refId="3" navigable="false">      
+      <attribute id="18" name="mBands"/>      
+      <multiplicity id="19" minimum="0" maximum="2147483647"/>    
+    </end>    
+    <end type="TARGET" refId="11" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <realization id="20">    
+    <end type="SOURCE" refId="3"/>    
+    <end type="TARGET" refId="1"/>  
+  </realization>  
   <association id="21">    
     <end type="SOURCE" refId="3" navigable="false">      
-      <attribute id="22" name="mBB"/>      
+      <attribute id="22" name="mDimension"/>      
       <multiplicity id="23" minimum="0" maximum="1"/>    
     </end>    
     <end type="TARGET" refId="4" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
-  <association id="24">    
-    <end type="SOURCE" refId="6" navigable="false">      
-      <attribute id="25" name="dimension"/>      
-      <multiplicity id="26" minimum="0" maximum="1"/>    
+  <realization id="24">    
+    <end type="SOURCE" refId="7"/>    
+    <end type="TARGET" refId="8"/>  
+  </realization>  
+  <association id="25">    
+    <end type="SOURCE" refId="3" navigable="false">      
+      <attribute id="26" name="mBB"/>      
+      <multiplicity id="27" minimum="0" maximum="1"/>    
     </end>    
-    <end type="TARGET" refId="9" navigable="true"/>    
+    <end type="TARGET" refId="5" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
-  <association id="27">    
-    <end type="SOURCE" refId="6" navigable="false">      
-      <attribute id="28" name="bb"/>      
-      <multiplicity id="29" minimum="0" maximum="1"/>    
-    </end>    
-    <end type="TARGET" refId="4" navigable="true"/>    
-    <display labels="true" multiplicity="true"/>  
-  </association>  
-  <generalization id="30">    
+  <generalization id="28">    
     <end type="SOURCE" refId="1"/>    
     <end type="TARGET" refId="2"/>  
   </generalization>  
-  <association id="31">    
-    <end type="SOURCE" refId="5" navigable="false">      
-      <attribute id="32" name="bands"/>      
-      <multiplicity id="33" minimum="0" maximum="2147483647"/>    
-    </end>    
-    <end type="TARGET" refId="12" navigable="true"/>    
-    <display labels="true" multiplicity="true"/>  
-  </association>  
-  <nesting id="34">    
-    <end type="SOURCE" refId="12"/>    
-    <end type="TARGET" refId="11"/>  
-  </nesting>  
-  <association id="35">    
-    <end type="SOURCE" refId="5" navigable="false">      
-      <attribute id="36" name="size"/>      
-      <multiplicity id="37" minimum="0" maximum="1"/>    
-    </end>    
-    <end type="TARGET" refId="9" navigable="true"/>    
-    <display labels="true" multiplicity="true"/>  
-  </association>  
   <classifier-display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
     accessors="true" visibility="true">    
     <attributes public="true" package="true" protected="true" private="true" static="true"/>    

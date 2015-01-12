@@ -3,21 +3,21 @@ package de.rooehler.rastertheque.processing.colormap;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import android.util.Log;
 import de.rooehler.rastertheque.core.DataType;
+import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
-import de.rooehler.rastertheque.processing.IColorMapProcessing;
+import de.rooehler.rastertheque.processing.Rendering;
 
-public class MColorMapProcessing implements IColorMapProcessing{
+public class MRendering implements Rendering{
 	
-	private final static String TAG = MColorMapProcessing.class.getSimpleName();
+	private final static String TAG = MRendering.class.getSimpleName();
 	
 	private ColorMap mColorMap;
 	
-	public MColorMapProcessing(final String pFilePath){
+	public MRendering(final String pFilePath){
 		
 		final String colorMapFilePath = pFilePath.substring(0, pFilePath.lastIndexOf(".") + 1) + "sld";
 
@@ -37,27 +37,28 @@ public class MColorMapProcessing implements IColorMapProcessing{
 	}
 	
 	@Override
-	public int[] generateThreeBandedRGBPixels(final ByteBuffer pBuffer, final int bufferSize,final DataType dataType) {
+	public int[] generateThreeBandedRGBPixels(final Raster raster) {
 		
-		final ByteBufferReader reader = new ByteBufferReader(pBuffer.array(), ByteOrder.nativeOrder());
+		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
+		final int pixelAmount = raster.getDimension().getSize();
 		
-		int [] pixels = new int[bufferSize];
+		int [] pixels = new int[pixelAmount];
 		
-		double[] pixelsR = new double[bufferSize];
-		double[] pixelsG = new double[bufferSize];
-		double[] pixelsB = new double[bufferSize];
+		double[] pixelsR = new double[pixelAmount];
+		double[] pixelsG = new double[pixelAmount];
+		double[] pixelsB = new double[pixelAmount];
            
-		for (int i = 0; i < bufferSize; i++) {	
-			pixelsR[i] =  getValue(reader, dataType);
+		for (int i = 0; i < pixelAmount; i++) {	
+			pixelsR[i] =  getValue(reader, raster.getBands().get(0).datatype());
 		}
-		for (int j = 0; j < bufferSize; j++) {	
-			pixelsG[j] =  getValue(reader, dataType);
+		for (int j = 0; j < pixelAmount; j++) {	
+			pixelsG[j] =  getValue(reader, raster.getBands().get(1).datatype());
 		}
-		for (int k = 0; k < bufferSize; k++) {	
-			pixelsB[k] =  getValue(reader, dataType);
+		for (int k = 0; k < pixelAmount; k++) {	
+			pixelsB[k] =  getValue(reader, raster.getBands().get(2).datatype());
 		}
 		
-        for (int l = 0; l < bufferSize; l++) {	
+        for (int l = 0; l < pixelAmount; l++) {	
         	
         	double r = pixelsR[l];
         	double g = pixelsG[l];
@@ -74,24 +75,25 @@ public class MColorMapProcessing implements IColorMapProcessing{
 	 * if the colorMap is not created priorly by either setting it or by placing a .sld file of the same name as the
 	 * raster file in the same directory like the raster file an exception is thrown
 	 * @param pBuffer the buffer to read from
-	 * @param bufferSize amount of raster pixels
+	 * @param pixelAmount amount of raster pixels
 	 * @param dataType the dataType of the raster pixels
 	 * @return the array of color pixels
 	 */
 	@Override
-	public int[] generatePixelsWithColorMap(final ByteBuffer pBuffer,final int bufferSize, final DataType dataType){
+	public int[] generatePixelsWithColorMap(final Raster raster){
 		
 		if(mColorMap == null){
 			throw new IllegalArgumentException("no colorMap available");
 		}
 		
-		final ByteBufferReader reader = new ByteBufferReader(pBuffer.array(), ByteOrder.nativeOrder());
+		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
+		final int pixelAmount = raster.getDimension().getSize();
 		
-        int[] pixels = new int[bufferSize];
+        int[] pixels = new int[pixelAmount];
         
-        for (int i = 0; i < bufferSize; i++) {
+        for (int i = 0; i < pixelAmount; i++) {
         	
-        	double d = getValue(reader, dataType);
+        	double d = getValue(reader, raster.getBands().get(0).datatype());
 
     		pixels[i] = pixelValueForColorMapAccordingToData(d);
 
@@ -105,27 +107,27 @@ public class MColorMapProcessing implements IColorMapProcessing{
 	/**
 	 * generates an array of colored gray-scale pixels for a buffer of raster pixels
 	 * @param pBuffer the buffer to read from
-	 * @param bufferSize amount of raster pixels
+	 * @param pixelAmount amount of raster pixels
 	 * @param dataType the dataType of the raster pixels
 	 * @return the array of color pixels
 	 */
 	@Override
-	public int[] generateGrayScalePixelsCalculatingMinMax(final ByteBuffer pBuffer,final int bufferSize,final DataType dataType) {
+	public int[] generateGrayScalePixelsCalculatingMinMax(final Raster raster) {
 
-
-		int[] pixels = new int[bufferSize];
+		final int pixelAmount = raster.getDimension().getSize();
+		int[] pixels = new int[pixelAmount];
 	    double[] minMax = new double[2];
 			 
-		final ByteBufferReader reader = new ByteBufferReader(pBuffer.array(), ByteOrder.nativeOrder());
+		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 		
-	 	getMinMax(minMax, reader, bufferSize, dataType);
+	 	getMinMax(minMax, reader, pixelAmount, raster.getBands().get(0).datatype());
 	       
     	Log.d(TAG, "rawdata min "+minMax[0] +" max "+minMax[1]);
     	reader.init();
 
-    	for (int i = 0; i < bufferSize; i++) {
+    	for (int i = 0; i < pixelAmount; i++) {
         	
-        	double d = getValue(reader, dataType);
+        	double d = getValue(reader, raster.getBands().get(0).datatype());
 
     		pixels[i] = pixelValueForGrayScale(d, minMax[0], minMax[1]);
 

@@ -1,12 +1,19 @@
 package de.rooehler.rasterapp.test;
 
+import java.io.IOException;
+import java.util.ArrayList;
+
 import android.os.Environment;
+import android.util.Log;
+import de.rooehler.rastertheque.core.Dimension;
+import de.rooehler.rastertheque.core.Driver;
+import de.rooehler.rastertheque.core.Drivers;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.core.model.Dimension;
-import de.rooehler.rastertheque.core.model.Rectangle;
+import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.colormap.MColorMapProcessing;
+import de.rooehler.rastertheque.io.gdal.GDALDriver;
+import de.rooehler.rastertheque.processing.colormap.MRendering;
 
 public class TestIO extends android.test.AndroidTestCase {
 
@@ -16,10 +23,13 @@ public class TestIO extends android.test.AndroidTestCase {
 	/**
 	 * tests opening of the file
 	 */
-	public void testIO(){
+	public void testIO() throws IOException{
+				
+		GDALDriver driver = new GDALDriver();
 		
+		assertTrue(driver.canOpen(FILE));
 		
-		GDALDataset dataset = new GDALDataset(FILE);
+		GDALDataset dataset = driver.open(FILE);
 				
 		assertNotNull(dataset.getCenterPoint());
 		
@@ -39,9 +49,13 @@ public class TestIO extends android.test.AndroidTestCase {
 	/*
 	 * tests reading a region of the file
 	 */
-	public void testRead(){
+	public void testRead() throws IOException{
 		
-		GDALDataset dataset = new GDALDataset(FILE);
+		GDALDriver driver = new GDALDriver();
+		
+		assertTrue(driver.canOpen(FILE));
+		
+		GDALDataset dataset = driver.open(FILE);
 		
 		final Dimension dim = dataset.getDimension();
 		final int height = dim.getHeight();
@@ -51,18 +65,16 @@ public class TestIO extends android.test.AndroidTestCase {
 		     
         final RasterQuery query = new RasterQuery(
         		rect,
+        		dataset.getCRS(),
         		dataset.getBands(),
         		new Dimension(rect.width, rect.height),
         		dataset.getBands().get(0).datatype());
         
         final Raster raster = dataset.read(query);
         
-        final MColorMapProcessing cmp = new MColorMapProcessing(FILE);
+        final MRendering rend = new MRendering(FILE);
         
-        final int[] pixels  = cmp.generateGrayScalePixelsCalculatingMinMax(
-        		raster.getData(),
-        		raster.getDimension().getSize(),
-        		dataset.getBands().get(0).datatype());
+        final int[] pixels  = rend.generateGrayScalePixelsCalculatingMinMax(raster);
         
         assertNotNull(pixels);
         
@@ -84,5 +96,37 @@ public class TestIO extends android.test.AndroidTestCase {
         
         dataset.close();
         
+	}
+	
+	@SuppressWarnings("serial")
+	public void testDriver(){
+		
+		ArrayList<String> driverLocations = new ArrayList<String>(){{
+			add("de/rooehler/rastertheque/io/gdal/");
+			add("de/rooehler/rasterapp/test/");
+		}};
+		
+		ArrayList<Driver<?>> drivers = Drivers.getDrivers(driverLocations);
+				
+		assertNotNull(drivers);
+		
+		assertTrue(drivers.size() > 0);
+
+		for(int i = 0; i < drivers.size(); i++){
+
+			final Driver<?> driver = drivers.get(i);
+
+			Log.d(TestIO.class.getSimpleName(),"class : " + driver.getName().toString());
+
+			if(i == 0){
+
+				assertTrue(driver instanceof GDALDriver);
+
+			}else if (i == 1){
+
+				assertTrue(driver instanceof TestPluggedDriver);
+			}
+
+		}
 	}
 }
