@@ -20,14 +20,14 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.Rendering;
+import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
 /**
  * A Renderer of gdal data for Mapsforge
  * @author Robert Oehler
  *
  */
-public class GDALMapsforgeRenderer implements RasterRenderer, Resampler {
+public class GDALMapsforgeRenderer implements RasterRenderer {
 
 	private final static String TAG = GDALMapsforgeRenderer.class.getSimpleName();
 
@@ -41,7 +41,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer, Resampler {
 	
 	private GDALDataset mRasterDataset;
 	
-	private Rendering mRendering;
+	private Renderer mRenderer;
 	
 	private Resampler mResampler;
 	
@@ -52,13 +52,13 @@ public class GDALMapsforgeRenderer implements RasterRenderer, Resampler {
 	private boolean hasRGBBands;
 
 
-	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster, final Rendering pRendering,final Resampler pResampler, final boolean pUseColorMap) {
+	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster, final Renderer pRenderer,final Resampler pResampler, final boolean pUseColorMap) {
 		
 		this.graphicFactory = graphicFactory;
 		
 		this.mRasterDataset = pRaster;
 		
-		this.mRendering = pRendering;
+		this.mRenderer = pRenderer;
 		
 		this.mResampler = pResampler;
 		
@@ -235,12 +235,12 @@ public class GDALMapsforgeRenderer implements RasterRenderer, Resampler {
         		}
         	}
 
-        	final Dimension targetDim = mResampler == this || gdalTargetXSize < availableX ? new Dimension(gdalTargetXSize, gdalTargetYSize) : new Dimension(availableX,availableY);
+        	final Dimension targetDim = useGDALAsResampler() || gdalTargetXSize < availableX ? new Dimension(gdalTargetXSize, gdalTargetYSize) : new Dimension(availableX,availableY);
         	int pixels[] = executeQuery(
         			new Rectangle((int)readFromX,(int)readFromY, availableX, availableY),
              		targetDim,
              		datatype,
-             		!(mResampler == this || gdalTargetXSize < availableX),
+             		!(useGDALAsResampler() || gdalTargetXSize < availableX),
              		gdalTargetXSize , gdalTargetYSize);
 
             	
@@ -251,13 +251,13 @@ public class GDALMapsforgeRenderer implements RasterRenderer, Resampler {
         	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
         } 
         
-        final Dimension targetDim = mResampler == this || ts < readAmountX ? new Dimension(ts,ts) : new Dimension(readAmountX,readAmountY);
+        final Dimension targetDim = useGDALAsResampler() || ts < readAmountX ? new Dimension(ts,ts) : new Dimension(readAmountX,readAmountY);
         
         int pixels[] = executeQuery(
         		new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY),
         		targetDim,
         		datatype,
-        		!(mResampler == this || ts < readAmountX),
+        		!(useGDALAsResampler() || ts < readAmountX),
         		ts , ts);
 
         bitmap.setPixels(pixels, ts);
@@ -281,7 +281,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer, Resampler {
         if(resample){
             int pixels[] = render(raster);
         	int[] resampledPixels = new int[targetWidth * targetHeight];
-        	mResampler.resampleBilinear(pixels, readDim.getWidth(),readDim.getHeight(), resampledPixels, targetWidth, targetHeight );
+        	mResampler.resample(pixels, readDim.getWidth(),readDim.getHeight(), resampledPixels, targetWidth, targetHeight );
         	return resampledPixels;
         }else{
         	return render(raster);
@@ -295,11 +295,11 @@ public class GDALMapsforgeRenderer implements RasterRenderer, Resampler {
 		int[] pixels = null;
 		
 		if(hasRGBBands){
-			pixels = mRendering.generateThreeBandedRGBPixels(raster);
-		}else if(mRendering.hasColorMap() && mUseColorMap){
-			pixels = mRendering.generatePixelsWithColorMap(raster);
+			pixels = mRenderer.rgbBands(raster);
+		}else if(mRenderer.hasColorMap() && mUseColorMap){
+			pixels = mRenderer.colormap(raster);
 		}else{        	
-			pixels = mRendering.generateGrayScalePixelsCalculatingMinMax(raster);
+			pixels = mRenderer.grayscale(raster);
 		} 
 
 		
@@ -408,6 +408,11 @@ public class GDALMapsforgeRenderer implements RasterRenderer, Resampler {
 		return mRasterDataset;
 	}
 
+	public boolean useGDALAsResampler(){
+		
+		return mResampler instanceof GDALDataset;
+	}
+	
 	@Override
 	public void start() {
 
@@ -455,13 +460,6 @@ public class GDALMapsforgeRenderer implements RasterRenderer, Resampler {
 	public boolean canSwitchColorMap(){
 		
 		return mRasterBandCount == 1;
-	}
-
-	@Override
-	public void resampleBilinear(int[] srcPixels, int srcWidth, int srcHeight,
-			int[] dstPixels, int dstWidth, int dstHeight) {
-		// TODO Auto-generated method stub
-		
 	}
 
 }

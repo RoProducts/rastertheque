@@ -13,7 +13,8 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
-import de.rooehler.rastertheque.processing.colormap.MRendering;
+import de.rooehler.rastertheque.processing.Renderer;
+import de.rooehler.rastertheque.processing.rendering.MRenderer;
 
 public class TestIO extends android.test.AndroidTestCase {
 
@@ -72,9 +73,9 @@ public class TestIO extends android.test.AndroidTestCase {
         
         final Raster raster = dataset.read(query);
         
-        final MRendering rend = new MRendering(FILE);
+        final Renderer renderer = new MRenderer(FILE);
         
-        final int[] pixels  = rend.generateGrayScalePixelsCalculatingMinMax(raster);
+        final int[] pixels  = renderer.grayscale(raster);
         
         assertNotNull(pixels);
         
@@ -99,11 +100,43 @@ public class TestIO extends android.test.AndroidTestCase {
 	}
 	
 	@SuppressWarnings("serial")
-	public void testDriver(){
+	public void testGDALDrivers(){
 		
 		ArrayList<String> driverLocations = new ArrayList<String>(){{
-			add("de/rooehler/rastertheque/io/gdal/");
-			add("de/rooehler/rasterapp/test/");
+			add("org/rastertheque/io/raster/gdal/");
+		}};
+		
+		ArrayList<Driver<?>> gdalDrivers = Drivers.getDrivers(driverLocations);
+				
+		assertNotNull(gdalDrivers);
+		
+		assertTrue(gdalDrivers.size() > 0);
+		
+		Log.d(TestIO.class.getSimpleName(),"gdal drivers found : " + gdalDrivers.size());
+		
+		ArrayList<Class<?>> classes = new ArrayList<Class<?>>(){{
+			add(GDALDriver.class);
+			add(TestPluggedDriver.class);
+		}};
+		
+
+		for(int i = 0; i < gdalDrivers.size(); i++){
+
+			final Driver<?> driver = gdalDrivers.get(i);
+
+			Log.d(TestIO.class.getSimpleName(),"class : " + driver.getName().toString());
+
+			assertTrue(classes.contains(driver.getClass()));
+
+		}
+	}
+	
+	@SuppressWarnings("serial")
+	public void testMBTilesDrivers(){
+		
+
+		ArrayList<String> driverLocations = new ArrayList<String>(){{
+			add("org/rastertheque/io/raster/mbtiles/");
 		}};
 		
 		ArrayList<Driver<?>> drivers = Drivers.getDrivers(driverLocations);
@@ -111,22 +144,8 @@ public class TestIO extends android.test.AndroidTestCase {
 		assertNotNull(drivers);
 		
 		assertTrue(drivers.size() > 0);
-
-		for(int i = 0; i < drivers.size(); i++){
-
-			final Driver<?> driver = drivers.get(i);
-
-			Log.d(TestIO.class.getSimpleName(),"class : " + driver.getName().toString());
-
-			if(i == 0){
-
-				assertTrue(driver instanceof GDALDriver);
-
-			}else if (i == 1){
-
-				assertTrue(driver instanceof TestPluggedDriver);
-			}
-
-		}
+		
+		Log.d(TestIO.class.getSimpleName(),"MBTiles drivers found : " + drivers.size());
+		
 	}
 }

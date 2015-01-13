@@ -24,7 +24,7 @@ import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.proj.Proj;
 
-public class GDALDataset implements RasterDataset, Resampler{
+public class GDALDataset extends Resampler implements RasterDataset{
 	
 	private static final String TAG = GDALDataset.class.getSimpleName();
 	
@@ -42,8 +42,8 @@ public class GDALDataset implements RasterDataset, Resampler{
 	
 	CoordinateReferenceSystem mCRS;
 	
-    public GDALDataset(final String pFilePath, Dataset dataset, GDALDriver driver) {
-    	
+    public GDALDataset(final ResampleMethod method,final String pFilePath, Dataset dataset, GDALDriver driver) {
+    	super(method);
         this.mSource = pFilePath;
         this.dataset = dataset;
         this.mDriver = driver;
@@ -221,9 +221,16 @@ public class GDALDataset implements RasterDataset, Resampler{
 	}
 
 	@Override
-	public void resampleBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight) {
+	protected void resampleBilinear(int[] srcPixels, int srcWidth,
+			int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
+		// TODO Auto-generated method stub
 		
-		//Nothing, is done while reading
+	}
+
+	@Override
+	protected void resampleBicubic(int[] srcPixels, int srcWidth,
+			int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
+		// TODO Auto-generated method stub
 		
 	}
 	

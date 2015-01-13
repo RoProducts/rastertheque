@@ -9,7 +9,9 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
-import de.rooehler.rastertheque.processing.colormap.MRendering;
+import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.processing.rendering.MRenderer;
 import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
 
@@ -18,7 +20,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 	/**
 	 * tests and compares interpolations
 	 */
-	public void testInterpolation() throws IOException{		
+	public void testBilinearInterpolation() throws IOException{		
 		
 		final GDALDriver driver = new GDALDriver();
 		
@@ -43,9 +45,9 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         final Raster raster = dataset.read(query);
         
-        final MRendering rend = new MRendering(TestIO.FILE);
+        final MRenderer renderer = new MRenderer(TestIO.FILE);
         
-        final int[] pixels  = rend.generatePixelsWithColorMap(raster);
+        final int[] pixels  = renderer.colormap(raster);
         
         assertNotNull(pixels);
         
@@ -58,13 +60,13 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         long now = System.currentTimeMillis();
         
-        new MResampler().resampleBilinear(pixels, tileSize,tileSize, mResampled, resampledSize, resampledSize);
+        new MResampler(ResampleMethod.BILINEAR).resample(pixels, tileSize,tileSize, mResampled, resampledSize, resampledSize);
         
         Log.d(TestProcessing.class.getSimpleName(), "MInterpolation took "+ (System.currentTimeMillis() - now));
         
         now = System.currentTimeMillis();
         
-        new JAIResampler().resampleBilinear(pixels, tileSize, tileSize, jaiResampled, resampledSize, resampledSize);
+        new JAIResampler(ResampleMethod.BILINEAR).resample(pixels, tileSize, tileSize, jaiResampled, resampledSize, resampledSize);
         
         Log.d(TestProcessing.class.getSimpleName(), "JAI took "+ (System.currentTimeMillis() - now));
         
@@ -134,14 +136,15 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         final long gdalNow = System.currentTimeMillis();
         
         final Raster raster = dataset.read(gdalResampleQuery);    
-		final MRendering rend = new MRendering(TestIO.FILE);
+		final MRenderer renderer = new MRenderer(TestIO.FILE);
 		
-        final int[] gdalResampledPixels  = rend.generatePixelsWithColorMap(raster);
+        final int[] gdalResampledPixels  = renderer.colormap(raster);
         assertNotNull(gdalResampledPixels);
         Log.d(TestProcessing.class.getSimpleName(), "GDAL resampling took "+ (System.currentTimeMillis() - gdalNow)+" ms");
 
         return gdalResampledPixels.length;
 	}
+	
 	public int resampleManually(final Rectangle rect, final GDALDataset dataset,final int readSize, final int targetSize){
 		
         final RasterQuery manualResamplingQuery = new RasterQuery(
@@ -157,13 +160,13 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		
         Log.d(TestProcessing.class.getSimpleName(), "gdal read took "+ (System.currentTimeMillis() - manualNow)+" ms");
         
-    	final MRendering rend = new MRendering(TestIO.FILE);
+    	final MRenderer rend = new MRenderer(TestIO.FILE);
         
-        final int[] manualResampledSourcePixels  = rend.generatePixelsWithColorMap(manualRaster);
+        final int[] manualResampledSourcePixels  = rend.colormap(manualRaster);
         
         final int[] manualResampledTargetPixels = new int[targetSize * targetSize];
         
-        new MResampler().resampleBilinear(
+        new MResampler(ResampleMethod.BILINEAR).resample(
         		manualResampledSourcePixels,
         		readSize,
         		readSize,
@@ -179,4 +182,20 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         return manualResampledTargetPixels.length;
 	}
 
+	public void testBicubic(){
+		
+		int white = 0xffffffff;
+		int black = 0xff000000;
+		
+		int[] pic = new int[]{white,black,white,black};
+		
+		int[] resampled = new int[pic.length * 4];
+		
+		Resampler resampler = new MResampler(ResampleMethod.BICUBIC);
+		
+		resampler.resample(pic, 2, 2, resampled, 4, 4);
+		
+		assertTrue(resampled[0] == white);
+		
+	}
 }

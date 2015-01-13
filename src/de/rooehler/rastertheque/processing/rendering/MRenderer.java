@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.processing.colormap;
+package de.rooehler.rastertheque.processing.rendering;
 
 import java.io.EOFException;
 import java.io.File;
@@ -9,15 +9,15 @@ import android.util.Log;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
-import de.rooehler.rastertheque.processing.Rendering;
+import de.rooehler.rastertheque.processing.Renderer;
 
-public class MRendering implements Rendering{
+public class MRenderer implements Renderer{
 	
-	private final static String TAG = MRendering.class.getSimpleName();
+	private final static String TAG = MRenderer.class.getSimpleName();
 	
 	private ColorMap mColorMap;
 	
-	public MRendering(final String pFilePath){
+	public MRenderer(final String pFilePath){
 		
 		final String colorMapFilePath = pFilePath.substring(0, pFilePath.lastIndexOf(".") + 1) + "sld";
 
@@ -37,7 +37,7 @@ public class MRendering implements Rendering{
 	}
 	
 	@Override
-	public int[] generateThreeBandedRGBPixels(final Raster raster) {
+	public int[] rgbBands(final Raster raster) {
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 		final int pixelAmount = raster.getDimension().getSize();
@@ -80,7 +80,7 @@ public class MRendering implements Rendering{
 	 * @return the array of color pixels
 	 */
 	@Override
-	public int[] generatePixelsWithColorMap(final Raster raster){
+	public int[] colormap(final Raster raster){
 		
 		if(mColorMap == null){
 			throw new IllegalArgumentException("no colorMap available");
@@ -112,7 +112,7 @@ public class MRendering implements Rendering{
 	 * @return the array of color pixels
 	 */
 	@Override
-	public int[] generateGrayScalePixelsCalculatingMinMax(final Raster raster) {
+	public int[] grayscale(final Raster raster) {
 
 		final int pixelAmount = raster.getDimension().getSize();
 		int[] pixels = new int[pixelAmount];

@@ -56,7 +56,7 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 		int[] pixels = new int[tileSize * tileSize];
 		int[] mbTilesPixels = new int[MBTILES_SIZE * MBTILES_SIZE];
 
-		rasterBytes = mDataset.getDB().getTileAsBytes(String.valueOf(tmsTileXY[0]), String.valueOf(tmsTileXY[1]), Byte.toString(tile.zoomLevel));
+		rasterBytes = mDataset.getTileAsBytes(String.valueOf(tmsTileXY[0]), String.valueOf(tmsTileXY[1]), Byte.toString(tile.zoomLevel));
 
 		if (rasterBytes == null) {
 
@@ -83,7 +83,7 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 
 		if (tileSize != MBTILES_SIZE) {
 
-			mResampler.resampleBilinear(mbTilesPixels, MBTILES_SIZE, MBTILES_SIZE, pixels, tileSize, tileSize);
+			mResampler.resample(mbTilesPixels, MBTILES_SIZE, MBTILES_SIZE, pixels, tileSize, tileSize);
 
 		} else {
 
@@ -98,14 +98,11 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 
 	@Override
 	public void start() {
-
-		this.mDataset.start();
-
+		
 	}
 	@Override
 	public void stop() {
-
-		this.mDataset.close();
+		
 	}
 	@Override
 	public boolean isWorking() {
@@ -121,10 +118,8 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 	}
 
 	@Override
-	public void destroy() {
-		
-		this.mDataset.destroy();
-		
+	public void destroy() {		
+		this.mDataset.close();
 	}
 
 }

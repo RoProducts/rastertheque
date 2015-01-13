@@ -35,7 +35,10 @@ import de.rooehler.mapboxrenderer.fileselection.SupportedType;
 import de.rooehler.mapboxrenderer.renderer.GDALTileLayer;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
-import de.rooehler.rastertheque.processing.colormap.MRendering;
+import de.rooehler.rastertheque.processing.Renderer;
+import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.processing.rendering.MRenderer;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
 
 
@@ -240,7 +243,7 @@ public class MapBoxSampleActivity extends Activity {
 
 		DisplayMetrics displaymetrics = new DisplayMetrics();
 		getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-		int screenWidth = displaymetrics.widthPixels;
+//		int screenWidth = displaymetrics.widthPixels;
 
 		final boolean useColorMap = true;
 
@@ -258,10 +261,10 @@ public class MapBoxSampleActivity extends Activity {
 		}catch(IOException e){
 			Log.e(TAG, "error opening file "+filePath);
 		}
-		MRendering rendering = new MRendering(filePath);
-		MResampler resampler = new MResampler();
+		Renderer renderer = new MRenderer(filePath);
+		Resampler resampler = new MResampler(ResampleMethod.BILINEAR);
 		
-		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset, resampler, rendering, useColorMap);
+		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset, resampler, renderer, useColorMap);
 
 		Log.e(TAG, "setting zoom for new file to "+ (((GDALTileLayer) mCurrentLayer).getStartZoomLevel()));
 		mv.setZoom(((GDALTileLayer) mCurrentLayer).getStartZoomLevel());

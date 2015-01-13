@@ -2,18 +2,11 @@ package de.rooehler.rastertheque.io.mbtiles;
 
 import java.io.IOException;
 
-import android.content.Context;
+import de.rooehler.rastertheque.core.BoundingBox;
 import de.rooehler.rastertheque.core.Driver;
 
 public class MBTilesDriver implements Driver<MBTilesDataset>  {
 	
-	private Context mContext;
-	
-	public MBTilesDriver(final Context context){
-		
-		this.mContext = context;	
-		
-	}
 
 	@Override
 	public String getName() {
@@ -32,11 +25,11 @@ public class MBTilesDriver implements Driver<MBTilesDataset>  {
 		
 		try{
 			
-			final MBTilesDatabase db = new MBTilesDatabase(mContext, path);
+			final MBTilesDataset dataset = new MBTilesDataset(path);
 			
-			db.openDataBase();
+			final BoundingBox bb = dataset.getBoundingBox();
 			
-			db.close();
+			dataset.close();
 			
 		}catch(Exception e){
 			return false;
@@ -48,7 +41,7 @@ public class MBTilesDriver implements Driver<MBTilesDataset>  {
 	@Override
 	public MBTilesDataset open(String filePath) throws IOException {
 		
-		return new MBTilesDataset(mContext, filePath);
+		return new MBTilesDataset(filePath);
 	}
 
 }

@@ -54,9 +54,10 @@ import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDriver;
-import de.rooehler.rastertheque.processing.Rendering;
+import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.colormap.MRendering;
+import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.processing.rendering.MRenderer;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
 
 
@@ -77,7 +78,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 	private CharSequence mDrawerTitle;
     private CharSequence mTitle;
 	
-    private ProgressDialog pd;
+//    private ProgressDialog pd;
     
     private boolean isRendering = false;
     
@@ -244,7 +245,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 			break;
 		case MBTILES:
 
-			final MBTilesDriver mbtdriver = new MBTilesDriver(getBaseContext());
+			final MBTilesDriver mbtdriver = new MBTilesDriver();
 			if(!mbtdriver.canOpen(filePath)){
 				Log.e(TAG, "cannot open "+ filePath+" with MBTiles driver");
 				return;
@@ -261,12 +262,13 @@ public class MainActivity extends Activity implements IWorkStatus{
 				final MapViewPosition mbtmvp = mapView.getModel().mapViewPosition;		
 				mbtmvp.setMapPosition(mbtmp);
 
-				MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesDataset, new MResampler());
+				final Resampler resampler = new MResampler(ResampleMethod.BILINEAR);
+				MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesDataset, resampler);
 				Layer mbTilesLayer = new RasterLayer(getBaseContext(), tileCache, mbtmvp, false, AndroidGraphicFactory.INSTANCE, mbTilesRenderer, this);
-				
+				Log.d(TAG, "setting max to "+zoomMinMax[1]+ " min to "+ zoomMinMax[0]);
 				mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
-				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) zoomMinMax[0]);
 				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) zoomMinMax[1]);
+				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) zoomMinMax[0]);
 				mapView.getMapScaleBar().setVisible(false);
 				
 			} catch (IOException e) {
@@ -298,10 +300,10 @@ public class MainActivity extends Activity implements IWorkStatus{
 				Log.e(TAG, "error opening file "+filePath);
 			}
 			
-			Rendering rendering = new MRendering(filePath);
-			Resampler resampler = new MResampler();
+			Renderer renderer = new MRenderer(filePath);
+			Resampler resampler = new MResampler(ResampleMethod.BILINEAR);
 			
-			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE,((GDALDataset) ds), rendering,resampler, true);
+			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE,((GDALDataset) ds), renderer,resampler, true);
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
 			byte startZoomLevel = gdalFileRenderer.calculateStartZoomLevel(tileSize,width);
 			
@@ -318,7 +320,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 			byte zoomLevelMax = gdalFileRenderer.calculateZoomLevelsAndStartScale(tileSize, width, w, h);
 			Layer rasterLayer = new RasterLayer(getBaseContext(),tileCache, gdalmvp, false, AndroidGraphicFactory.INSTANCE, gdalFileRenderer, this);
 			mapView.getLayerManager().getLayers().add(0, rasterLayer);
-
+			Log.d(TAG, "setting max to "+zoomLevelMax+ " min to "+ startZoomLevel);
 			mapView.getModel().mapViewPosition.setZoomLevelMin(startZoomLevel);
 			mapView.getModel().mapViewPosition.setZoomLevelMax(zoomLevelMax);
 			mapView.getMapScaleBar().setVisible(false);

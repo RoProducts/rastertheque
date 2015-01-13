@@ -26,9 +26,8 @@ import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.Rendering;
+import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.colormap.MRendering;
 import de.rooehler.rastertheque.util.Formulae;
 /**
  * A GDALTileLayer extends the Mapbox TileLayer to extract Tiles out of the
@@ -45,7 +44,7 @@ public class GDALTileLayer extends TileLayer {
 	
 	private GDALDataset mRasterDataset;
 	
-	private Rendering mRendering;
+	private Renderer mRenderer;
 	
 	private Resampler mResampler;
 	
@@ -67,14 +66,14 @@ public class GDALTileLayer extends TileLayer {
 	
 	private static final int NO_DATA_COLOR = 0xff000000;
 	
-	public GDALTileLayer(final File file, final GDALDataset gdalRaster,final Resampler pResampler,final MRendering pRendering, final boolean pUseColormap) {
+	public GDALTileLayer(final File file, final GDALDataset gdalRaster,final Resampler pResampler,final Renderer pRenderer, final boolean pUseColormap) {
 		super(file.getName(), file.getAbsolutePath());
 
 		mSource = file.getAbsolutePath();
 
 		mRasterDataset = gdalRaster;
 
-		mRendering = pRendering;
+		mRenderer = pRenderer;
 		
 		mResampler = pResampler;
 
@@ -225,13 +224,13 @@ public class GDALTileLayer extends TileLayer {
         	}
 //        	Log.e(TAG, "reading of ("+availableX+","+availableY +") from "+readFromX+","+readFromY+" target {"+gdalTargetXSize+","+gdalTargetYSize+"}, covered: X"+coveredXOrigin+", Y "+coveredYOrigin);
 
-        	final Dimension targetDim = mResampler == this ? new Dimension(gdalTargetXSize, gdalTargetYSize) : new Dimension(availableX,availableY);
+        	final Dimension targetDim = useGDALAsResampler() ? new Dimension(gdalTargetXSize, gdalTargetYSize) : new Dimension(availableX,availableY);
         	
            	int pixels[] = executeQuery(
         			new Rectangle((int)readFromX,(int)readFromY, availableX, availableY),
              		targetDim,
              		datatype,
-             		!(mResampler == this || gdalTargetXSize < availableX),
+             		!(useGDALAsResampler() || gdalTargetXSize < availableX),
              		gdalTargetXSize , gdalTargetYSize);
            	
            	return createBoundsTile(downloader, aTile, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
@@ -240,13 +239,13 @@ public class GDALTileLayer extends TileLayer {
         }else{ //this rectangle is fully covered by the file
         	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
         }  
-        final Dimension targetDim = mResampler == this ? new Dimension(ts,ts) : new Dimension(readAmountX,readAmountY);
+        final Dimension targetDim = useGDALAsResampler() ? new Dimension(ts,ts) : new Dimension(readAmountX,readAmountY);
       
         int pixels[] = executeQuery(
         		new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY),
         		targetDim,
         		datatype,
-        		!(mResampler == this || ts < readAmountX),
+        		!(useGDALAsResampler() || ts < readAmountX),
         		ts , ts);
 
         Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
@@ -267,21 +266,21 @@ public class GDALTileLayer extends TileLayer {
 	public int[] executeQuery(final Rectangle rect, final Dimension readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
 		
 		final RasterQuery query = new RasterQuery(
-        		rect,
-        		mRasterDataset.getCRS(),
-        		mRasterDataset.getBands(), 
-        		readDim,
-        		datatype);
-        
-		 Raster raster = null;
-	        synchronized(this){
-	        	 raster = mRasterDataset.read(query);
-	        }
+				rect,
+				mRasterDataset.getCRS(),
+				mRasterDataset.getBands(), 
+				readDim,
+				datatype);
 
-        if(resample){
+		Raster raster = null;
+		synchronized(this){
+			raster = mRasterDataset.read(query);
+		}
+
+		if(resample){
             int pixels[] = render(raster);
         	int[] resampledPixels = new int[targetWidth * targetHeight];
-        	mResampler.resampleBilinear(pixels, readDim.getWidth(),readDim.getHeight(), resampledPixels, targetWidth, targetHeight );
+        	mResampler.resample(pixels, readDim.getWidth(),readDim.getHeight(), resampledPixels, targetWidth, targetHeight );
         	return resampledPixels;
         }else{
         	return render(raster);
@@ -308,11 +307,11 @@ public class GDALTileLayer extends TileLayer {
 		int[] pixels = null;
 		
 		if(hasRGBBands){
-			pixels = mRendering.generateThreeBandedRGBPixels(raster);
-		}else if(mRendering.hasColorMap() && mUseColorMap){
-			pixels = mRendering.generatePixelsWithColorMap(raster);
+			pixels = mRenderer.rgbBands(raster);
+		}else if(mRenderer.hasColorMap() && mUseColorMap){
+			pixels = mRenderer.colormap(raster);
 		}else{        	
-			pixels = mRendering.generateGrayScalePixelsCalculatingMinMax(raster);
+			pixels = mRenderer.grayscale(raster);
 		} 
 
 		
@@ -424,7 +423,14 @@ public class GDALTileLayer extends TileLayer {
 
     @Override
     public void detach() {
+    	
     }
+    
+	public boolean useGDALAsResampler(){
+		
+		return mResampler instanceof GDALDataset;
+	}
+    
 	public void close(){
 		mRasterDataset.close();
 				
