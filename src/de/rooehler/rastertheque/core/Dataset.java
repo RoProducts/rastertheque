@@ -4,6 +4,8 @@ import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import de.rooehler.rastertheque.core.util.Disposable;
 
+import com.vividsolutions.jts.geom.Envelope;
+
 public interface Dataset extends Disposable {
 	
 	Driver<?> getDriver();
@@ -16,7 +18,7 @@ public interface Dataset extends Disposable {
 	
 	CoordinateReferenceSystem getCRS();
 	
-	BoundingBox getBoundingBox();	
+	Envelope getBoundingBox();	
 	
 
 }

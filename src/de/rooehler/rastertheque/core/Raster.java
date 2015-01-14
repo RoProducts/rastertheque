@@ -5,12 +5,14 @@ import java.util.List;
 
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
+import com.vividsolutions.jts.geom.Envelope;
+
 public class Raster {
 	
     /**
      * The bounds of the raster.
      */
-    BoundingBox bb;
+    Envelope bb;
 
     /**
      * The projection of the raster.
@@ -20,7 +22,7 @@ public class Raster {
     /**
      * The dimensions of the raster.
      */
-    Dimension dimension;
+    Envelope dimension;
 
     /**
      * Bands contained in the raster.
@@ -32,40 +34,28 @@ public class Raster {
      */
     ByteBuffer data;
 
-    /**
-     * Nodata for this raster.
-     */
-    NoData nodata = NoData.NONE;
-
     
     
-    public Raster(BoundingBox bb, CoordinateReferenceSystem crs, Dimension size, List<Band> bands, ByteBuffer data, NoData nodata) {
+    public Raster(Envelope bb, CoordinateReferenceSystem crs, Envelope size, List<Band> bands, ByteBuffer data) {
     	
     	this.bb = bb;
     	this.crs = crs;
     	this.dimension = size;
     	this.bands = bands;
     	this.data = data;
-    	this.nodata = nodata;
     }
-    public Raster(ByteBuffer data,  Dimension size,  List<Band> bands) {
-
-		this.data = data;
-		this.dimension = size;
-		this.bands = bands;
-	}
 
 	/**
      * The bounds of the raster in world coordinates.
      */
-    public BoundingBox getBoundingBox() {
+    public Envelope getBoundingBox() {
         return bb;
     }
 
     /**
      * Sets the bounds of the raster in world coordinates.
      */
-    public void setBoundingBox(BoundingBox boundingBox) {
+    public void setBoundingBox(Envelope boundingBox) {
         this.bb = boundingBox;
     }
 
@@ -86,14 +76,14 @@ public class Raster {
     /**
      * The dimensions of the raster.
      */
-    public Dimension getDimension() {
+    public Envelope getDimension() {
         return dimension;
     }
 
     /**
      * Sets the dimensions of the raster.
      */
-    public void setDimension(Dimension size) {
+    public void setDimension(Envelope size) {
         this.dimension = size;
     }
 
@@ -123,20 +113,6 @@ public class Raster {
      */
     public void setBands(List<Band> bands) {
         this.bands = bands;
-    }
-
-    /**
-     * The nodata for the raster.
-     */
-    public NoData getNodata() {
-        return nodata;
-    }
-
-    /**
-     * Sets the nodata for the raster.
-     */
-    public void setNodata(NoData nodata) {
-        this.nodata = nodata;
     }
 
 }

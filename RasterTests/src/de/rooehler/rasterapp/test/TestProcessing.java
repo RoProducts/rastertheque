@@ -3,10 +3,11 @@ package de.rooehler.rasterapp.test;
 import java.io.IOException;
 
 import android.util.Log;
-import de.rooehler.rastertheque.core.Dimension;
+
+import com.vividsolutions.jts.geom.Envelope;
+
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.processing.Resampler;
@@ -28,19 +29,19 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		
 		final GDALDataset dataset = driver.open(TestIO.FILE);
 		
-		final Dimension dim = dataset.getDimension();
-		final int height = dim.getHeight();
-		final int width = dim.getWidth();
+		final Envelope  dim = dataset.getDimension();
+		final int height = (int) dim.getHeight();
+		final int width =  (int)dim.getWidth();
 		
 		final int tileSize = Math.min(width, height) / 10;
 		
-		final Rectangle rect = new Rectangle(0, 0, tileSize, tileSize);
+		final Envelope env = new Envelope(0, tileSize, 0, tileSize);
 			     
         final RasterQuery query = new RasterQuery(
-        		rect,
+        		env,
         		dataset.getCRS(),
         		dataset.getBands(),
-        		new Dimension(rect.width, rect.height),
+        		new Envelope(0, env.getWidth(), 0, env.getHeight()),
         		dataset.getBands().get(0).datatype());
         
         final Raster raster = dataset.read(query);
@@ -110,27 +111,27 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		final int readSize = 256;
 		final int targetSize = 756;
 		
-		final Rectangle rect = new Rectangle(0, 0, 256, 256);
+		final Envelope env = new Envelope(0, 256, 0, 256);
 
         //1. Manually ///////////////
 		
-		int manual = resampleManually(rect, dataset, readSize, targetSize);
+		int manual = resampleManually(env, dataset, readSize, targetSize);
 
         //2. with gdal ////////////
-        int gdal = resampleWithGDAL(rect, dataset, targetSize);
+        int gdal = resampleWithGDAL(env, dataset, targetSize);
        
         assertEquals(manual, gdal);
               
 		
 	}
 	
-	public int resampleWithGDAL(final Rectangle rect, final GDALDataset dataset, final int targetSize){
+	public int resampleWithGDAL(final Envelope env, final GDALDataset dataset, final int targetSize){
 		
         final RasterQuery gdalResampleQuery = new RasterQuery(
-        		rect,
+        		env,
         		dataset.getCRS(),
         		dataset.getBands(),
-        		new Dimension(targetSize,targetSize),
+        		new Envelope(0, targetSize, 0 ,targetSize),
         		dataset.getBands().get(0).datatype());
         
         final long gdalNow = System.currentTimeMillis();
@@ -145,13 +146,13 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         return gdalResampledPixels.length;
 	}
 	
-	public int resampleManually(final Rectangle rect, final GDALDataset dataset,final int readSize, final int targetSize){
+	public int resampleManually(final Envelope env, final GDALDataset dataset,final int readSize, final int targetSize){
 		
         final RasterQuery manualResamplingQuery = new RasterQuery(
-        		rect,
+        		env,
         		dataset.getCRS(),
         		dataset.getBands(),
-        		new Dimension(readSize,readSize),
+        		new Envelope(0 , readSize, 0, readSize),
         		dataset.getBands().get(0).datatype());
         
         final long manualNow = System.currentTimeMillis();

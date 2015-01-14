@@ -4,12 +4,14 @@ import java.util.List;
 
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
+import com.vividsolutions.jts.geom.Envelope;
+
 public class RasterQuery {
 	
     /**
      * spatial extent of query.
      */
-    Rectangle bounds;
+    Envelope bounds;
 
     /**
      * projection of query.
@@ -24,7 +26,7 @@ public class RasterQuery {
     /**
      * Target size for the raster.
      */
-    Dimension size;
+    Envelope size;
 
     /**
      * Data type that band values should be packed into.
@@ -33,7 +35,7 @@ public class RasterQuery {
     
     
     
-    public RasterQuery(Rectangle bounds, CoordinateReferenceSystem crs,	List<Band> bands, Dimension size, DataType datatype) {
+    public RasterQuery(Envelope bounds, CoordinateReferenceSystem crs,	List<Band> bands, Envelope size, DataType datatype) {
 		this.bounds = bounds;
 		this.crs = crs;
 		this.bands = bands;
@@ -72,7 +74,7 @@ public class RasterQuery {
      * @param bounds The query bounds, specifying <tt>null</tt> means the bounds of the entire dataset.
      * @return This object.
      */
-    public RasterQuery setBounds(Rectangle bounds) {
+    public RasterQuery setBounds(Envelope bounds) {
         this.bounds = bounds;
         return this;
     }
@@ -82,7 +84,7 @@ public class RasterQuery {
      *
      * @see #bounds(com.vividsolutions.jts.geom.Envelope)
      */
-    public Rectangle getBounds() {
+    public Envelope getBounds() {
         return bounds;
     }
 
@@ -111,16 +113,14 @@ public class RasterQuery {
      *
      * @param size Raster dimensions.
      */
-    public void setSize(Dimension size) {
+    public void setSize(Envelope size) {
         this.size = size;
     }
 
     /**
      * Target size for the raster being read.
-     *
-     * @see #size(de.rooehler.rastertheque.core.jeo.util.Dimension)
      */
-    public Dimension getSize() {
+    public Envelope getSize() {
         return size;
     }
 

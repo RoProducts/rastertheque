@@ -4,11 +4,12 @@ import java.io.File;
 
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
+import com.vividsolutions.jts.geom.Envelope;
+
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.util.Log;
-import de.rooehler.rastertheque.core.BoundingBox;
 import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.proj.Proj;
@@ -75,7 +76,7 @@ public class MBTilesDataset implements Dataset {
 	}
 
 	@Override
-	public BoundingBox getBoundingBox() {
+	public Envelope getBoundingBox() {
 		
 		try {
 			final Cursor c = this.db.rawQuery("select value from metadata where name=?", new String[] { "bounds" });
@@ -95,7 +96,7 @@ public class MBTilesDataset implements Dataset {
 			double maxlat = Double.parseDouble(split[3]);
 			c.close();
 
-			return new BoundingBox(minlon, minlat, maxlon, maxlat);
+			return new Envelope(minlon, maxlon, minlat, maxlat);
 
 		} catch (NullPointerException e) {
 			Log.e(TAG, "NPE retrieving boundingbox from db", e);

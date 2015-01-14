@@ -40,7 +40,7 @@ public class MRenderer implements Renderer{
 	public int[] rgbBands(final Raster raster) {
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
-		final int pixelAmount = raster.getDimension().getSize();
+		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
 		
 		int [] pixels = new int[pixelAmount];
 		
@@ -87,7 +87,7 @@ public class MRenderer implements Renderer{
 		}
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
-		final int pixelAmount = raster.getDimension().getSize();
+		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
 		
         int[] pixels = new int[pixelAmount];
         
@@ -114,7 +114,7 @@ public class MRenderer implements Renderer{
 	@Override
 	public int[] grayscale(final Raster raster) {
 
-		final int pixelAmount = raster.getDimension().getSize();
+		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
 		int[] pixels = new int[pixelAmount];
 	    double[] minMax = new double[2];
 			 

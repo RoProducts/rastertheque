@@ -2,7 +2,8 @@ package de.rooehler.rastertheque.io.mbtiles;
 
 import java.io.IOException;
 
-import de.rooehler.rastertheque.core.BoundingBox;
+import com.vividsolutions.jts.geom.Envelope;
+
 import de.rooehler.rastertheque.core.Driver;
 
 public class MBTilesDriver implements Driver<MBTilesDataset>  {
@@ -27,7 +28,7 @@ public class MBTilesDriver implements Driver<MBTilesDataset>  {
 			
 			final MBTilesDataset dataset = new MBTilesDataset(path);
 			
-			final BoundingBox bb = dataset.getBoundingBox();
+			final Envelope en = dataset.getBoundingBox();
 			
 			dataset.close();
 			

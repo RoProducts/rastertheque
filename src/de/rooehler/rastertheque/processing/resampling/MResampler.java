@@ -1,7 +1,6 @@
 package de.rooehler.rastertheque.processing.resampling;
 
 
-import android.util.Log;
 import de.rooehler.rastertheque.processing.Resampler;
 
 public class MResampler extends Resampler {
@@ -23,7 +22,6 @@ public class MResampler extends Resampler {
 	@Override
 	public void resampleBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
 		
-		Log.d(MResampler.class.getSimpleName(), "doing bilinear");
 		if(srcWidth == dstWidth && srcHeight == dstHeight){
 			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
 			return;
@@ -91,7 +89,6 @@ public class MResampler extends Resampler {
 	@Override
 	public void resampleBicubic(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
 		
-		Log.d(MResampler.class.getSimpleName(), "doing bicubic");
 		if(srcWidth == dstWidth && srcHeight == dstHeight){
 			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
 			return;

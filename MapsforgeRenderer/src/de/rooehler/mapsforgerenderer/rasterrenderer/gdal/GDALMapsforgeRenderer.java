@@ -8,20 +8,23 @@ import java.util.List;
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
+import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.graphics.Bitmap;
 import android.util.Log;
+
+import com.vividsolutions.jts.geom.Envelope;
+
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterJob;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterRenderer;
 import de.rooehler.rastertheque.core.Band.Color;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.core.Dimension;
-import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.proj.Proj;
 /**
  * A Renderer of gdal data for Mapsforge
  * @author Robert Oehler
@@ -50,6 +53,8 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	private int mRasterBandCount;
 	
 	private boolean hasRGBBands;
+	
+	private CoordinateReferenceSystem mCurrentCRS;
 
 
 	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster, final Renderer pRenderer,final Resampler pResampler, final boolean pUseColorMap) {
@@ -69,6 +74,8 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		if(mRasterBandCount == 3){
 			hasRGBBands = checkIfHasRGBBands();
 		}
+		
+		this.mCurrentCRS = mRasterDataset.getCRS();
 
 	}
 	
@@ -170,9 +177,9 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		
 		final int ts = job.tile.tileSize;
 		final byte zoom = job.tile.zoomLevel;
-		final Dimension dim = mRasterDataset.getDimension();
-		final int h = dim.getHeight();
-		final int w = dim.getWidth();
+		final Envelope dim = mRasterDataset.getDimension();
+		final int h = (int) dim.getHeight();
+		final int w = (int) dim.getWidth();
 		final DataType datatype = mRasterDataset.getBands().get(0).datatype();
 		
 		long now = System.currentTimeMillis();
@@ -235,9 +242,12 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         		}
         	}
 
-        	final Dimension targetDim = useGDALAsResampler() || gdalTargetXSize < availableX ? new Dimension(gdalTargetXSize, gdalTargetYSize) : new Dimension(availableX,availableY);
+        	final Envelope targetDim = useGDALAsResampler() || gdalTargetXSize < availableX ?
+        			new Envelope(0 , gdalTargetXSize,0,  gdalTargetYSize) :
+        			new Envelope(0, availableX, 0, availableY);
+        	
         	int pixels[] = executeQuery(
-        			new Rectangle((int)readFromX,(int)readFromY, availableX, availableY),
+        			new Envelope(readFromX, readFromX + availableX, readFromY, readFromY + availableY),
              		targetDim,
              		datatype,
              		!(useGDALAsResampler() || gdalTargetXSize < availableX),
@@ -251,10 +261,11 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
         } 
         
-        final Dimension targetDim = useGDALAsResampler() || ts < readAmountX ? new Dimension(ts,ts) : new Dimension(readAmountX,readAmountY);
-        
+        final Envelope targetDim = useGDALAsResampler() || ts < readAmountX ? 
+        		new Envelope(0, ts, 0, ts) : new Envelope(0, readAmountX, 0, readAmountY);
+       
         int pixels[] = executeQuery(
-        		new Rectangle((int)readFromX,(int)readFromY, readAmountX,readAmountY),
+        		new Envelope(readFromX, readFromX + readAmountX, readFromY, readFromY + readAmountY),
         		targetDim,
         		datatype,
         		!(useGDALAsResampler() || ts < readAmountX),
@@ -267,11 +278,11 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		return bitmap;
 	}
 	
-	public int[] executeQuery(final Rectangle rect, final Dimension readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
+	public int[] executeQuery(final Envelope envelope, final Envelope readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
 		
 		final RasterQuery query = new RasterQuery(
-        		rect,
-        		mRasterDataset.getCRS(),
+				envelope,
+        		mCurrentCRS,
         		mRasterDataset.getBands(), 
         		readDim,
         		datatype);
@@ -281,7 +292,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         if(resample){
             int pixels[] = render(raster);
         	int[] resampledPixels = new int[targetWidth * targetHeight];
-        	mResampler.resample(pixels, readDim.getWidth(),readDim.getHeight(), resampledPixels, targetWidth, targetHeight );
+        	mResampler.resample(pixels, (int) readDim.getWidth(), (int) readDim.getHeight(), resampledPixels, targetWidth, targetHeight );
         	return resampledPixels;
         }else{
         	return render(raster);
@@ -404,8 +415,20 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		}
 	}
 	
-	public GDALDataset getRaster(){
-		return mRasterDataset;
+	public String getCurrentCRS(){
+		
+		return mRasterDataset.toWKT(mCurrentCRS);
+	}
+	
+	public void setDesiredCRS(final String wkt){
+		
+		try{
+			
+			mCurrentCRS = Proj.crs(wkt);
+			
+		}catch(Exception e){
+			Log.e(TAG, "Error setting desired CRS to : \n"+wkt);
+		}
 	}
 
 	public boolean useGDALAsResampler(){

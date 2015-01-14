@@ -19,7 +19,6 @@ import org.mapsforge.map.reader.header.MapFileInfo;
 import org.mapsforge.map.rendertheme.InternalRenderTheme;
 
 import android.app.Activity;
-import android.app.ProgressDialog;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.content.res.Configuration;
@@ -39,17 +38,21 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
+
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
+
 import de.rooehler.mapsforgerenderer.R;
 import de.rooehler.mapsforgerenderer.dialog.FilePickerDialog;
 import de.rooehler.mapsforgerenderer.dialog.FilePickerDialog.FilePathPickCallback;
+import de.rooehler.mapsforgerenderer.dialog.SelectProjectionDialog;
+import de.rooehler.mapsforgerenderer.dialog.SelectProjectionDialog.IProjectionSelected;
 import de.rooehler.mapsforgerenderer.interfaces.IWorkStatus;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterLayer;
 import de.rooehler.mapsforgerenderer.rasterrenderer.gdal.GDALMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.rasterrenderer.mbtiles.MBTilesMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.util.SupportedType;
-import de.rooehler.rastertheque.core.Coordinate;
 import de.rooehler.rastertheque.core.Dataset;
-import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
@@ -254,8 +257,8 @@ public class MainActivity extends Activity implements IWorkStatus{
 			try {
 				final MBTilesDataset mbTilesDataset = mbtdriver.open(filePath);
 				
-				final Coordinate coord = mbTilesDataset.getBoundingBox().getCenter();
-				LatLong loc = new LatLong(coord.getY(), coord.getX());
+				final Coordinate coord = mbTilesDataset.getBoundingBox().centre();
+				LatLong loc = new LatLong(coord.y, coord.x);
 				int[] zoomMinMax = mbTilesDataset.getMinMaxZoom(); 
 				byte zoom = zoomMinMax == null ? (byte) 8 : (byte) zoomMinMax[0];
 				final MapPosition mbtmp = new MapPosition(loc, zoom);
@@ -307,9 +310,9 @@ public class MainActivity extends Activity implements IWorkStatus{
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
 			byte startZoomLevel = gdalFileRenderer.calculateStartZoomLevel(tileSize,width);
 			
-			final Dimension dim = ((GDALDataset) ds).getDimension();
-			final int h = dim.getHeight();
-			final int w = dim.getWidth();
+			final Envelope dim = ((GDALDataset) ds).getDimension();
+			final int h = (int) dim.getHeight();
+			final int w = (int) dim.getWidth();
 			Log.v(TAG, "width : "+w + " height : "+ h);
 			
 			final MapPosition gdalmp =  new MapPosition(calculateStartPositionForRaster(w, h),startZoomLevel);
@@ -429,7 +432,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 //        boolean drawerOpen = mDrawerLayout.isDrawerOpen(mDrawerList);
     	boolean isEditableMap = isEditableMap();
     	
-//    	menu.findItem(R.id.menu_transform).setVisible(isEditableMap);
+    	menu.findItem(R.id.menu_transform).setVisible(isEditableMap);
     	menu.findItem(R.id.menu_colormap).setVisible(isEditableMap);
 //        menu.findItem(R.id.menu_save).setVisible(isEditableMap);
         
@@ -438,30 +441,29 @@ public class MainActivity extends Activity implements IWorkStatus{
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-         // The action bar home/up action should open or close the drawer.
-         // ActionBarDrawerToggle will take care of this.
+
         if (mDrawerToggle.onOptionsItemSelected(item)) {
             return true;
         }
-        // Handle action buttons
+        
         switch(item.getItemId()) {
         
-//        case R.id.menu_transform:
-//        		if(isEditableMap()){
-//        			SelectProjectionDialog.showProjectionSelectionDialog(MainActivity.this, new IProjectionSelected() {
-//						
-//						@Override
-//						public void selected(String proj) {
-//							
-//							GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
-//							Log.d(TAG, "Selected : "+proj);
-//							tileCache.destroy();
-//							renderer.getRaster().applyProjection(proj);
-//							mapView.getLayerManager().redrawLayers();
-//						}
-//					});
-//        		}
-//        	break;
+        case R.id.menu_transform:
+        		if(isEditableMap()){
+        			final GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
+        			SelectProjectionDialog.showProjectionSelectionDialog(MainActivity.this,renderer.getCurrentCRS(), new IProjectionSelected() {
+						
+						@Override
+						public void selected(String proj) {
+							
+							Log.d(TAG, "Selected : "+proj);
+							tileCache.destroy();
+							renderer.setDesiredCRS(proj);
+							mapView.getLayerManager().redrawLayers();
+						}
+					});
+        		}
+        	break;
         case R.id.menu_colormap:
         		if(isEditableMap()){
         			GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());

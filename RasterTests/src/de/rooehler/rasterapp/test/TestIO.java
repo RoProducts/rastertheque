@@ -5,12 +5,13 @@ import java.util.ArrayList;
 
 import android.os.Environment;
 import android.util.Log;
-import de.rooehler.rastertheque.core.Dimension;
+
+import com.vividsolutions.jts.geom.Envelope;
+
 import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.core.Drivers;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.processing.Renderer;
@@ -38,7 +39,7 @@ public class TestIO extends android.test.AndroidTestCase {
 		
 		assertNotNull(dataset.getCRS());
 		
-		final Dimension dim = dataset.getDimension();
+		final Envelope dim = dataset.getDimension();
 		
 		assertTrue(dim.getWidth() > 0);
 		
@@ -47,7 +48,7 @@ public class TestIO extends android.test.AndroidTestCase {
 		dataset.close();
 		
 	}
-	/*
+	/**
 	 * tests reading a region of the file
 	 */
 	public void testRead() throws IOException{
@@ -58,17 +59,17 @@ public class TestIO extends android.test.AndroidTestCase {
 		
 		GDALDataset dataset = driver.open(FILE);
 		
-		final Dimension dim = dataset.getDimension();
-		final int height = dim.getHeight();
-		final int width = dim.getWidth();
+		final Envelope dim = dataset.getDimension();
+		final int height = (int) dim.getHeight();
+		final int width =  (int) dim.getWidth();
 		
-		final Rectangle rect = new Rectangle(0, 0, width / 10, height / 10);
+		final Envelope env = new Envelope(0, width / 10, 0, height / 10);
 		     
         final RasterQuery query = new RasterQuery(
-        		rect,
+        		env,
         		dataset.getCRS(),
         		dataset.getBands(),
-        		new Dimension(rect.width, rect.height),
+        		new Envelope(0, env.getWidth(), 0, env.getHeight()),
         		dataset.getBands().get(0).datatype());
         
         final Raster raster = dataset.read(query);
@@ -80,7 +81,7 @@ public class TestIO extends android.test.AndroidTestCase {
         assertNotNull(pixels);
         
         //check a pixel
-        final int pixel = pixels[raster.getDimension().getSize() / 2];
+        final int pixel = pixels[((int)raster.getDimension().getWidth() * (int) raster.getDimension().getHeight()) / 2];
         
         final int red = (pixel >> 16) & 0xff;
         final int green = (pixel >> 8) & 0xff;
@@ -98,15 +99,16 @@ public class TestIO extends android.test.AndroidTestCase {
         dataset.close();
         
 	}
-	
+	/**
+	 * tests the identification of Driver implementations of GDAL drivers
+	 * there exists currently one real implementation (GDALDriver)
+	 * and one test implementation (TestPluggedDriver)
+	 * which both should be found and returned
+	 */
 	@SuppressWarnings("serial")
 	public void testGDALDrivers(){
 		
-		ArrayList<String> driverLocations = new ArrayList<String>(){{
-			add("org/rastertheque/io/raster/gdal/");
-		}};
-		
-		ArrayList<Driver<?>> gdalDrivers = Drivers.getDrivers(driverLocations);
+		ArrayList<Driver<?>> gdalDrivers = Drivers.getDrivers("org/rastertheque/io/raster/gdal/");
 				
 		assertNotNull(gdalDrivers);
 		
@@ -131,15 +133,12 @@ public class TestIO extends android.test.AndroidTestCase {
 		}
 	}
 	
-	@SuppressWarnings("serial")
+	/**
+	 * tests the identification of Driver implementations of MBTiles drivers
+	 */
 	public void testMBTilesDrivers(){
 		
-
-		ArrayList<String> driverLocations = new ArrayList<String>(){{
-			add("org/rastertheque/io/raster/mbtiles/");
-		}};
-		
-		ArrayList<Driver<?>> drivers = Drivers.getDrivers(driverLocations);
+		ArrayList<Driver<?>> drivers = Drivers.getDrivers("org/rastertheque/io/raster/mbtiles/");
 				
 		assertNotNull(drivers);
 		

@@ -6,21 +6,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.gdal.gdal.Dataset;
+import org.gdal.gdal.gdal;
 import org.gdal.osr.CoordinateTransformation;
 import org.gdal.osr.SpatialReference;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.util.Log;
+
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
+
 import de.rooehler.rastertheque.core.Band;
-import de.rooehler.rastertheque.core.BoundingBox;
-import de.rooehler.rastertheque.core.Coordinate;
 import de.rooehler.rastertheque.core.DataType;
-import de.rooehler.rastertheque.core.Dimension;
 import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.core.Rectangle;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.proj.Proj;
 
@@ -32,15 +33,13 @@ public class GDALDataset extends Resampler implements RasterDataset{
 
 	private Dataset dataset;
 	
-	private static BoundingBox mBB;
+	private static Envelope mBB;
 	
-	private static Dimension mDimension;
-	
-	private List<Band> mBands;
+	private static Envelope mDimension;
 
 	private String mSource;
 	
-	CoordinateReferenceSystem mCRS;
+	private CoordinateReferenceSystem mCRS;
 	
     public GDALDataset(final ResampleMethod method,final String pFilePath, Dataset dataset, GDALDriver driver) {
     	super(method);
@@ -84,7 +83,7 @@ public class GDALDataset extends Resampler implements RasterDataset{
 
 
 	@Override
-	public BoundingBox getBoundingBox(){
+	public Envelope getBoundingBox(){
 
 		if(mBB == null){
 
@@ -111,7 +110,7 @@ public class GDALDataset extends Resampler implements RasterDataset{
 
 				double[] maxLatLong = ct.TransformPoint(maxx, maxy);
 
-				mBB = new BoundingBox(minLatLong[0], minLatLong[1], maxLatLong[0], maxLatLong[1]);
+				mBB = new Envelope(minLatLong[0], maxLatLong[0], minLatLong[1], maxLatLong[1]);
 
 				return mBB;
 			}else{
@@ -128,7 +127,7 @@ public class GDALDataset extends Resampler implements RasterDataset{
 	
 	public Coordinate getCenterPoint(){
 
-		return getBoundingBox().getCenter();
+		return getBoundingBox().centre();
 	}
 
 	@Override
@@ -173,11 +172,11 @@ public class GDALDataset extends Resampler implements RasterDataset{
 		return dataset.GetDescription();
 	}
 	@Override
-	public Dimension getDimension() {
+	public Envelope getDimension() {
 
 		if(mDimension == null){
 
-			mDimension = new Dimension(dataset.GetRasterXSize(), dataset.getRasterYSize());
+			mDimension = new Envelope(0, dataset.GetRasterXSize(), 0, dataset.getRasterYSize());
 		}
 		
 		return mDimension;
@@ -187,20 +186,30 @@ public class GDALDataset extends Resampler implements RasterDataset{
 	@Override
 	public Raster read(RasterQuery query) {
 		
-		Rectangle src = query.getBounds();
-		Dimension dstDim = query.getSize();
+		Envelope src = query.getBounds();
+		Envelope dstDim = query.getSize();
 		
-		final int bufferSize = dstDim.getSize() * query.getDataType().size() * query.getBands().size();
+		Dataset data = dataset;
+		CoordinateReferenceSystem rasterCRS = getCRS();
+		 if (query.getCRS() != null && !Proj.equal(query.getCRS(), getCRS())) {
+	            String srcWkt = toWKT(getCRS());
+	            String dstWkt = toWKT(query.getCRS());
+
+	            data = gdal.AutoCreateWarpedVRT(dataset, srcWkt, dstWkt);
+	            rasterCRS = query.getCRS();
+	     }
+		
+		final int bufferSize = ((int)dstDim.getWidth()) * ((int)dstDim.getHeight()) * query.getDataType().size() * query.getBands().size();
 		
 		final ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
 		buffer.order(ByteOrder.nativeOrder()); 
 
 		if(query.getBands().size() == 1){
 
-			((GDALBand)query.getBands().get(0)).getBand().ReadRaster(
-					src.srcX,src.srcY, //src pos
-					src.width, src.height, //src dim
-					dstDim.getWidth(),dstDim.getHeight(), //dst dim
+			data.GetRasterBand(1).ReadRaster(
+					(int)src.getMinX(),(int)src.getMinY(), //src pos
+					(int)src.getWidth(),(int) src.getHeight(), //src dim
+					(int)dstDim.getWidth(),(int)dstDim.getHeight(), //dst dim
 					DataType.toGDAL(query.getBands().get(0).datatype()), // the type of the pixel values in the array. 
 					buffer.array());
 		}else{
@@ -208,30 +217,26 @@ public class GDALDataset extends Resampler implements RasterDataset{
 			for(int i = 0; i < query.getBands().size();i++){
 				readBands[i] = ((GDALBand)query.getBands().get(i)).getBand().GetBand();
 			}
-			dataset.ReadRaster(
-					src.srcX,src.srcY, //src pos
-					src.width, src.height, //src dim
-					dstDim.getWidth(),dstDim.getHeight(), //dst dim
+			data.ReadRaster(
+					(int)src.getMinX(),(int)src.getMinY(), //src pos
+					(int)src.getWidth(),(int) src.getHeight(), //src dim
+					(int)dstDim.getWidth(),(int)dstDim.getHeight(), //dst dim
 					DataType.toGDAL(query.getBands().get(0).datatype()), // the type of the pixel values in the array. 
 					buffer.array(), //buffer to write in
 					readBands);
 		}
-		//TODO what about the crs ?
-		return new Raster(buffer, dstDim, query.getBands());
+		
+		return new Raster(src , rasterCRS, dstDim, query.getBands(), buffer);
 	}
 
 	@Override
-	protected void resampleBilinear(int[] srcPixels, int srcWidth,
-			int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
-		// TODO Auto-generated method stub
-		
+	protected void resampleBilinear(int[] srcPixels, int srcWidth,int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
+				
 	}
 
 	@Override
-	protected void resampleBicubic(int[] srcPixels, int srcWidth,
-			int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
-		// TODO Auto-generated method stub
-		
+	protected void resampleBicubic(int[] srcPixels, int srcWidth,	int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
+				
 	}
 	
 	

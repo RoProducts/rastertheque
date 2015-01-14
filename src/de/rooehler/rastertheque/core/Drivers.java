@@ -11,28 +11,26 @@ public class Drivers {
 	/**
 	 * retrieve implementations of the Driver class
 	 * 
-	 * @param locations a list of fully qualified package names where implementations of the Driver class reside
+	 * @param pathToservice, the fully qualified package name where implementations of the Driver class reside
 	 * @return a list of the implementations 
 	 */
 	@SuppressWarnings("rawtypes")
-	public static ArrayList<Driver<?>> getDrivers( final ArrayList<String> locations){
-		
+	public static ArrayList<Driver<?>> getDrivers(final String pathToService){
+
 		ArrayList<Driver<?>> drivers = new ArrayList<>();
-		for(String path : locations){
-			/**
-			 * CustomServiceLoader is an adaption for Android which does not allow to use the standard META-INF/services location
-			 * as it gets deliberately excluded in the building process by APKBuilder
-			 * see
-			 * http://www.davidwong.com.au/blog/2011/07/using-a-custom-serviceloader-in-android/
-			 */
-			Iterator<Driver> it = CustomServiceLoader.load(Driver.class, path).iterator();
-			
-			while(it.hasNext()){
-				drivers.add(it.next());
-			}
-			
+
+		/**
+		 * CustomServiceLoader is an adaption for Android which does not allow to use the standard META-INF/services location
+		 * as it gets deliberately excluded in the building process by APKBuilder
+		 * see
+		 * http://www.davidwong.com.au/blog/2011/07/using-a-custom-serviceloader-in-android/
+		 */
+		Iterator<Driver> it = CustomServiceLoader.load(Driver.class, pathToService).iterator();
+
+		while(it.hasNext()){
+			drivers.add(it.next());
 		}
-		
+
 		return drivers;
 	}
 
