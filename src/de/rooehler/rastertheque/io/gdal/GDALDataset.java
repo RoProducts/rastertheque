@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import org.gdal.gdal.Dataset;
 import org.gdal.gdal.gdal;
@@ -188,17 +189,7 @@ public class GDALDataset extends Resampler implements RasterDataset{
 		
 		Envelope src = query.getBounds();
 		Envelope dstDim = query.getSize();
-		
-		Dataset data = dataset;
-		CoordinateReferenceSystem rasterCRS = getCRS();
-		 if (query.getCRS() != null && !Proj.equal(query.getCRS(), getCRS())) {
-	            String srcWkt = toWKT(getCRS());
-	            String dstWkt = toWKT(query.getCRS());
-
-	            data = gdal.AutoCreateWarpedVRT(dataset, srcWkt, dstWkt);
-	            rasterCRS = query.getCRS();
-	     }
-		
+				
 		final int bufferSize = ((int)dstDim.getWidth()) * ((int)dstDim.getHeight()) * query.getDataType().size() * query.getBands().size();
 		
 		final ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
@@ -206,7 +197,7 @@ public class GDALDataset extends Resampler implements RasterDataset{
 
 		if(query.getBands().size() == 1){
 
-			data.GetRasterBand(1).ReadRaster(
+			((GDALBand)query.getBands().get(0)).getBand().ReadRaster(
 					(int)src.getMinX(),(int)src.getMinY(), //src pos
 					(int)src.getWidth(),(int) src.getHeight(), //src dim
 					(int)dstDim.getWidth(),(int)dstDim.getHeight(), //dst dim
@@ -217,7 +208,7 @@ public class GDALDataset extends Resampler implements RasterDataset{
 			for(int i = 0; i < query.getBands().size();i++){
 				readBands[i] = ((GDALBand)query.getBands().get(i)).getBand().GetBand();
 			}
-			data.ReadRaster(
+			dataset.ReadRaster(
 					(int)src.getMinX(),(int)src.getMinY(), //src pos
 					(int)src.getWidth(),(int) src.getHeight(), //src dim
 					(int)dstDim.getWidth(),(int)dstDim.getHeight(), //dst dim
@@ -226,7 +217,7 @@ public class GDALDataset extends Resampler implements RasterDataset{
 					readBands);
 		}
 		
-		return new Raster(src , rasterCRS, dstDim, query.getBands(), buffer);
+		return new Raster(src , getCRS(), dstDim, query.getBands(), buffer);
 	}
 
 	@Override
@@ -239,39 +230,36 @@ public class GDALDataset extends Resampler implements RasterDataset{
 				
 	}
 	
+
+	public void applyProjection(final String wkt){
+
+		SpatialReference dstRef = new SpatialReference(wkt);
+
+		Dataset vrt_ds = gdal.AutoCreateWarpedVRT(dataset,dataset.GetProjection(), dstRef.ExportToWkt());
+
+		dataset = vrt_ds;
+		
+		mCRS = null;
+		
+		getCRS();
+
+	}
 	
 
-//	public void applyProjection(final String wkt){
-//
-//		SpatialReference dstRef = new SpatialReference(wkt);
-//
-//		Dataset vrt_ds = gdal.AutoCreateWarpedVRT(dataset,dataset.GetProjection(), dstRef.ExportToWkt());
-//
-//		dataset = vrt_ds;
-//
-//		this.mRasterWidth = dataset.GetRasterXSize();
-//
-//		this.mRasterHeight = dataset.getRasterYSize();
-//
-//	}
-	
-	//
-//	public Callable<Dataset> saveCurrentProjectionToFile(final String newFileName){
-//
-//
-//		Callable<Dataset> c =  new Callable<Dataset>() {
-//			@Override
-//			public Dataset call() throws Exception {
-//
-//				//		String fileName = mFilePath.substring(mFilePath.lastIndexOf("/") + 1);
-//				//		fileName = fileName.substring(0, fileName.lastIndexOf("."))+"_reprojected"+fileName.substring(fileName.lastIndexOf("."));
-//				final String newPath = mSource.substring(0,mSource.lastIndexOf("/") + 1) + newFileName;
-//				Log.d(TAG, "saving to path "+newPath);
-//				//		        return dataset.GetDriver().CreateCopy(newPath, dataset);
-//				return dataset.GetDriver().Create(newPath,dataset.getRasterXSize(),dataset.GetRasterYSize(),dataset.getRasterCount());
-//
-//			}
-//		};
-//		return c;
-//	}
+	public Callable<Dataset> saveCurrentProjectionToFile(final String newFileName){
+
+
+		Callable<Dataset> c =  new Callable<Dataset>() {
+			@Override
+			public Dataset call() throws Exception {
+
+				final String newPath = mSource.substring(0,mSource.lastIndexOf("/") + 1) + newFileName;
+				Log.d(TAG, "saving to path "+newPath);
+
+				return dataset.GetDriver().Create(newPath,dataset.getRasterXSize(),dataset.GetRasterYSize(),dataset.getRasterCount());
+
+			}
+		};
+		return c;
+	}
 }

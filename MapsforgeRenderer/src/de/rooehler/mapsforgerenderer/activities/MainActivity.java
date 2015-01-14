@@ -17,6 +17,7 @@ import org.mapsforge.map.reader.MapDatabase;
 import org.mapsforge.map.reader.header.FileOpenResult;
 import org.mapsforge.map.reader.header.MapFileInfo;
 import org.mapsforge.map.rendertheme.InternalRenderTheme;
+import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
@@ -62,6 +63,7 @@ import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
+import de.rooehler.rastertheque.proj.Proj;
 
 
 public class MainActivity extends Activity implements IWorkStatus{
@@ -451,17 +453,27 @@ public class MainActivity extends Activity implements IWorkStatus{
         case R.id.menu_transform:
         		if(isEditableMap()){
         			final GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
-        			SelectProjectionDialog.showProjectionSelectionDialog(MainActivity.this,renderer.getCurrentCRS(), new IProjectionSelected() {
-						
-						@Override
-						public void selected(String proj) {
-							
-							Log.d(TAG, "Selected : "+proj);
-							tileCache.destroy();
-							renderer.setDesiredCRS(proj);
-							mapView.getLayerManager().redrawLayers();
-						}
-					});
+        			
+        			final CoordinateReferenceSystem currentCrs = renderer.getCurrentCRS();
+        			
+        			if(currentCrs != null){
+        				
+        				final String crs = Proj.toWKT(currentCrs, true);
+
+        				SelectProjectionDialog.showProjectionSelectionDialog(MainActivity.this,crs, new IProjectionSelected() {
+
+        					@Override
+        					public void selected(String proj) {
+
+        						Log.d(TAG, "Selected : "+proj);
+        						tileCache.destroy();
+        						renderer.setDesiredCRS(proj);
+        						mapView.getLayerManager().redrawLayers();
+        					}
+        				});
+        			}else{
+        				Toast.makeText(getBaseContext(), "Error retrieving the current crs, cannot transform!", Toast.LENGTH_SHORT).show();
+        			}
         		}
         	break;
         case R.id.menu_colormap:

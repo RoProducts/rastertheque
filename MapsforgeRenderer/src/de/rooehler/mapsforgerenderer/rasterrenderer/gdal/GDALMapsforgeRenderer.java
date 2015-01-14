@@ -54,7 +54,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	
 	private boolean hasRGBBands;
 	
-	private CoordinateReferenceSystem mCurrentCRS;
+//	private CoordinateReferenceSystem mCurrentCRS;
 
 
 	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster, final Renderer pRenderer,final Resampler pResampler, final boolean pUseColorMap) {
@@ -75,7 +75,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 			hasRGBBands = checkIfHasRGBBands();
 		}
 		
-		this.mCurrentCRS = mRasterDataset.getCRS();
+//		this.mCurrentCRS = mRasterDataset.getCRS();
 
 	}
 	
@@ -242,15 +242,14 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         		}
         	}
 
-        	final Envelope targetDim = useGDALAsResampler() || gdalTargetXSize < availableX ?
-        			new Envelope(0 , gdalTargetXSize,0,  gdalTargetYSize) :
-        			new Envelope(0, availableX, 0, availableY);
+        	final Envelope targetDim = useGDALAsResampler(gdalTargetXSize , availableX) ?
+        			new Envelope(0 , gdalTargetXSize,0,  gdalTargetYSize) :	new Envelope(0, availableX, 0, availableY);
         	
-        	int pixels[] = executeQuery(
+        	final int pixels[] = executeQuery(
         			new Envelope(readFromX, readFromX + availableX, readFromY, readFromY + availableY),
              		targetDim,
              		datatype,
-             		!(useGDALAsResampler() || gdalTargetXSize < availableX),
+             		!useGDALAsResampler(gdalTargetXSize , availableX),
              		gdalTargetXSize , gdalTargetYSize);
 
             	
@@ -261,14 +260,14 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
         } 
         
-        final Envelope targetDim = useGDALAsResampler() || ts < readAmountX ? 
+        final Envelope targetDim = useGDALAsResampler(ts , readAmountX) ? 
         		new Envelope(0, ts, 0, ts) : new Envelope(0, readAmountX, 0, readAmountY);
        
-        int pixels[] = executeQuery(
+        final int pixels[] = executeQuery(
         		new Envelope(readFromX, readFromX + readAmountX, readFromY, readFromY + readAmountY),
         		targetDim,
         		datatype,
-        		!(useGDALAsResampler() || ts < readAmountX),
+        		!useGDALAsResampler(ts , readAmountX),
         		ts , ts);
 
         bitmap.setPixels(pixels, ts);
@@ -278,11 +277,11 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		return bitmap;
 	}
 	
-	public int[] executeQuery(final Envelope envelope, final Envelope readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
+	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
 		
 		final RasterQuery query = new RasterQuery(
-				envelope,
-        		mCurrentCRS,
+				bounds,
+				mRasterDataset.getCRS(),
         		mRasterDataset.getBands(), 
         		readDim,
         		datatype);
@@ -293,8 +292,10 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
             int pixels[] = render(raster);
         	int[] resampledPixels = new int[targetWidth * targetHeight];
         	mResampler.resample(pixels, (int) readDim.getWidth(), (int) readDim.getHeight(), resampledPixels, targetWidth, targetHeight );
+        	Log.d(TAG, "using "+mResampler.getClass().getSimpleName() +" "+mResampler.getResampleMethod().toString()+" as resampler");
         	return resampledPixels;
         }else{
+        	Log.d(TAG, "using gdal as resampler");
         	return render(raster);
         }
 	}
@@ -415,25 +416,25 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		}
 	}
 	
-	public String getCurrentCRS(){
+	public CoordinateReferenceSystem getCurrentCRS(){
 		
-		return mRasterDataset.toWKT(mCurrentCRS);
+		return mRasterDataset.getCRS();
 	}
 	
 	public void setDesiredCRS(final String wkt){
 		
 		try{
 			
-			mCurrentCRS = Proj.crs(wkt);
+			mRasterDataset.applyProjection(wkt);
 			
 		}catch(Exception e){
 			Log.e(TAG, "Error setting desired CRS to : \n"+wkt);
 		}
 	}
 
-	public boolean useGDALAsResampler(){
+	public boolean useGDALAsResampler(int targetSize, int isSize){
 		
-		return mResampler instanceof GDALDataset;
+		return targetSize <= isSize || mResampler instanceof GDALDataset;
 	}
 	
 	@Override

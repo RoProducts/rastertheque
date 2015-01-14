@@ -224,13 +224,14 @@ public class GDALTileLayer extends TileLayer {
         	}
 //        	Log.e(TAG, "reading of ("+availableX+","+availableY +") from "+readFromX+","+readFromY+" target {"+gdalTargetXSize+","+gdalTargetYSize+"}, covered: X"+coveredXOrigin+", Y "+coveredYOrigin);
 
-        	final Envelope targetDim = useGDALAsResampler() ? new Envelope(0, gdalTargetXSize, 0, gdalTargetYSize) : new Envelope(0, availableX, 0, availableY);
+        	final Envelope targetDim = useGDALAsResampler(gdalTargetXSize ,availableX) ?
+        			new Envelope(0, gdalTargetXSize, 0, gdalTargetYSize) : new Envelope(0, availableX, 0, availableY);
         	
-           	int pixels[] = executeQuery(
+        	final int pixels[] = executeQuery(
            			new Envelope(readFromX, readFromX + availableX, readFromY, readFromY + availableY),
              		targetDim,
              		datatype,
-             		!(useGDALAsResampler() || gdalTargetXSize < availableX),
+             		!useGDALAsResampler(gdalTargetXSize ,availableX),
              		gdalTargetXSize , gdalTargetYSize);
            	
            	return createBoundsTile(downloader, aTile, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
@@ -239,13 +240,14 @@ public class GDALTileLayer extends TileLayer {
         }else{ //this rectangle is fully covered by the file
         	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
         }  
-        final Envelope targetDim = useGDALAsResampler() ? new Envelope(0, ts, 0, ts) : new Envelope(0, readAmountX, 0, readAmountY);
+        final Envelope targetDim = useGDALAsResampler(ts , readAmountX) ?
+        		new Envelope(0, ts, 0, ts) : new Envelope(0, readAmountX, 0, readAmountY);
       
-        int pixels[] = executeQuery(
+        final int pixels[] = executeQuery(
         		new Envelope(readFromX, readFromX + readAmountX, readFromY, readFromY + readAmountY),
         		targetDim,
         		datatype,
-        		!(useGDALAsResampler() || ts < readAmountX),
+        		!useGDALAsResampler( ts , readAmountX),
         		ts , ts);
 
         Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
@@ -263,10 +265,10 @@ public class GDALTileLayer extends TileLayer {
 
     }
     
-	public int[] executeQuery(final Envelope envelope, final Envelope readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
+	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
 		
 		final RasterQuery query = new RasterQuery(
-				envelope,
+				bounds,
 				mRasterDataset.getCRS(),
 				mRasterDataset.getBands(), 
 				readDim,
@@ -426,9 +428,9 @@ public class GDALTileLayer extends TileLayer {
     	
     }
     
-	public boolean useGDALAsResampler(){
+	public boolean useGDALAsResampler(int targetSize, int isSize){
 		
-		return mResampler instanceof GDALDataset;
+		return targetSize <= isSize || mResampler instanceof GDALDataset;
 	}
     
 	public void close(){

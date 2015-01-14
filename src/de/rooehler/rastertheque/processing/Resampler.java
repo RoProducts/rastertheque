@@ -40,6 +40,10 @@ public abstract class Resampler {
 		this.mResampleMethod = pMethod;
 				
 	}
+	public ResampleMethod getResampleMethod(){
+		
+		return mResampleMethod;
+	}
 
 	
 }
