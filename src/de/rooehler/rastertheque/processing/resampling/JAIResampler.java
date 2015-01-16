@@ -34,6 +34,13 @@ public class JAIResampler extends Resampler{
 		
 	}
 
+	@Override
+	protected void resampleNN(int[] srcPixels, int srcWidth, int srcHeight,
+			int[] dstPixels, int dstWidth, int dstHeight) {
+		
+		
+	}
+
 
 
 }

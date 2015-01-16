@@ -4,11 +4,14 @@ public abstract class Resampler {
 	
 	public enum ResampleMethod
 	{
+		NEARESTNEIGHBOUR,
 		BILINEAR,
 		BICUBIC;
 	}
 	
 	protected ResampleMethod mResampleMethod;
+	
+	protected abstract void resampleNN(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight);
 	
 	protected abstract void resampleBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight);
 	
@@ -25,6 +28,9 @@ public abstract class Resampler {
 	
 		switch(mResampleMethod){
 		
+		case NEARESTNEIGHBOUR:
+			resampleNN(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight);
+			break;
 		case BICUBIC:
 			resampleBicubic(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight);
 			break;

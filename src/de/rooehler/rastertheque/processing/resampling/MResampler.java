@@ -1,6 +1,9 @@
 package de.rooehler.rastertheque.processing.resampling;
 
 
+import com.vividsolutions.jts.geom.Coordinate;
+
+import android.util.Log;
 import de.rooehler.rastertheque.processing.Resampler;
 
 public class MResampler extends Resampler {
@@ -22,6 +25,7 @@ public class MResampler extends Resampler {
 	@Override
 	public void resampleBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
 		
+		Log.d("MResampler", "doing bilinear");
 		if(srcWidth == dstWidth && srcHeight == dstHeight){
 			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
 			return;
@@ -89,28 +93,22 @@ public class MResampler extends Resampler {
 	@Override
 	public void resampleBicubic(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
 		
+		Log.d("MResampler", "doing bicubic");
 		if(srcWidth == dstWidth && srcHeight == dstHeight){
 			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
 			return;
 		}
 
-		int  x, y;
-		float x_diff, y_diff;
 		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
 		float y_ratio = ((float) (srcHeight - 1)) / dstHeight;
 		int offset = 0;
 
 		for (int i = 0; i < dstHeight; i++) {
 			for (int j = 0; j < dstWidth; j++) {
-
-				// src pix coords
-				x = (int) (x_ratio * j);
-				y = (int) (y_ratio * i);
 				
-				x_diff = (x_ratio * j) - x;
-				y_diff = (y_ratio * i) - y;
+				Coordinate c = new Coordinate(x_ratio * j,y_ratio * i);
 
-				dstPixels[offset++] = getInterpolatedPixel(srcPixels, srcWidth, x + x_diff, y + y_diff, -1);
+				dstPixels[offset++] = getInterpolatedPixel(srcPixels, srcWidth, c , 0);
 			}
 		}
 	}
@@ -125,45 +123,97 @@ public class MResampler extends Resampler {
 	 * @param a  the guidance coefficient
 	 * @return the interpolated pixel 
 	 */
-	private int getInterpolatedPixel(int[] pixels, int srcWidth, double x0, double y0, double a) {
+	private int getInterpolatedPixel(int[] pixels, int srcWidth, Coordinate coord, double a) {
 
-		int u0 = (int) Math.floor(x0);	//use floor to handle negative coordinates too
-		int v0 = (int) Math.floor(y0);
+		final double x = coord.x;
+		final double y = coord.y;
+		
+		final int x0 = (int) Math.floor(x);	//use floor to handle negative coordinates too
+		final int y0 = (int) Math.floor(y);
 
-		double  qR = 0, qB = 0, qG = 0;
-		for (int j = 0; j <= 3; j++) {
-			int v = v0 - 1 + j;
+		double qR = 0, qB = 0, qG = 0;
+		for (int j = 0; j < 4; j++) {
+			final int v = y0 - 1 + j;
 			double  pR = 0, pG = 0, pB = 0;
 			
-			for (int i = 0; i <= 3; i++) {
-				int u = u0 - 1 + i;
-				int index = v * srcWidth + u;
+			for (int i = 0; i < 4; i++) {
+				final int u = x0 - 1 + i;
+				final int index = v * srcWidth + u;
 				int pixel = 0;
 				try{
 					pixel = pixels[index];
-				}catch(ArrayIndexOutOfBoundsException e){}
-				
+				}catch(ArrayIndexOutOfBoundsException e){
+					
+					if( v < 0){
+						if(u >= 0){
+							pixel = pixels[u];
+						}else{
+							pixel = pixels[0];
+						}
+					}else if(v >= srcWidth){
+						if(u < srcWidth){
+							pixel = pixels[srcWidth - 1 * srcWidth + u];							
+						}else{
+							pixel = pixels[srcWidth - 1 * srcWidth + (srcWidth - 1)];														
+						}
+					}else{
+						Log.e("MREsampler", "not handled " +v+" "+u);
+					}
+				}
 
-			    pR += ((pixel >> 16) & 0xff) * cubic(x0 - u, a);
-				pG += ((pixel >> 8) & 0xff)  * cubic(x0 - u, a);
-				pB += (pixel & 0xff) * cubic(x0 - u, a);
+			    pR = pR + ((pixel >> 16) & 0xff) * cubic(x - u, a);
+				pG = pG + ((pixel >> 8)  & 0xff) * cubic(x - u, a);
+				pB = pB + (pixel         & 0xff) * cubic(x - u, a);
 			}
 
-			qR += pR * cubic(y0 - v, a);
-			qG += pG * cubic(y0 - v, a);
-			qB += pB * cubic(y0 - v, a);
+			qR = qR + pR * cubic(y - v, a);
+			qG = qG + pG * cubic(y - v, a);
+			qB = qB + pB * cubic(y - v, a);
 		}
+
 		return 0xff000000 | ((((int) qR) << 16) & 0xff0000) | ((((int) qG) << 8) & 0xff00)| ((int) qB);
 	}
 	
-	private double cubic(double x, double a) {
-		if (x < 0) x = -x;
-		double z = 0;
-		if (x < 1) 
-			z = (-a+2)*x*x*x + (a-3)*x*x + 1;
-		else if (x < 2) 
-			z = -a*x*x*x + 5*a*x*x - 8*a*x + 4*a;
-		return z;
+	private double cubic(double r, double a) {
+		if (r < 0) r = -r;
+		double w = 0;
+		if (r < 1) 
+			w = (a+2)*r*r*r - (a+3)*r*r + 1;
+		else if (r < 2) 
+			w = a*r*r*r - 5*a*r*r + 8*a*r - 4*a;
+		return w;
+	}
+	
+	@Override
+	protected void resampleNN(int[] srcPixels, int srcWidth, int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
+		
+		Log.d("MResampler", "doing nn");
+		if(srcWidth == dstWidth && srcHeight == dstHeight){
+			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
+			return;
+		}
+
+		int x, y, index;
+		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
+		float y_ratio = ((float) (srcHeight - 1)) / dstHeight;
+		int offset = 0;
+
+		for (int i = 0; i < dstHeight; i++) {
+			for (int j = 0; j < dstWidth; j++) {
+
+				
+				// src pix coords
+				x = (int) Math.rint(x_ratio * j);
+				y = (int) Math.rint(y_ratio * i);
+
+				// current pos
+				index = y * srcWidth + x;
+
+				dstPixels[offset++] = srcPixels[index];
+				
+			}
+		}
+		
 	}
 
 }

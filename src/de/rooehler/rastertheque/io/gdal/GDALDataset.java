@@ -262,4 +262,11 @@ public class GDALDataset extends Resampler implements RasterDataset{
 		};
 		return c;
 	}
+
+	@Override
+	protected void resampleNN(int[] srcPixels, int srcWidth, int srcHeight,
+			int[] dstPixels, int dstWidth, int dstHeight) {
+		// TODO Auto-generated method stub
+		
+	}
 }

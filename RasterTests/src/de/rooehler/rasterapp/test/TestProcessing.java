@@ -2,6 +2,9 @@ package de.rooehler.rasterapp.test;
 
 import java.io.IOException;
 
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+
 import android.util.Log;
 
 import com.vividsolutions.jts.geom.Envelope;
@@ -15,8 +18,11 @@ import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
 import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
+import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 
 public class TestProcessing extends android.test.AndroidTestCase  {
+	
+	OpenCVResampler resampler;
 	
 	/**
 	 * tests and compares interpolations
@@ -58,12 +64,17 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         final int[] mResampled = new int[resampledSize * resampledSize];
         final int[] jaiResampled = new int[resampledSize * resampledSize];
+        final int[] openCVResampled = new int[resampledSize * resampledSize];
+        
+        /////// MImp ///////
         
         long now = System.currentTimeMillis();
         
         new MResampler(ResampleMethod.BILINEAR).resample(pixels, tileSize,tileSize, mResampled, resampledSize, resampledSize);
         
         Log.d(TestProcessing.class.getSimpleName(), "MInterpolation took "+ (System.currentTimeMillis() - now));
+           
+        /////// JAI ///////
         
         now = System.currentTimeMillis();
         
@@ -71,30 +82,62 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         Log.d(TestProcessing.class.getSimpleName(), "JAI took "+ (System.currentTimeMillis() - now));
         
-        assertTrue(mResampled.length == pixels.length * resamplingFactor * resamplingFactor);
+        assertTrue(jaiResampled.length == pixels.length * resamplingFactor * resamplingFactor);
         
-        //check a pixel
-        final int mPixel = mResampled[resampledSize / 2];
-        final int jaiPixel = jaiResampled[resampledSize / 2];
+        /////// OpenCV ///////
         
-        final int mRed = (mPixel >> 16) & 0xff;
-        final int mGreen = (mPixel >> 8) & 0xff;
-        final int mBlue = (mPixel) & 0xff;
         
-        final int jaiRed = (jaiPixel >> 16) & 0xff;
-        final int jaiGreen = (jaiPixel >> 8) & 0xff;
-        final int jaiBlue = (jaiPixel) & 0xff;
+        resampler = new OpenCVResampler(ResampleMethod.BILINEAR, getContext(),new BaseLoaderCallback(getContext()) {
+	        @Override
+	        public void onManagerConnected(int status) {
+	            switch (status) {
+	                case LoaderCallbackInterface.SUCCESS:
+	                {
+	                    Log.i(OpenCVResampler.class.getSimpleName(), "OpenCV loaded successfully");
+	                    long now2 = System.currentTimeMillis();
+	                    
+	                    resampler.resample(pixels, tileSize, tileSize, openCVResampled, resampledSize, resampledSize);
+	                    
+	                    Log.d(TestProcessing.class.getSimpleName(), "OpenCV took "+ (System.currentTimeMillis() - now2));
+	                    
+	                    assertTrue(openCVResampled.length == pixels.length * resamplingFactor * resamplingFactor);
+	                    
+	                    //check a pixel
+	                    final int mPixel = mResampled[resampledSize / 2];
+	                    final int jaiPixel = jaiResampled[resampledSize / 2];
+	                    
+	                    final int mRed = (mPixel >> 16) & 0xff;
+	                    final int mGreen = (mPixel >> 8) & 0xff;
+	                    final int mBlue = (mPixel) & 0xff;
+	                    
+	                    final int jaiRed = (jaiPixel >> 16) & 0xff;
+	                    final int jaiGreen = (jaiPixel >> 8) & 0xff;
+	                    final int jaiBlue = (jaiPixel) & 0xff;
+	                    
+	                    //valid values
+	                    assertTrue(mRed >= 0 && mRed <= 255);
+	                    assertTrue(mGreen >= 0 && mGreen <= 255);
+	                    assertTrue(mBlue >= 0 && mBlue <= 255);
+	                    
+	                    assertTrue(mRed == jaiRed);
+	                    assertTrue(mGreen == jaiGreen);
+	                    assertTrue(mBlue == jaiBlue);
+	                    
+	                    dataset.close();
+	                } break;
+	                default:
+	                {
+	                    super.onManagerConnected(status);
+	                } break;
+	            }
+	        }
+	    });
+        		
+        		
+        		
+        		
         
-        //valid values
-        assertTrue(mRed >= 0 && mRed <= 255);
-        assertTrue(mGreen >= 0 && mGreen <= 255);
-        assertTrue(mBlue >= 0 && mBlue <= 255);
-        
-        assertTrue(mRed == jaiRed);
-        assertTrue(mGreen == jaiGreen);
-        assertTrue(mBlue == jaiBlue);
-        
-        dataset.close();
+
 	}
 	
 	/**
