@@ -25,7 +25,6 @@ public class MResampler extends Resampler {
 	@Override
 	public void resampleBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
 		
-		Log.d("MResampler", "doing bilinear");
 		if(srcWidth == dstWidth && srcHeight == dstHeight){
 			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
 			return;
@@ -93,7 +92,6 @@ public class MResampler extends Resampler {
 	@Override
 	public void resampleBicubic(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
 		
-		Log.d("MResampler", "doing bicubic");
 		if(srcWidth == dstWidth && srcHeight == dstHeight){
 			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
 			return;
@@ -150,14 +148,18 @@ public class MResampler extends Resampler {
 						}else{
 							pixel = pixels[0];
 						}
+					}else if(u < 0){
+						pixel = pixels[v * srcWidth];
 					}else if(v >= srcWidth){
 						if(u < srcWidth){
 							pixel = pixels[srcWidth - 1 * srcWidth + u];							
 						}else{
 							pixel = pixels[srcWidth - 1 * srcWidth + (srcWidth - 1)];														
 						}
+					}else if(u >= srcWidth){
+						pixel = pixels[v * srcWidth + (srcWidth - 1)];
 					}else{
-						Log.e("MREsampler", "not handled " +v+" "+u);
+						Log.e("MResampler", "not handled " +v+" "+u);
 					}
 				}
 
@@ -187,7 +189,6 @@ public class MResampler extends Resampler {
 	@Override
 	protected void resampleNN(int[] srcPixels, int srcWidth, int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
 		
-		Log.d("MResampler", "doing nn");
 		if(srcWidth == dstWidth && srcHeight == dstHeight){
 			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
 			return;

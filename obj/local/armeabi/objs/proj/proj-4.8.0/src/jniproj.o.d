@@ -1,5 +1,6 @@
-obj/local/armeabi/objs/proj/proj-4.8.0/src/jniproj.o: \
- jni/proj-4.8.0/src/jniproj.c jni/proj-4.8.0/src/proj_config.h \
+/Users/robertoehler/Documents/git/rastertheque/obj/local/armeabi/objs/proj/proj-4.8.0/src/jniproj.o: \
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/jniproj.c \
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/proj_config.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/math.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/sys/cdefs.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/sys/cdefs_elf.h \
@@ -25,18 +26,19 @@ obj/local/armeabi/objs/proj/proj-4.8.0/src/jniproj.o: \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/asm/page.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/string.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/malloc.h \
- jni/proj-4.8.0/src/projects.h \
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/projects.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/stdio.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/stdlib.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/alloca.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/strings.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/memory.h \
- jni/proj-4.8.0/src/proj_api.h jni/proj-4.8.0/src/org_proj4_PJ.h \
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/proj_api.h \
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/org_proj4_PJ.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/jni.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/inttypes.h \
- jni/proj-4.8.0/src/org_proj4_Projections.h
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/org_proj4_Projections.h
 
-jni/proj-4.8.0/src/proj_config.h:
+/Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/proj_config.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/math.h:
 
@@ -88,7 +90,7 @@ jni/proj-4.8.0/src/proj_config.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/malloc.h:
 
-jni/proj-4.8.0/src/projects.h:
+/Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/projects.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/stdio.h:
 
@@ -100,12 +102,12 @@ jni/proj-4.8.0/src/projects.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/memory.h:
 
-jni/proj-4.8.0/src/proj_api.h:
+/Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/proj_api.h:
 
-jni/proj-4.8.0/src/org_proj4_PJ.h:
+/Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/org_proj4_PJ.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/jni.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/inttypes.h:
 
-jni/proj-4.8.0/src/org_proj4_Projections.h:
+/Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/org_proj4_Projections.h:

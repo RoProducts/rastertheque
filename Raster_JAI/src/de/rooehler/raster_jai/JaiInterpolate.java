@@ -1,12 +1,13 @@
 package de.rooehler.raster_jai;
 
+import javax.media.jai.Interpolation;
 import javax.media.jai.InterpolationBicubic;
 import javax.media.jai.InterpolationBilinear;
 
 public class JaiInterpolate {
 
 
-	public static void interpolateBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
+	public static void interpolate(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight, final Interpolation ib){
 
 
 		//		BufferedImage srcBI = new BufferedImage(srcSize, srcSize, BufferedImage.TYPE_INT_ARGB);
@@ -27,7 +28,7 @@ public class JaiInterpolate {
 		//		
 		//		dstPixels = ((DataBufferInt) bi.getRaster().getDataBuffer()).getData();
 		
-		InterpolationBilinear ib = new InterpolationBilinear();
+//		InterpolationBilinear ib = new InterpolationBilinear();
 
 		int a, b, c, d, x, y, index;
 		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
@@ -92,64 +93,4 @@ public class JaiInterpolate {
 
 		return (int) (256 * ratio);
 	}
-	
-	public static void interpolateBicubic(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
-			
-		InterpolationBicubic bicubic = new InterpolationBicubic(-1);
-		
-		int a, b, c, d, x, y, index;
-		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
-		float y_ratio = ((float) (srcHeight - 1)) / dstHeight;
-		float x_diff, y_diff, blue, red, green;
-		int offset = 0;
-
-		for (int i = 0; i < dstHeight; i++) {
-			for (int j = 0; j < dstWidth; j++) {
-
-				// src pix coords
-				x = (int) (x_ratio * j);
-				y = (int) (y_ratio * i);
-
-				// offsets from the current pos to the pos in the new array
-				x_diff = (x_ratio * j) - x;
-				y_diff = (y_ratio * i) - y;
-
-				// current pos
-				index = (y * srcWidth + x);
-
-				a = srcPixels[index];
-				b = srcPixels[index + 1];
-				c = srcPixels[index + srcWidth];
-				d = srcPixels[index + srcWidth + 1];
-
-				// having the four pixels, interpolate
-
-				red = bicubic.interpolate(
-						((a >> 16) & 0xff),
-						((b >> 16) & 0xff), 
-						((c >> 16) & 0xff),
-						((d >> 16) & 0xff),
-						getSubSampleBits(x_diff), getSubSampleBits(y_diff));
-				green = bicubic.interpolate(
-						((a >> 8) & 0xff),
-						((b >> 8) & 0xff),
-						((c >> 8) & 0xff),
-						((d >> 8) & 0xff),
-						getSubSampleBits(x_diff), getSubSampleBits(y_diff));
-				blue = bicubic.interpolate(
-						(a & 0xff),
-						(b & 0xff),
-						(c & 0xff),
-						(d & 0xff),
-						getSubSampleBits(x_diff), getSubSampleBits(y_diff));
-
-				dstPixels[offset++] = 0xff000000 |
-						((((int) red) << 16) & 0xff0000) |
-						((((int) green) << 8) & 0xff00)	 |
-						((int) blue);
-			}
-		}
-		
-	}
-
 }

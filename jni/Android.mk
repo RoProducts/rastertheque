@@ -3,6 +3,11 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
+# OpenCV
+OPENCV_CAMERA_MODULES:=off
+OPENCV_INSTALL_MODULES:=on
+include /Users/robertoehler/Downloads/OpenCV-2.4.10-android-sdk/sdk/native/jni/OpenCV.mk
+
 TARGET_PLATFORM := android-14
 #TARGET_ARCH_ABI := armeabi armeabi-v7a
 TARGET_ARCH_ABI := armeabi-v7a

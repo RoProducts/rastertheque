@@ -1,8 +1,5 @@
 package de.rooehler.rasterapp.test;
 
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.LoaderCallbackInterface;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -22,19 +19,18 @@ import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 
 public class TestInterpolationOutput extends android.test.ActivityTestCase {
 	
-	OpenCVResampler resampler;
 	
 	public void testInterpolationMethods(){
 
 		Context testContext = getInstrumentation().getContext();
 		Resources testRes = testContext.getResources();
-		InputStream is = testRes.openRawResource(R.drawable.earth_64);
+		InputStream is = testRes.openRawResource(R.drawable.lena);
 
 		Bitmap original = BitmapFactory.decodeStream(is);
 
 		assertNotNull(original);
 
-		assertTrue(original.getWidth() == 64);
+		assertTrue(original.getWidth() == 512);
 
 		final int origSize = original.getWidth() * original.getHeight();
 
@@ -43,43 +39,27 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 		
 		final int targetSize = ts * ts;
 
-		final int[] pixels = new int[origSize];
+		int[] pixels = new int[origSize];
 
 		original.getPixels(pixels, 0, os, 0, 0, os, os);
 
-		resampler = new OpenCVResampler(ResampleMethod.NEARESTNEIGHBOUR, testContext, new BaseLoaderCallback(testContext) {
-	        @Override
-	        public void onManagerConnected(int status) {
-	            switch (status) {
-	                case LoaderCallbackInterface.SUCCESS:
-	                {
-	                    Log.i(TestInterpolationOutput.class.getSimpleName(), "OpenCV loaded successfully");
-	                    
-	            		for(int i = 0; i < ResampleMethod.values().length; i++){
+		Resampler resampler = new OpenCVResampler(ResampleMethod.BILINEAR);	
 
-	            			int[] resampledPixels = new int[targetSize];
+		for(int i = 0; i < ResampleMethod.values().length; i++){
 
-	            			final ResampleMethod m = ResampleMethod.values()[i];
-	            			Log.d(TestInterpolationOutput.class.getSimpleName(), "testing "+m.name());
-	            			resampler.setResamplingMethod(m);
-	            			resampler.resample(pixels, os, os, resampledPixels, ts, ts);
+			int[] resampledPixels = new int[targetSize];
 
-	            			Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
-	            			bitmap.setPixels(resampledPixels, 0, ts, 0, 0, ts, ts);	
+			final ResampleMethod m = ResampleMethod.values()[i];
+			Log.d(TestInterpolationOutput.class.getSimpleName(), "testing "+m.name());
+			resampler.setResamplingMethod(m);
+			resampler.resample(pixels, os, os, resampledPixels, ts, ts);
 
-	            			saveImage(bitmap, m.name());
-	            		} 
-	            		
-	                } break;
-	                default:
-	                {
-	                    super.onManagerConnected(status);
-	                } break;
-	            }
-	        }
-	    });
+			Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
+			bitmap.setPixels(resampledPixels, 0, ts, 0, 0, ts, ts);	
 
- 
+			saveImage(bitmap,resampler.getClass().getSimpleName()+"_"+ m.name());
+
+		}  
 	}
 	
 	private void saveImage(Bitmap finalBitmap, final String name) {
@@ -90,7 +70,7 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 	    	myDir.mkdirs();
 	    }
 
-	    String fname = "earth_"+name +".png";
+	    String fname = name +".png";
 	    File file = new File (myDir, fname);
 	    if (file.exists ()){
 	    	file.delete (); 

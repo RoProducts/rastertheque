@@ -1,5 +1,6 @@
-obj/local/armeabi/objs/proj/proj-4.8.0/src/gen_cheb.o: \
- jni/proj-4.8.0/src/gen_cheb.c jni/proj-4.8.0/src/projects.h \
+/Users/robertoehler/Documents/git/rastertheque/obj/local/armeabi/objs/proj/proj-4.8.0/src/gen_cheb.o: \
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/gen_cheb.c \
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/projects.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/math.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/sys/cdefs.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/sys/cdefs_elf.h \
@@ -30,15 +31,15 @@ obj/local/armeabi/objs/proj/proj-4.8.0/src/gen_cheb.o: \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/alloca.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/strings.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/memory.h \
- jni/proj-4.8.0/src/proj_api.h \
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/proj_api.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/errno.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/linux/errno.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/asm/errno.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/asm-generic/errno.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/asm-generic/errno-base.h \
- jni/proj-4.8.0/src/emess.h
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/emess.h
 
-jni/proj-4.8.0/src/projects.h:
+/Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/projects.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/math.h:
 
@@ -100,7 +101,7 @@ jni/proj-4.8.0/src/projects.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/memory.h:
 
-jni/proj-4.8.0/src/proj_api.h:
+/Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/proj_api.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/errno.h:
 
@@ -112,4 +113,4 @@ jni/proj-4.8.0/src/proj_api.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/asm-generic/errno-base.h:
 
-jni/proj-4.8.0/src/emess.h:
+/Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/emess.h:

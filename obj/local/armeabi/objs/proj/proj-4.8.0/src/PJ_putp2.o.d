@@ -1,5 +1,6 @@
-obj/local/armeabi/objs/proj/proj-4.8.0/src/PJ_putp2.o: \
- jni/proj-4.8.0/src/PJ_putp2.c jni/proj-4.8.0/src/projects.h \
+/Users/robertoehler/Documents/git/rastertheque/obj/local/armeabi/objs/proj/proj-4.8.0/src/PJ_putp2.o: \
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/PJ_putp2.c \
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/projects.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/math.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/sys/cdefs.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/sys/cdefs_elf.h \
@@ -30,9 +31,9 @@ obj/local/armeabi/objs/proj/proj-4.8.0/src/PJ_putp2.o: \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/alloca.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/strings.h \
  /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/memory.h \
- jni/proj-4.8.0/src/proj_api.h
+ /Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/proj_api.h
 
-jni/proj-4.8.0/src/projects.h:
+/Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/projects.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/math.h:
 
@@ -94,4 +95,4 @@ jni/proj-4.8.0/src/projects.h:
 
 /Users/robertoehler/Documents/MyLibraries/android-ndk-r8-crystax-1/platforms/android-14/arch-arm/usr/include/memory.h:
 
-jni/proj-4.8.0/src/proj_api.h:
+/Users/robertoehler/Documents/git/rastertheque/jni/proj-4.8.0/src/proj_api.h:
