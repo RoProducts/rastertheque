@@ -233,9 +233,6 @@ public class MapBoxSampleActivity extends Activity {
 	}
 
 	private void replaceWithGDAL(final String filePath) {
-    	
-
-		final boolean useColorMap = true;
 
 		final GDALDriver driver = new GDALDriver();
 		
@@ -272,7 +269,7 @@ public class MapBoxSampleActivity extends Activity {
 		Renderer renderer = new MRenderer(filePath, true);
 		Resampler resampler = new OpenCVResampler();
 		
-		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset, resampler, renderer, useColorMap);
+		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset, resampler, renderer);
 
 		Log.e(TAG, "setting zoom for new file to "+ (((GDALTileLayer) mCurrentLayer).getStartZoomLevel()));
 		mv.setZoom(((GDALTileLayer) mCurrentLayer).getStartZoomLevel());

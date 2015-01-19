@@ -34,6 +34,8 @@ import de.rooehler.rastertheque.proj.Proj;
 public class GDALMapsforgeRenderer implements RasterRenderer {
 
 	private final static String TAG = GDALMapsforgeRenderer.class.getSimpleName();
+	
+	private static final int NO_DATA_COLOR = 0xffffffff;
 
 	private GraphicFactory graphicFactory;
 
@@ -77,7 +79,11 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 //		this.mCurrentCRS = mRasterDataset.getCRS();
 
 	}
-	
+	/**
+	 * checks if this dataset consists of three bands red, green and blue
+	 * which can be used for rendering
+	 * @return if this dataset has three bands and their colors are RED GREEN and BLUE
+	 */
 	private boolean checkIfHasRGBBands() {
 		
 		List<de.rooehler.rastertheque.core.Band> bands = mRasterDataset.getBands();
@@ -205,7 +211,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         	if(readFromX + readAmountX <= 0 || readFromX  > w ||
         	   readFromY + readAmountY <= 0 || readFromY  > h){
         		//cannot read, create white tile
-        		return returnWhiteTile(bitmap, ts, now);
+        		return returnNoDataTile(bitmap, ts, now);
         	}
         	
         	//this tile is partially out of bounds, get available rectangle
@@ -276,6 +282,16 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		return bitmap;
 	}
 	
+   /**
+     * executes a query against the dataset, resamples the result if necessary and returns the rendered pixels
+     * @param bounds the bounds of the query
+     * @param readDim the target dimension of the query
+     * @param datatype the datatype of the query
+     * @param resample if resampling is necessary ( or done by implicitely providing a different target dimension in the query)
+     * @param targetWidth width of the target tile
+     * @param targetHeight height of the target tile
+     * @return array of pixels of size targetWidth * targetHeight
+     */
 	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
 		
 		final RasterQuery query = new RasterQuery(
@@ -301,17 +317,18 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	}
 
 	/**
-	 * returns a Tile filled with white pixels as the desired coordinates are not covered by the file
+	 * returns a Tile filled with pixels according to the NO_DATA_COLOR
+	 * as the desired coordinates were not covered by the dataset
 	 * @param bitmap to modify the pixels 
 	 * @param ts destination tilesize
 	 * @param timestamp when the creation of this tile started
 	 * @return the modified bitmap
 	 */
-	public TileBitmap returnWhiteTile(final TileBitmap bitmap, final int ts, final long timestamp){
+	public TileBitmap returnNoDataTile(final TileBitmap bitmap, final int ts, final long timestamp){
 		//cannot read, create white tile
 		int[] pixels = new int[ts * ts];
 		for (int i = 0; i < pixels.length; i++) {
-			pixels[i] = 0xffffffff;
+			pixels[i] = NO_DATA_COLOR;
 		}
 		bitmap.setPixels( pixels, ts);
 		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - timestamp) / 1000.0f)+ " s");
@@ -353,8 +370,8 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 					pixels[pos] = gdalPixels[gdalPixelCounter++];
 
 				}else {
-					//white pixel;
-					pixels[pos] =  0xffffffff;
+					//NO_DATA_COLOR;
+					pixels[pos] =  NO_DATA_COLOR;
 				}
 
 			}
@@ -414,9 +431,25 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		}
 	}
 
-	public boolean useGDALAsResampler(int targetSize, int isSize){
+	 /**
+     * checks if the resampling should be done inherently by GDAL or by the provided Resampler
+     * 
+     * Currently for queries where the amount to read from the dataset
+     * is larger than the desired tile size GDAL is always used
+     * as otherwise enourmouse amounts of memory need to be allocated which will lead
+     * to OOM fastly
+     * 
+     * hence only if sample up operation is necessary the provided Resampler will be used
+     * 
+     * Sampling down is always done by GDAL
+     * 
+     * @param desiredTileSize the size of the tile to create
+     * @param readFromDataSetSize the amount to read from the dataset
+     * @return
+     */
+	public boolean useGDALAsResampler(int desiredTileSize, int readFromDataSetSize){
 		
-		return targetSize <= isSize || mResampler instanceof GDALDataset;
+		return desiredTileSize <= readFromDataSetSize || mResampler instanceof GDALDataset;
 	}
 	
 	@Override

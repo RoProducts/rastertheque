@@ -60,13 +60,22 @@ public class GDALTileLayer extends TileLayer {
 	private int mTileSize;
 	
 	private static final int NO_DATA_COLOR = 0xff000000;
-	
-	public GDALTileLayer(final File file, final GDALDataset gdalRaster,final Resampler pResampler,final Renderer pRenderer, final boolean pUseColormap) {
+	/**
+	 * A TileLayer which provides Tiles of a corresponding Raster file
+	 * 
+	 * To change the number of executing threads look for NUMBER_OF_TILE_DOWNLOAD_THREADS in com.mapbox.mapboxsdk.tileprovider.constants
+	 * 
+	 * @param file the raster file (explicitely needed to conform to the super class TileLayer)
+	 * @param dataset the dataset of this file
+	 * @param pResampler the resampler used by this TileLayer
+	 * @param pRenderer the renderer used by this TileLayer
+	 */
+	public GDALTileLayer(final File file, final GDALDataset dataset,final Resampler pResampler,final Renderer pRenderer) {
 		super(file.getName(), file.getAbsolutePath());
 
-		mSource = file.getAbsolutePath();
+		mSource = dataset.getSource();
 
-		mRasterDataset = gdalRaster;
+		mRasterDataset = dataset;
 
 		mRenderer = pRenderer;
 		
@@ -76,7 +85,7 @@ public class GDALTileLayer extends TileLayer {
 	}	
 
 	/**
-     * initializes this reader by setting up, intial zoom, internal scale and the boundingbox
+     * initializes this layer by setting up the initial zoom, internal scale and the boundingbox
      */
     private void initialize() {
     	
@@ -89,7 +98,6 @@ public class GDALTileLayer extends TileLayer {
 		}
     	
 		final Envelope bb = mRasterDataset.getBoundingBox();
-		
 
 		final LatLng sw = new LatLng(bb.getMinY(),bb.getMinX()); 
 		final LatLng ne = new LatLng(bb.getMaxY(),bb.getMaxX()); 
@@ -99,20 +107,11 @@ public class GDALTileLayer extends TileLayer {
 				Math.hypot(mRasterDataset.getDimension().getHeight(),mRasterDataset.getDimension().getWidth());
 		
 		mInternalZoom = 1;
-//		int startZoomLevel = 2;
-//		while(res_in_Meters < 1000){
-//			res_in_Meters *= 2;
-//			startZoomLevel++;
-//		}
-//		Log.d(TAG, "previously calculated start zoom level "+ startZoomLevel);
-		
-		////new////
 		int startZoomLevel = 0;
 		while(Constants.getResolutionInMetersPerPixelForZoomLevel(startZoomLevel) > res_in_Meters){
 			startZoomLevel++;
 		}
-		Log.d(TAG, "newly calculated start zoom level "+ startZoomLevel);
-		////new////
+		Log.d(TAG, "calculated start zoom level "+ startZoomLevel);
 	
 		mMinimumZoomLevel = Math.max(0, startZoomLevel - 5);
 		
@@ -196,18 +195,18 @@ public class GDALTileLayer extends TileLayer {
         	
         	//this tile is partially out of bounds, get available rectangle
         	int availableX = readAmountX, availableY = readAmountY;
-        	int gdalTargetXSize = ts, gdalTargetYSize = ts;
+        	int targetXSize = ts, targetYSize = ts;
             int coveredXOrigin = 0, coveredYOrigin = 0;
 
         	if(readFromX + readAmountX > w || 	readFromY + readAmountY > h){
         		//max x or y bounds hit
         		if(readFromX + readAmountX > w){        			
         			availableX = (int) (w -  readFromX);   			
-        			gdalTargetXSize = (int) (availableX * (1 / scaleFactor));
+        			targetXSize = (int) (availableX * (1 / scaleFactor));
         		}
         		if(readFromY + readAmountY > h){        			
         			availableY = (int) (h - readFromY);  			
-        			gdalTargetYSize = (int) (availableY * (1 / scaleFactor));
+        			targetYSize = (int) (availableY * (1 / scaleFactor));
         		}
         	}
 
@@ -216,29 +215,29 @@ public class GDALTileLayer extends TileLayer {
         		if(readFromX < 0){        			
         			availableX = (int) (readAmountX - Math.abs(readFromX));
         			coveredXOrigin = Math.round((readAmountX - availableX) /  scaleFactor);
-        			gdalTargetXSize = (int) (availableX * (1 /  scaleFactor));
+        			targetXSize = (int) (availableX * (1 /  scaleFactor));
         			readFromX = 0;
         		}
         		if(readFromY < 0){        			
         			availableY = (int) (readAmountY - Math.abs(readFromY));
         			coveredYOrigin = Math.round((readAmountY - availableY) / scaleFactor);
-        			gdalTargetYSize = (int) (availableY * (1 / scaleFactor));
+        			targetYSize = (int) (availableY * (1 / scaleFactor));
         			readFromY = 0;
         		}
         	}
 //        	Log.e(TAG, "reading of ("+availableX+","+availableY +") from "+readFromX+","+readFromY+" target {"+gdalTargetXSize+","+gdalTargetYSize+"}, covered: X"+coveredXOrigin+", Y "+coveredYOrigin);
 
-        	final Envelope targetDim = useGDALAsResampler(gdalTargetXSize ,availableX) ?
-        			new Envelope(0, gdalTargetXSize, 0, gdalTargetYSize) : new Envelope(0, availableX, 0, availableY);
+        	final Envelope targetDim = useGDALAsResampler(targetXSize ,availableX) ?
+        			new Envelope(0, targetXSize, 0, targetYSize) : new Envelope(0, availableX, 0, availableY);
         	
         	final int pixels[] = executeQuery(
            			new Envelope(readFromX, readFromX + availableX, readFromY, readFromY + availableY),
              		targetDim,
              		datatype,
-             		!useGDALAsResampler(gdalTargetXSize ,availableX),
-             		gdalTargetXSize , gdalTargetYSize);
+             		!useGDALAsResampler(targetXSize ,availableX),
+             		targetXSize , targetYSize);
            	
-           	return createBoundsTile(downloader, aTile, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
+           	return createBoundsTile(downloader, aTile, pixels, coveredXOrigin,coveredYOrigin, targetXSize, targetYSize, ts, now);
 
 
         }else{ //this rectangle is fully covered by the file
@@ -268,7 +267,16 @@ public class GDALTileLayer extends TileLayer {
         return result;
 
     }
-    
+    /**
+     * executes a query against the dataset, resamples the result if necessary and returns the rendered pixels
+     * @param bounds the bounds of the query
+     * @param readDim the target dimension of the query
+     * @param datatype the datatype of the query
+     * @param resample if resampling is necessary ( or done by implicitely providing a different target dimension in the query)
+     * @param targetWidth width of the target tile
+     * @param targetHeight height of the target tile
+     * @return array of pixels of size targetWidth * targetHeight
+     */
 	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
 		
 		final RasterQuery query = new RasterQuery(
@@ -279,6 +287,7 @@ public class GDALTileLayer extends TileLayer {
 				datatype);
 
 		Raster raster = null;
+		
 		synchronized(this){
 			raster = mRasterDataset.read(query);
 		}
@@ -353,13 +362,14 @@ public class GDALTileLayer extends TileLayer {
 
     
 	/**
-	 * returns a Tile filled with white pixels as the desired coordinates are not covered by the file
+	 * returns a Tile filled with pixels according to the NO_DATA_COLOR
+	 * as the desired coordinates were not covered by the dataset
 	 * @param bitmap to modify the pixels 
 	 * @param ts destination tilesize
 	 * @param timestamp when the creation of this tile started
 	 * @return the modified bitmap
 	 */
-	public Drawable returnNoDataTile(final MapTileDownloader downloader,	final MapTile aTile,final int ts, final long timestamp){
+	protected Drawable returnNoDataTile(final MapTileDownloader downloader, final MapTile aTile,final int ts, final long timestamp){
 		
 		Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
 		//cannot read, create white tile
@@ -378,15 +388,12 @@ public class GDALTileLayer extends TileLayer {
 		
 	}
 	
-	public double scaleFactorAccordingToZoom(int zoom){
-		
-		int diff = zoom - mStartZoomLevel + mInternalZoom;;
-		
-		return Math.pow(2,  -diff);
-		
-	}	
-	
-	private boolean checkIfHasRGBBands() {
+	/**
+	 * checks if this dataset consists of three bands red, green and blue
+	 * which can be used for rendering
+	 * @return if this dataset has three bands and their colors are RED GREEN and BLUE
+	 */
+	protected boolean checkIfHasRGBBands() {
 		
 		List<de.rooehler.rastertheque.core.Band> bands = mRasterDataset.getBands();
 		
@@ -401,10 +408,25 @@ public class GDALTileLayer extends TileLayer {
     public void detach() {
     	
     }
-    
-	public boolean useGDALAsResampler(int targetSize, int isSize){
+    /**
+     * checks if the resampling should be done inherently by GDAL or by the provided Resampler
+     * 
+     * Currently for queries where the amount to read from the dataset
+     * is larger than the desired tile size GDAL is always used
+     * as otherwise enourmouse amounts of memory need to be allocated which will lead
+     * to OOM fastly
+     * 
+     * hence only if sample up operation is necessary the provided Resampler will be used
+     * 
+     * Sampling down is always done by GDAL
+     * 
+     * @param desiredTileSize the size of the tile to create
+     * @param readFromDataSetSize the amount to read from the dataset
+     * @return
+     */
+	public boolean useGDALAsResampler(int desiredTileSize, int readFromDataSetSize){
 		
-		return targetSize <= isSize || mResampler instanceof GDALDataset;
+		return desiredTileSize <= readFromDataSetSize || mResampler instanceof GDALDataset;
 	}
     
 	public void close(){
