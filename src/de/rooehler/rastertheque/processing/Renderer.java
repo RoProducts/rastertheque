@@ -3,13 +3,11 @@ package de.rooehler.rastertheque.processing;
 import de.rooehler.rastertheque.core.Raster;
 
 public interface Renderer {
+
 	
-	public boolean hasColorMap();
+	int[] render(final Raster raster);
 	
-	public int[] grayscale(final Raster raster);
+	void useRGBBands(boolean hasRgbBands);
 	
-	public int[] colormap(final Raster raster);
-	
-	public int[] rgbBands(final Raster raster);
 
 }

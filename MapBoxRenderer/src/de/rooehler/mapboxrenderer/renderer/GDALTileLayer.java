@@ -48,13 +48,7 @@ public class GDALTileLayer extends TileLayer {
 	
 	private Resampler mResampler;
 	
-	private boolean mUseColorMap;
-	
 	private int mRasterBandCount = 1;
-	
-	private boolean hasRGBBands;
-	
-//	private final int mScreenWidth;
 	
 	private final String mSource;
 	
@@ -77,10 +71,6 @@ public class GDALTileLayer extends TileLayer {
 		
 		mResampler = pResampler;
 
-//		this.mScreenWidth = pScreenWidth;
-
-		mUseColorMap = pUseColormap;
-
 		initialize();
 	}	
 
@@ -94,7 +84,7 @@ public class GDALTileLayer extends TileLayer {
 		this.mRasterBandCount = this.mRasterDataset.getBands().size();
 
 		if(mRasterBandCount == 3){
-			hasRGBBands = checkIfHasRGBBands();
+			mRenderer.useRGBBands( checkIfHasRGBBands());
 		}
     	
 		final Envelope bb = mRasterDataset.getBoundingBox();
@@ -280,45 +270,15 @@ public class GDALTileLayer extends TileLayer {
 		}
 
 		if(resample){
-            int pixels[] = render(raster);
+            int pixels[] = mRenderer.render(raster);
         	int[] resampledPixels = new int[targetWidth * targetHeight];
         	mResampler.resample(pixels, (int) readDim.getWidth(), (int) readDim.getHeight(), resampledPixels, targetWidth, targetHeight,ResampleMethod.BILINEAR );
         	return resampledPixels;
         }else{
-        	return render(raster);
+        	return mRenderer.render(raster);
         }
 	}
-	
-	/**
-	 * render the data contained in @param buffer
-	 * Currently this will, depending on the data
-	 * <ol>
-	 *   <li>if the raster contains 3 bands R, G and B use these bands to render</li>
-	 *   <li>if there is an according colormap to this raster file use this colormap to render</li>
-	 *   <li>if none of the before will interpolate a gray scale image</li>
-	 * </ol>  
-	 *   
-	 * @param buffer the data to render
-	 * @param tilePixelAmount the size of the resulting pixel array
-	 * @param dataType the type of the data
-	 * @return an array containing the rendered pixels in top left first order
-	 */
-	public int[] render(final Raster raster){
 
-		
-		int[] pixels = null;
-		
-		if(hasRGBBands){
-			pixels = mRenderer.rgbBands(raster);
-		}else if(mRenderer.hasColorMap() && mUseColorMap){
-			pixels = mRenderer.colormap(raster);
-		}else{        	
-			pixels = mRenderer.grayscale(raster);
-		} 
-
-		
-		return pixels;
-	}
 	
 	/**
 	 * returns a tile which partially contains raster data, the rest is filled with pixels according to the nodata value

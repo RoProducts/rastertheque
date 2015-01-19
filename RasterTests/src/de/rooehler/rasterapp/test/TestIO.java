@@ -74,9 +74,9 @@ public class TestIO extends android.test.AndroidTestCase {
         
         final Raster raster = dataset.read(query);
         
-        final Renderer renderer = new MRenderer(FILE);
+        final Renderer renderer = new MRenderer(FILE, false);
         
-        final int[] pixels  = renderer.grayscale(raster);
+        final int[] pixels  = renderer.render(raster);
         
         assertNotNull(pixels);
         

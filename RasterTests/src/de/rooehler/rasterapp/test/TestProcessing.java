@@ -47,9 +47,9 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         final Raster raster = dataset.read(query);
         
-        final MRenderer renderer = new MRenderer(TestIO.FILE);
+        final MRenderer renderer = new MRenderer(TestIO.FILE, true);
         
-        final int[] pixels  = renderer.colormap(raster);
+        final int[] pixels  = renderer.render(raster);
         
         assertNotNull(pixels);
         
@@ -153,9 +153,9 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         final long gdalNow = System.currentTimeMillis();
         
         final Raster raster = dataset.read(gdalResampleQuery);    
-		final MRenderer renderer = new MRenderer(TestIO.FILE);
+		final MRenderer renderer = new MRenderer(TestIO.FILE, true);
 		
-        final int[] gdalResampledPixels  = renderer.colormap(raster);
+        final int[] gdalResampledPixels  = renderer.render(raster);
         assertNotNull(gdalResampledPixels);
         Log.d(TestProcessing.class.getSimpleName(), "GDAL resampling took "+ (System.currentTimeMillis() - gdalNow)+" ms");
 
@@ -177,9 +177,9 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		
         Log.d(TestProcessing.class.getSimpleName(), "gdal read took "+ (System.currentTimeMillis() - manualNow)+" ms");
         
-    	final MRenderer rend = new MRenderer(TestIO.FILE);
+    	final MRenderer renderer = new MRenderer(TestIO.FILE, true);
         
-        final int[] manualResampledSourcePixels  = rend.colormap(manualRaster);
+        final int[] manualResampledSourcePixels  = renderer.render(manualRaster);
         
         final int[] manualResampledTargetPixels = new int[targetSize * targetSize];
         

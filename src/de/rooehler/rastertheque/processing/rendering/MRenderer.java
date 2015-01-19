@@ -17,7 +17,11 @@ public class MRenderer implements Renderer{
 	
 	private ColorMap mColorMap;
 	
-	public MRenderer(final String pFilePath){
+	private boolean mHasRGBBands = false;
+	
+	private boolean mUseColorMap;
+	
+	public MRenderer(final String pFilePath, final boolean useColorMapIfAvailable){
 		
 		final String colorMapFilePath = pFilePath.substring(0, pFilePath.lastIndexOf(".") + 1) + "sld";
 
@@ -28,16 +32,52 @@ public class MRenderer implements Renderer{
 			this.mColorMap = SLDColorMapParser.parseColorMapFile(file);
 
 		}
+		
+		mUseColorMap = useColorMapIfAvailable;
+		
 	}
 	
 	@Override
-	public boolean hasColorMap() {
+	public void useRGBBands(boolean hasRgbBands){
+		
+		this.mHasRGBBands = hasRgbBands;
+	}
+	
+	/**
+	 * render the data contained in @param buffer
+	 * Currently this will, depending on the data
+	 * <ol>
+	 *   <li>if the raster contains 3 bands R, G and B use these bands to render</li>
+	 *   <li>if there is an according colormap to this raster file use this colormap to render</li>
+	 *   <li>if none of the before will interpolate a gray scale image</li>
+	 * </ol>  
+	 *   
+	 * @param raster, containing the data to render
+	 */
+	@Override
+	public int[] render(final Raster raster) {
+		
+		int[] pixels = null;
+		
+		if(mHasRGBBands){
+			pixels = rgbBands(raster);
+		}else if(hasColorMap() && mUseColorMap){
+			pixels = colormap(raster);
+		}else{        	
+			pixels = grayscale(raster);
+		} 
+
+		
+		return pixels;
+	}
+
+	private boolean hasColorMap() {
 		
 		return this.mColorMap != null;
 	}
 	
-	@Override
-	public int[] rgbBands(final Raster raster) {
+
+	private int[] rgbBands(final Raster raster) {
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
@@ -79,8 +119,8 @@ public class MRenderer implements Renderer{
 	 * @param dataType the dataType of the raster pixels
 	 * @return the array of color pixels
 	 */
-	@Override
-	public int[] colormap(final Raster raster){
+
+	private int[] colormap(final Raster raster){
 		
 		if(mColorMap == null){
 			throw new IllegalArgumentException("no colorMap available");
@@ -111,8 +151,8 @@ public class MRenderer implements Renderer{
 	 * @param dataType the dataType of the raster pixels
 	 * @return the array of color pixels
 	 */
-	@Override
-	public int[] grayscale(final Raster raster) {
+
+	private int[] grayscale(final Raster raster) {
 
 		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
 		int[] pixels = new int[pixelAmount];

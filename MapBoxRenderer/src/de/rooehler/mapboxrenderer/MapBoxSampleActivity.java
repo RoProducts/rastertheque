@@ -37,9 +37,8 @@ import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
-import de.rooehler.rastertheque.processing.resampling.MResampler;
+import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 
 
 
@@ -261,8 +260,8 @@ public class MapBoxSampleActivity extends Activity {
 		}catch(IOException e){
 			Log.e(TAG, "error opening file "+filePath);
 		}
-		Renderer renderer = new MRenderer(filePath);
-		Resampler resampler = new MResampler();
+		Renderer renderer = new MRenderer(filePath, true);
+		Resampler resampler = new OpenCVResampler();
 		
 		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset, resampler, renderer, useColorMap);
 

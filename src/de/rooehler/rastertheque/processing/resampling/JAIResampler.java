@@ -22,10 +22,10 @@ public class JAIResampler implements Resampler{
 			i = Interpolation.getInstance(Interpolation.INTERP_NEAREST);
 			break;
 		case BILINEAR:
-			Interpolation.getInstance(Interpolation.INTERP_BILINEAR);
+			i = Interpolation.getInstance(Interpolation.INTERP_BILINEAR);
 			break;
 		case BICUBIC:
-			Interpolation.getInstance(Interpolation.INTERP_BICUBIC);
+			i = Interpolation.getInstance(Interpolation.INTERP_BICUBIC);
 			break;
 		}
 		

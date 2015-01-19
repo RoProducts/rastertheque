@@ -53,8 +53,6 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	
 	private int mRasterBandCount;
 	
-	private boolean hasRGBBands;
-	
 //	private CoordinateReferenceSystem mCurrentCRS;
 
 
@@ -73,7 +71,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		this.mRasterBandCount = this.mRasterDataset.getBands().size();
 		
 		if(mRasterBandCount == 3){
-			hasRGBBands = checkIfHasRGBBands();
+			mRenderer.useRGBBands(checkIfHasRGBBands());
 		}
 		
 //		this.mCurrentCRS = mRasterDataset.getCRS();
@@ -290,7 +288,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         final Raster raster = mRasterDataset.read(query);
 
         if(resample){
-            int pixels[] = render(raster);
+            int pixels[] = mRenderer.render(raster);
         	int[] resampledPixels = new int[targetWidth * targetHeight];
         	final ResampleMethod method = ResampleMethod.BILINEAR;
         	mResampler.resample(pixels, (int) readDim.getWidth(), (int) readDim.getHeight(), resampledPixels, targetWidth, targetHeight, method );
@@ -298,26 +296,8 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         	return resampledPixels;
         }else{
         	Log.d(TAG, "using gdal as resampler");
-        	return render(raster);
+        	return mRenderer.render(raster);
         }
-	}
-	
-
-	public int[] render(final Raster raster){
-
-		
-		int[] pixels = null;
-		
-		if(hasRGBBands){
-			pixels = mRenderer.rgbBands(raster);
-		}else if(mRenderer.hasColorMap() && mUseColorMap){
-			pixels = mRenderer.colormap(raster);
-		}else{        	
-			pixels = mRenderer.grayscale(raster);
-		} 
-
-		
-		return pixels;
 	}
 
 	/**
