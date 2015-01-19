@@ -12,7 +12,6 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.widget.DrawerLayout;
 import android.text.TextUtils;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -235,30 +234,40 @@ public class MapBoxSampleActivity extends Activity {
 
 	private void replaceWithGDAL(final String filePath) {
     	
-		if(mCurrentLayer != null && mCurrentLayer instanceof GDALTileLayer){
-			((GDALTileLayer) mCurrentLayer).close();
-
-		}
-
-		DisplayMetrics displaymetrics = new DisplayMetrics();
-		getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-//		int screenWidth = displaymetrics.widthPixels;
 
 		final boolean useColorMap = true;
 
 		final GDALDriver driver = new GDALDriver();
 		
 		GDALDataset dataset = null;
-		try{
+		try{ //try to open the file and check if it is valid (has a projection and a bounding box)
 			if(driver.canOpen(filePath)){
 				
 				dataset = driver.open(filePath);
+		        
+		        if(dataset.getCRS() == null){      	
+		        	AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+		        	dataset.close();
+		        	return;
+		        }
+		        if(dataset.getBoundingBox() == null){
+		        	AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+		        	dataset.close();
+		        	return;
+		        }
+		        //this dataset is okay, close any earlier opened
+				if(mCurrentLayer != null && mCurrentLayer instanceof GDALTileLayer){
+					((GDALTileLayer) mCurrentLayer).close();
+				}
 			}else{
 				Log.w(TAG, "cannot open file "+filePath);
+				AlertFactory.showErrorAlert(this, "No Driver", "No Driver could open the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
 				return;
 			}
 		}catch(IOException e){
 			Log.e(TAG, "error opening file "+filePath);
+			AlertFactory.showErrorAlert(this, "Error", "There was an error opening the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
+			return;
 		}
 		Renderer renderer = new MRenderer(filePath, true);
 		Resampler resampler = new OpenCVResampler();

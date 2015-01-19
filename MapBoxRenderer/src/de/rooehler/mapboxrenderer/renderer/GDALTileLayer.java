@@ -28,6 +28,7 @@ import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.util.Constants;
 import de.rooehler.rastertheque.util.Formulae;
 /**
  * A GDALTileLayer extends the Mapbox TileLayer to extract Tiles out of the
@@ -88,26 +89,36 @@ public class GDALTileLayer extends TileLayer {
 		}
     	
 		final Envelope bb = mRasterDataset.getBoundingBox();
+		
 
 		final LatLng sw = new LatLng(bb.getMinY(),bb.getMinX()); 
 		final LatLng ne = new LatLng(bb.getMaxY(),bb.getMaxX()); 
 
-		//meters per pixel of this raster
-		double res_in_Meters = Formulae.distanceBetweenInMeters(
-				bb.getMinY(),bb.getMinX(), bb.getMaxY(),bb.getMaxX()) /
-				Math.hypot(mRasterDataset.getDimension().getHeight(),mRasterDataset.getDimension().getWidth()); //dist in m / pixel of hyp
+		//meters per pixel of this raster --> distance min-max / length min-max
+		double res_in_Meters = Formulae.distanceBetweenInMeters(bb.getMinY(),bb.getMinX(), bb.getMaxY(),bb.getMaxX()) /
+				Math.hypot(mRasterDataset.getDimension().getHeight(),mRasterDataset.getDimension().getWidth());
 		
 		mInternalZoom = 1;
-		int startZoomLevel = 2;
-		while(res_in_Meters < 1000){
-			res_in_Meters *= 2;
+//		int startZoomLevel = 2;
+//		while(res_in_Meters < 1000){
+//			res_in_Meters *= 2;
+//			startZoomLevel++;
+//		}
+//		Log.d(TAG, "previously calculated start zoom level "+ startZoomLevel);
+		
+		////new////
+		int startZoomLevel = 0;
+		while(Constants.getResolutionInMetersPerPixelForZoomLevel(startZoomLevel) > res_in_Meters){
 			startZoomLevel++;
 		}
+		Log.d(TAG, "newly calculated start zoom level "+ startZoomLevel);
+		////new////
 	
+		mMinimumZoomLevel = Math.max(0, startZoomLevel - 5);
 		
-		mMinimumZoomLevel = mStartZoomLevel = startZoomLevel;
+		mStartZoomLevel = startZoomLevel;
 		
-		mMaximumZoomLevel = startZoomLevel + 8;
+		mMaximumZoomLevel = Math.min(18, startZoomLevel + 8);
 
 		mName = mSource;
 		mDescription = "GDALLayer";

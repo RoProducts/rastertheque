@@ -64,9 +64,11 @@ public class GDALDataset implements RasterDataset, Resampler{
 
 	
 	public String toWKT(CoordinateReferenceSystem crs) {
+		
 		SpatialReference ref = new SpatialReference();
 		ref.ImportFromProj4(Proj.toString(crs));
 		return ref.ExportToWkt();
+		
 	}
 
 
@@ -115,6 +117,7 @@ public class GDALDataset implements RasterDataset, Resampler{
 
 				return mBB;
 			}else{
+				
 
 				Log.e(TAG, org.gdal.gdal.gdal.GetLastErrorMsg());	
 
@@ -147,7 +150,7 @@ public class GDALDataset implements RasterDataset, Resampler{
 				try{
 					mCRS =  Proj.crs(ref.ExportToProj4());
 				}catch(RuntimeException e){
-					Log.w(TAG, "Exceptopm getting crs from projection");
+					Log.w(TAG, "Exception getting crs from projection");
 					return null;
 				}
 				return mCRS;

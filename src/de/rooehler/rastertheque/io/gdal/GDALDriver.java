@@ -5,6 +5,9 @@ import java.io.IOException;
 import org.gdal.gdal.gdal;
 
 import android.util.Log;
+
+import com.vividsolutions.jts.geom.Envelope;
+
 import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 
@@ -42,6 +45,7 @@ public class GDALDriver implements Driver<GDALDataset> {
 	public boolean canOpen(String filePath) {
 		
 		org.gdal.gdal.Driver drv =  gdal.IdentifyDriver(filePath);
+		
         if (drv == null) {
             String msg = "Unable to locate driver";
             String lastErrMsg = gdal.GetLastErrorMsg();
@@ -52,6 +56,7 @@ public class GDALDriver implements Driver<GDALDataset> {
             Log.w(TAG, "cannot open file : "+filePath+ " error : "+msg);
             return false;
         }
+        
         return true;
 	}
 

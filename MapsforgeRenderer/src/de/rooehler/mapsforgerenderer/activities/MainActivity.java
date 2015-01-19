@@ -44,6 +44,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.mapsforgerenderer.R;
+import de.rooehler.mapsforgerenderer.dialog.AlertFactory;
 import de.rooehler.mapsforgerenderer.dialog.FilePickerDialog;
 import de.rooehler.mapsforgerenderer.dialog.FilePickerDialog.FilePathPickCallback;
 import de.rooehler.mapsforgerenderer.dialog.SelectProjectionDialog;
@@ -282,34 +283,50 @@ public class MainActivity extends Activity implements IWorkStatus{
 			break;
 
 		case RASTER:
-			
-			if(ds != null){
-				ds.close();
-			}
-
-			DisplayMetrics displaymetrics = new DisplayMetrics();
-			getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-			int width = displaymetrics.widthPixels;
-			
+						
 			GDALDriver driver = new GDALDriver();
 
 			try{
 				if(driver.canOpen(filePath)){
 					
-					ds = driver.open(filePath);
+					final GDALDataset newDs = driver.open(filePath);
+			        
+			        if(newDs.getCRS() == null){      	
+			        	AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+			        	newDs.close();
+			        	return;
+			        }
+			        if(newDs.getBoundingBox() == null){
+			        	AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+			        	newDs.close();
+			        	return;
+			        }
+			       //this dataset is okay, close any earlier opened
+					if(ds != null){
+						ds.close();
+					}
+					
+			        ds = newDs;
 				}else{
 					Log.w(TAG, "cannot open file "+filePath);
+					AlertFactory.showErrorAlert(this, "No Driver", "No Driver could open the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
 					return;
 				}
 			}catch(IOException e){
 				Log.e(TAG, "error opening file "+filePath);
+				AlertFactory.showErrorAlert(this, "Error", "There was an error opening the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
+				return;
 			}
 			
 			Renderer renderer = new MRenderer(filePath, true);
 			Resampler resampler = new OpenCVResampler();
 			
 			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE,((GDALDataset) ds), renderer,resampler, true);
+			//TODO refactor the initial zoom calculation
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
+			DisplayMetrics displaymetrics = new DisplayMetrics();
+			getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
+			int width = displaymetrics.widthPixels;
 			byte startZoomLevel = gdalFileRenderer.calculateStartZoomLevel(tileSize,width);
 			
 			final Envelope dim = ((GDALDataset) ds).getDimension();

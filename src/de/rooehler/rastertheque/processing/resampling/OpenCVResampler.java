@@ -48,9 +48,6 @@ public class OpenCVResampler implements Resampler {
 			break;
 		}
 		
-		final float scaleFactorX = dstWidth / srcWidth;
-		final float scaleFactorY = dstHeight / srcHeight;
-		
 		Bitmap bitmap = Bitmap.createBitmap(srcWidth, srcHeight, Config.ARGB_8888);
         bitmap.setPixels(srcPixels, 0, srcWidth, 0, 0, srcWidth, srcHeight);
         Mat srcMat = new Mat();
@@ -66,7 +63,7 @@ public class OpenCVResampler implements Resampler {
 
 		Mat dstMat = new Mat();
 	
-		Imgproc.resize(srcMat, dstMat, new Size(), scaleFactorX, scaleFactorY, i);
+		Imgproc.resize(srcMat, dstMat, new Size(dstWidth, dstHeight), 0, 0, i);
 		
 		Bitmap resizedBitmap = Bitmap.createBitmap(dstWidth, dstHeight, Config.ARGB_8888);
 		org.opencv.android.Utils.matToBitmap(dstMat, resizedBitmap);
