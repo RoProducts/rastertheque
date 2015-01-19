@@ -149,8 +149,8 @@ public class GDALTileLayer extends TileLayer {
     	long now = System.currentTimeMillis();
     	
     	//1. where is tile which should be displayed
-    	final Point t = Projection.tileXYToPixelXY(aTile.getX(), aTile.getY(), null);
-    	final Point t2  =Projection.tileXYToPixelXY(aTile.getX() + 1, aTile.getY() , null);
+    	final Point t  = Projection.tileXYToPixelXY(aTile.getX(), aTile.getY(), null);
+    	final Point t2 = Projection.tileXYToPixelXY(aTile.getX() + 1, aTile.getY() + 1 , null);
     	
     	final PointF northWest = Projection.latLongToPixelXY(mBoundingBox.getLatNorth(), mBoundingBox.getLonWest(), zoom, null);
     	final PointF southEast = Projection.latLongToPixelXY(mBoundingBox.getLatSouth(), mBoundingBox.getLonEast(), zoom, null);
@@ -159,23 +159,26 @@ public class GDALTileLayer extends TileLayer {
     	final double xRatio = (t.x - northWest.x) / (southEast.x - northWest.x);
     	final double yRatio = (t.y - northWest.y) / (southEast.y - northWest.y);
     	final double xRatio2 = (t2.x - northWest.x) / (southEast.x - northWest.x);
+    	final double yRatio2 = (t2.y - northWest.y) / (southEast.y - northWest.y);
     	
     	//3. interpolate x and y to read from
     	double readFromX =   w * xRatio;
     	double readFromY =   h * yRatio;
     	double readFromX2 =  w * xRatio2;
+    	double readFromY2 =  h * yRatio2;
 
     	//4. TODO improve calculate the amount to read
-    	int zoomedTS = (int) (readFromX2 - readFromX);// (int) (ts * scaleFactor);  
-    	final float scaleFactor = (float) zoomedTS / ts;
+    	int zoomedTSX = (int) (readFromX2 - readFromX);  
+    	int zoomedTSY = (int) (readFromY2 - readFromY);  
+    	final float scaleFactor = (float) ((zoomedTSX + zoomedTSY) / 2) / ts;
 
-    	int readAmountX = zoomedTS;
-    	int readAmountY = zoomedTS;
+    	int readAmountX = zoomedTSX;
+    	int readAmountY = zoomedTSY;
     	
-    	if(zoomedTS < 0){
+    	if(zoomedTSX < 0 || zoomedTSY < 0){
     		return returnNoDataTile(downloader, aTile, ts, now);
     	}else{
-    		Log.e(TAG, "wanted "+ts +" reading "+zoomedTS);
+    		Log.e(TAG, "wanted "+ts +" reading x : "+zoomedTSX +" y : "+ zoomedTSY);
 //    		Log.i(TAG, "ts : " + ts + " zoomedTS is : " + zoomedTS +" zoom "+ zoom+ " scaleFactor : "+scaleFactor);
     		
     	}
