@@ -15,7 +15,7 @@ import android.os.Environment;
 import android.util.Log;
 import de.rooehler.rastertheque.processing.Resampler;
 
-public class OpenCVResampler extends Resampler {
+public class OpenCVResampler implements Resampler {
 	
 	static {
 	    if (!OpenCVLoader.initDebug()) {
@@ -26,33 +26,27 @@ public class OpenCVResampler extends Resampler {
 	}
 	
 	
-	public OpenCVResampler(ResampleMethod method) {
-		super(method);
-		
-	}
 
 	@Override
-	protected void resampleNN(int[] srcPixels, int srcWidth, int srcHeight,	int[] dstPixels, int dstWidth, int dstHeight) {
+	public void resample(int[] srcPixels, int srcWidth, int srcHeight,	int[] dstPixels, int dstWidth, int dstHeight, ResampleMethod method) {
 		
-		resample(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, Imgproc.INTER_NEAREST);
-	}
-
-	@Override
-	protected void resampleBilinear(int[] srcPixels, int srcWidth,int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
+		if(srcWidth == dstWidth && srcHeight == dstHeight){
+			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
+			return;
+		}
 		
-		
-		resample(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, Imgproc.INTER_LINEAR);
-		
-	}
-
-	@Override
-	protected void resampleBicubic(int[] srcPixels, int srcWidth, int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
-	
-		resample(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, Imgproc.INTER_CUBIC);
-		
-	}
-	
-	private void resample(int[] srcPixels, int srcWidth, int srcHeight, int[] dstPixels, int dstWidth, int dstHeight, int method) {
+		int i = 0;
+		switch (method) {
+		case NEARESTNEIGHBOUR:
+			i = Imgproc.INTER_NEAREST;
+			break;
+		case BILINEAR:
+			i = Imgproc.INTER_LINEAR;
+			break;
+		case BICUBIC:
+			i = Imgproc.INTER_CUBIC;
+			break;
+		}
 		
 		final float scaleFactorX = dstWidth / srcWidth;
 		final float scaleFactorY = dstHeight / srcHeight;
@@ -72,14 +66,15 @@ public class OpenCVResampler extends Resampler {
 
 		Mat dstMat = new Mat();
 	
-		Imgproc.resize(srcMat, dstMat, new Size(), scaleFactorX, scaleFactorY, method);
+		Imgproc.resize(srcMat, dstMat, new Size(), scaleFactorX, scaleFactorY, i);
 		
 		Bitmap resizedBitmap = Bitmap.createBitmap(dstWidth, dstHeight, Config.ARGB_8888);
 		org.opencv.android.Utils.matToBitmap(dstMat, resizedBitmap);
 		 
 		resizedBitmap.getPixels(dstPixels, 0, dstWidth, 0, 0, dstWidth, dstHeight);
-
 	}
+
+
 	
 	@SuppressWarnings("unused")
 	private static void testDirectRead(){

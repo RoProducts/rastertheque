@@ -41,9 +41,9 @@ public class TestInterpolationSpeed extends android.test.ActivityTestCase {
 		original.getPixels(pixels, 0, os, 0, 0, os, os);
 
 		final Resampler[] resamplers = new Resampler[]{
-				new OpenCVResampler(ResampleMethod.NEARESTNEIGHBOUR),
-				new MResampler(ResampleMethod.NEARESTNEIGHBOUR),
-				new JAIResampler(ResampleMethod.NEARESTNEIGHBOUR)
+				new OpenCVResampler(),
+				new MResampler(),
+				new JAIResampler()
 		};
 
 		for(Resampler resampler : resamplers){
@@ -54,13 +54,12 @@ public class TestInterpolationSpeed extends android.test.ActivityTestCase {
 				long now = System.currentTimeMillis();
 				final ResampleMethod m = ResampleMethod.values()[i];
 				
-				resampler.setResamplingMethod(m);
-				resampler.resample(pixels, os, os, resampledPixels, ts, ts);
+				resampler.resample(pixels, os, os, resampledPixels, ts, ts, m);
 				
 				long took = System.currentTimeMillis() - now;
 				
 				assertTrue(resampledPixels.length == targetSize);
-//				assertEquals(pixels[0], resampledPixels[0]);
+				assertEquals(pixels[0], resampledPixels[0]);
 //				assertEquals(pixels[pixels.length - 1 ], resampledPixels[resampledPixels.length - 1]);
 				
 				Log.d(TestInterpolationOutput.class.getSimpleName(), "tested "+resampler.getClass().getSimpleName()+" "+ m.name()+" took : " + took );

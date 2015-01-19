@@ -17,7 +17,6 @@ import com.mapbox.mapboxsdk.tileprovider.MapTile;
 import com.mapbox.mapboxsdk.tileprovider.modules.MapTileDownloader;
 import com.mapbox.mapboxsdk.tileprovider.tilesource.TileLayer;
 import com.mapbox.mapboxsdk.views.util.Projection;
-import com.vividsolutions.jts.geom.Dimension;
 import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Band.Color;
@@ -28,6 +27,7 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 import de.rooehler.rastertheque.util.Formulae;
 /**
  * A GDALTileLayer extends the Mapbox TileLayer to extract Tiles out of the
@@ -282,7 +282,7 @@ public class GDALTileLayer extends TileLayer {
 		if(resample){
             int pixels[] = render(raster);
         	int[] resampledPixels = new int[targetWidth * targetHeight];
-        	mResampler.resample(pixels, (int) readDim.getWidth(), (int) readDim.getHeight(), resampledPixels, targetWidth, targetHeight );
+        	mResampler.resample(pixels, (int) readDim.getWidth(), (int) readDim.getHeight(), resampledPixels, targetWidth, targetHeight,ResampleMethod.BILINEAR );
         	return resampledPixels;
         }else{
         	return render(raster);

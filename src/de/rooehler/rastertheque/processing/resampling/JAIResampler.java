@@ -5,47 +5,31 @@ import javax.media.jai.Interpolation;
 import de.rooehler.native_jai.JaiInterpolate;
 import de.rooehler.rastertheque.processing.Resampler;
 
-public class JAIResampler extends Resampler{
+public class JAIResampler implements Resampler{
 
-
-	public JAIResampler(ResampleMethod method) {
-		super(method);
-
-	}
-
-	protected void resampleBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
-
-		if(srcWidth == dstWidth && srcHeight == dstHeight){
-			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
-			return;
-		}
-		
-		JaiInterpolate.interpolate(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, Interpolation.getInstance(Interpolation.INTERP_BILINEAR));
-		
-	}
-
-
-	protected void resampleBicubic(int[] srcPixels, int srcWidth, int srcHeight,int[] dstPixels, int dstWidth, int dstHeight) {
-		
-		if(srcWidth == dstWidth && srcHeight == dstHeight){
-			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
-			return;
-		}
-		
-		JaiInterpolate.interpolate(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, Interpolation.getInstance(Interpolation.INTERP_BICUBIC));
-		
-	}
 
 	@Override
-	protected void resampleNN(int[] srcPixels, int srcWidth, int srcHeight,	int[] dstPixels, int dstWidth, int dstHeight) {
-		
+	public void resample(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight, ResampleMethod method){
+
 		if(srcWidth == dstWidth && srcHeight == dstHeight){
 			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
 			return;
 		}
 		
-		JaiInterpolate.interpolate(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, Interpolation.getInstance(Interpolation.INTERP_NEAREST));
+		Interpolation i = null;
+		switch (method) {
+		case NEARESTNEIGHBOUR:
+			i = Interpolation.getInstance(Interpolation.INTERP_NEAREST);
+			break;
+		case BILINEAR:
+			Interpolation.getInstance(Interpolation.INTERP_BILINEAR);
+			break;
+		case BICUBIC:
+			Interpolation.getInstance(Interpolation.INTERP_BICUBIC);
+			break;
+		}
 		
+		JaiInterpolate.interpolate(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, i);
 		
 	}
 

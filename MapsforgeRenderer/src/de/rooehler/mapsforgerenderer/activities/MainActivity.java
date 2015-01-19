@@ -267,7 +267,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 				final MapViewPosition mbtmvp = mapView.getModel().mapViewPosition;		
 				mbtmvp.setMapPosition(mbtmp);
 
-				final Resampler resampler = new MResampler(ResampleMethod.BILINEAR);
+				final Resampler resampler = new MResampler();
 				MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesDataset, resampler);
 				Layer mbTilesLayer = new RasterLayer(getBaseContext(), tileCache, mbtmvp, false, AndroidGraphicFactory.INSTANCE, mbTilesRenderer, this);
 				Log.d(TAG, "setting max to "+zoomMinMax[1]+ " min to "+ zoomMinMax[0]);
@@ -306,7 +306,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 			}
 			
 			Renderer renderer = new MRenderer(filePath);
-			Resampler resampler = new MResampler(ResampleMethod.BILINEAR);
+			Resampler resampler = new MResampler();
 			
 			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE,((GDALDataset) ds), renderer,resampler, true);
 			final int tileSize = mapView.getModel().displayModel.getTileSize();

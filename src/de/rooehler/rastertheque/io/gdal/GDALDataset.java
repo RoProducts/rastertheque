@@ -26,7 +26,7 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.proj.Proj;
 
-public class GDALDataset extends Resampler implements RasterDataset{
+public class GDALDataset implements RasterDataset, Resampler{
 	
 	private static final String TAG = GDALDataset.class.getSimpleName();
 	
@@ -43,7 +43,7 @@ public class GDALDataset extends Resampler implements RasterDataset{
 	private CoordinateReferenceSystem mCRS;
 	
     public GDALDataset(final ResampleMethod method,final String pFilePath, Dataset dataset, GDALDriver driver) {
-    	super(method);
+
         this.mSource = pFilePath;
         this.dataset = dataset;
         this.mDriver = driver;
@@ -221,14 +221,12 @@ public class GDALDataset extends Resampler implements RasterDataset{
 	}
 
 	@Override
-	protected void resampleBilinear(int[] srcPixels, int srcWidth,int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
+	public void resample(int[] srcPixels, int srcWidth,int srcHeight, int[] dstPixels, int dstWidth, int dstHeight, ResampleMethod m) {
 				
+		//Nothing is done inherently
 	}
 
-	@Override
-	protected void resampleBicubic(int[] srcPixels, int srcWidth,	int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
-				
-	}
+
 	
 
 	public void applyProjection(final String wkt){
@@ -261,12 +259,5 @@ public class GDALDataset extends Resampler implements RasterDataset{
 			}
 		};
 		return c;
-	}
-
-	@Override
-	protected void resampleNN(int[] srcPixels, int srcWidth, int srcHeight,
-			int[] dstPixels, int dstWidth, int dstHeight) {
-		// TODO Auto-generated method stub
-		
 	}
 }

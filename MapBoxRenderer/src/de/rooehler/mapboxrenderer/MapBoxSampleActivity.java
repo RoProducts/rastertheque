@@ -262,7 +262,7 @@ public class MapBoxSampleActivity extends Activity {
 			Log.e(TAG, "error opening file "+filePath);
 		}
 		Renderer renderer = new MRenderer(filePath);
-		Resampler resampler = new MResampler(ResampleMethod.BILINEAR);
+		Resampler resampler = new MResampler();
 		
 		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset, resampler, renderer, useColorMap);
 

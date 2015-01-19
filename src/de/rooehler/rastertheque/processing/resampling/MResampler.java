@@ -6,11 +6,31 @@ import com.vividsolutions.jts.geom.Coordinate;
 import android.util.Log;
 import de.rooehler.rastertheque.processing.Resampler;
 
-public class MResampler extends Resampler {
+public class MResampler implements Resampler {
 	
-	public MResampler(ResampleMethod method) {
-		super(method);
+
+	@Override
+	public void resample(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight,final ResampleMethod method){
+		
+		if(srcWidth == dstWidth && srcHeight == dstHeight){
+			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
+			return;
+		}
+		
+		switch (method) {
+		case NEARESTNEIGHBOUR:
+			resampleNN(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight);
+			break;
+		case BILINEAR:
+			resampleBilinear(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight);
+			break;
+		case BICUBIC:
+			resampleBicubic(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight);
+			break;
+		}
+		
 	}
+	
 	/**
 	 * Bilinear interpolation http://en.wikipedia.org/wiki/Bilinear_interpolation
 	 * 
@@ -22,13 +42,7 @@ public class MResampler extends Resampler {
 	 * @param dstWidth the width of the resampled image
 	 * @param dstHeight the height of the resampled image
 	 */
-	@Override
 	public void resampleBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
-		
-		if(srcWidth == dstWidth && srcHeight == dstHeight){
-			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
-			return;
-		}
 
 		int a, b, c, d, x, y, index;
 		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
@@ -88,14 +102,7 @@ public class MResampler extends Resampler {
 	 * @param dstWidth the width of the resampled image
 	 * @param dstHeight the height of the resampled image
 	 */
-	
-	@Override
 	public void resampleBicubic(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
-		
-		if(srcWidth == dstWidth && srcHeight == dstHeight){
-			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
-			return;
-		}
 
 		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
 		float y_ratio = ((float) (srcHeight - 1)) / dstHeight;
@@ -186,13 +193,7 @@ public class MResampler extends Resampler {
 		return w;
 	}
 	
-	@Override
 	protected void resampleNN(int[] srcPixels, int srcWidth, int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
-		
-		if(srcWidth == dstWidth && srcHeight == dstHeight){
-			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
-			return;
-		}
 
 		int x, y, index;
 		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;

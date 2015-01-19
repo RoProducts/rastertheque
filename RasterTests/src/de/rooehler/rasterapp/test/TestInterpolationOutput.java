@@ -43,7 +43,7 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 
 		original.getPixels(pixels, 0, os, 0, 0, os, os);
 
-		Resampler resampler = new OpenCVResampler(ResampleMethod.BILINEAR);	
+		Resampler resampler = new OpenCVResampler();	
 
 		for(int i = 0; i < ResampleMethod.values().length; i++){
 
@@ -51,8 +51,8 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 
 			final ResampleMethod m = ResampleMethod.values()[i];
 			Log.d(TestInterpolationOutput.class.getSimpleName(), "testing "+m.name());
-			resampler.setResamplingMethod(m);
-			resampler.resample(pixels, os, os, resampledPixels, ts, ts);
+
+			resampler.resample(pixels, os, os, resampledPixels, ts, ts, m);
 
 			Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
 			bitmap.setPixels(resampledPixels, 0, ts, 0, 0, ts, ts);	

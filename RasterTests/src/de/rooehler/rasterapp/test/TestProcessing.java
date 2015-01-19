@@ -65,7 +65,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         long now = System.currentTimeMillis();
         
-        new MResampler(ResampleMethod.BILINEAR).resample(pixels, tileSize,tileSize, mResampled, resampledSize, resampledSize);
+        new MResampler().resample(pixels, tileSize,tileSize, mResampled, resampledSize, resampledSize,ResampleMethod.BILINEAR);
         
         Log.d(TestProcessing.class.getSimpleName(), "MInterpolation took "+ (System.currentTimeMillis() - now));
            
@@ -73,7 +73,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         now = System.currentTimeMillis();
         
-        new JAIResampler(ResampleMethod.BILINEAR).resample(pixels, tileSize, tileSize, jaiResampled, resampledSize, resampledSize);
+        new JAIResampler().resample(pixels, tileSize, tileSize, jaiResampled, resampledSize, resampledSize,ResampleMethod.BILINEAR);
         
         Log.d(TestProcessing.class.getSimpleName(), "JAI took "+ (System.currentTimeMillis() - now));
         
@@ -83,7 +83,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         now = System.currentTimeMillis();
         
-        new OpenCVResampler(ResampleMethod.BILINEAR).resample(pixels, tileSize, tileSize, openCVResampled, resampledSize, resampledSize);
+        new OpenCVResampler().resample(pixels, tileSize, tileSize, openCVResampled, resampledSize, resampledSize,ResampleMethod.BILINEAR);
         
         Log.d(TestProcessing.class.getSimpleName(), "OpenCV took "+ (System.currentTimeMillis() - now));
         
@@ -183,13 +183,14 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         final int[] manualResampledTargetPixels = new int[targetSize * targetSize];
         
-        new MResampler(ResampleMethod.BILINEAR).resample(
+        new MResampler().resample(
         		manualResampledSourcePixels,
         		readSize,
         		readSize,
         		manualResampledTargetPixels,
         		targetSize,
-        		targetSize);
+        		targetSize,
+        		ResampleMethod.BILINEAR);
         
         Log.d(TestProcessing.class.getSimpleName(), "manual resampling took "+ (System.currentTimeMillis() - manualNow)+" ms");
         
@@ -208,9 +209,9 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		
 		int[] resampled = new int[pic.length * 4];
 		
-		Resampler resampler = new MResampler(ResampleMethod.BICUBIC);
+		Resampler resampler = new MResampler();
 		
-		resampler.resample(pic, 2, 2, resampled, 4, 4);
+		resampler.resample(pic, 2, 2, resampled, 4, 4, ResampleMethod.BICUBIC);
 		
 		assertTrue(resampled[0] == white);
 		

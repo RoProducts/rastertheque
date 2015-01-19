@@ -24,6 +24,7 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 import de.rooehler.rastertheque.proj.Proj;
 /**
  * A Renderer of gdal data for Mapsforge
@@ -291,8 +292,9 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         if(resample){
             int pixels[] = render(raster);
         	int[] resampledPixels = new int[targetWidth * targetHeight];
-        	mResampler.resample(pixels, (int) readDim.getWidth(), (int) readDim.getHeight(), resampledPixels, targetWidth, targetHeight );
-        	Log.d(TAG, "using "+mResampler.getClass().getSimpleName() +" "+mResampler.getResampleMethod().toString()+" as resampler");
+        	final ResampleMethod method = ResampleMethod.BILINEAR;
+        	mResampler.resample(pixels, (int) readDim.getWidth(), (int) readDim.getHeight(), resampledPixels, targetWidth, targetHeight, method );
+        	Log.d(TAG, "using "+mResampler.getClass().getSimpleName() +" "+method.toString()+" as resampler");
         	return resampledPixels;
         }else{
         	Log.d(TAG, "using gdal as resampler");
