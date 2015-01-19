@@ -1,10 +1,8 @@
 package de.rooehler.rastertheque.processing.resampling;
 
-import javax.media.jai.InterpolationBicubic;
-import javax.media.jai.InterpolationBilinear;
-import javax.media.jai.InterpolationNearest;
+import javax.media.jai.Interpolation;
 
-import de.rooehler.raster_jai.JaiInterpolate;
+import de.rooehler.native_jai.JaiInterpolate;
 import de.rooehler.rastertheque.processing.Resampler;
 
 public class JAIResampler extends Resampler{
@@ -22,7 +20,7 @@ public class JAIResampler extends Resampler{
 			return;
 		}
 		
-		JaiInterpolate.interpolate(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, new InterpolationBilinear());
+		JaiInterpolate.interpolate(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, Interpolation.getInstance(Interpolation.INTERP_BILINEAR));
 		
 	}
 
@@ -34,18 +32,21 @@ public class JAIResampler extends Resampler{
 			return;
 		}
 		
-		JaiInterpolate.interpolate(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, new InterpolationBicubic(0));
+		JaiInterpolate.interpolate(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, Interpolation.getInstance(Interpolation.INTERP_BICUBIC));
 		
 	}
 
 	@Override
 	protected void resampleNN(int[] srcPixels, int srcWidth, int srcHeight,	int[] dstPixels, int dstWidth, int dstHeight) {
 		
-		JaiInterpolate.interpolate(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, new InterpolationNearest());
+		if(srcWidth == dstWidth && srcHeight == dstHeight){
+			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
+			return;
+		}
+		
+		JaiInterpolate.interpolate(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight, Interpolation.getInstance(Interpolation.INTERP_NEAREST));
 		
 		
 	}
-
-
 
 }
