@@ -4,7 +4,9 @@ package de.rooehler.rastertheque.processing.resampling;
 import java.io.File;
 
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
@@ -47,19 +49,14 @@ public class OpenCVResampler implements Resampler {
 			i = Imgproc.INTER_CUBIC;
 			break;
 		}
+		//TODO find a way to avoid the convertion to bitmap ( pixels->bitmap->mat->resample->bitmap->pixels )
+		//as seen at https://github.com/Itseez/opencv/blob/master/modules/java/generator/src/cpp/utils.cpp
 		
 		Bitmap bitmap = Bitmap.createBitmap(srcWidth, srcHeight, Config.ARGB_8888);
         bitmap.setPixels(srcPixels, 0, srcWidth, 0, 0, srcWidth, srcHeight);
-        Mat srcMat = new Mat();
-		
-//        Mat srcMat = new Mat(srcHeight, srcWidth, CvType.CV_32SC1);
-//        
-//        Mat convertMat = new Mat(srcHeight, srcWidth,  CvType.CV_8UC4);
-//        
-//        Imgproc.cvtColor(srcMat, convertMat, Imgproc.COLOR_mRGBA2RGBA);
         
+        Mat srcMat = new Mat();
         org.opencv.android.Utils.bitmapToMat(bitmap, srcMat);
-
 
 		Mat dstMat = new Mat();
 	
@@ -71,6 +68,13 @@ public class OpenCVResampler implements Resampler {
 		resizedBitmap.getPixels(dstPixels, 0, dstWidth, 0, 0, dstWidth, dstHeight);
 	}
 
+	public static double[] copyFromIntArray(int[] source) {
+	    double[] dest = new double[source.length];
+	    for(int i=0; i<source.length; i++) {
+	        dest[i] = source[i];
+	    }
+	    return dest;
+	}
 
 	
 	@SuppressWarnings("unused")

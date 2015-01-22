@@ -42,8 +42,8 @@ public class TestInterpolationSpeed extends android.test.ActivityTestCase {
 
 		final Resampler[] resamplers = new Resampler[]{
 				new OpenCVResampler(),
-				new MResampler(),
-				new JAIResampler()
+				new JAIResampler(),
+				new MResampler()
 		};
 
 		for(Resampler resampler : resamplers){

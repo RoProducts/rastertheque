@@ -53,7 +53,7 @@ public class ByteBufferReader {
 	 * The offset in bytes of the start of the buffer, from the start of the
 	 * eraf.
 	 */
-	protected long bufferStart;
+//	protected long bufferStart;
 
 	/**
 	 * The offset in bytes of the end of the data in the buffer, from the start
@@ -84,7 +84,7 @@ public class ByteBufferReader {
 	
 	public void init(){
 		// Initialise the buffer
-		bufferStart = 0;
+//		bufferStart = 0;
 		dataEnd =  this.buffer.length;
 		dataSize = 0;
 		filePosition = 0;
@@ -103,7 +103,7 @@ public class ByteBufferReader {
 
 		// If the eraf position is within the data, return the byte...
 		if (filePosition < dataEnd) {
-			int pos = (int) (filePosition - bufferStart);
+			int pos = (int) filePosition;
 			filePosition++;
 			return (buffer[pos] & 0xff);
 
@@ -154,8 +154,7 @@ public class ByteBufferReader {
 
 		// Copy as much as we can.
 		int copyLength = (bytesAvailable >= len) ? len : bytesAvailable;
-		System.arraycopy(buffer, (int) (filePosition - bufferStart), b, off,
-				copyLength);
+		System.arraycopy(buffer, (int) filePosition, b, off, copyLength);
 		filePosition += copyLength;
 
 		// If there is more to copy...
@@ -166,7 +165,15 @@ public class ByteBufferReader {
 		// Return the amount copied.
 		return copyLength;
 	}
+	
+	public void seekToOffset(int offset){
+		
+		filePosition = offset;
+	}
 
+	public int getPos(){
+		return (int) filePosition;
+	}
 	
 
 	//

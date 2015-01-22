@@ -1,6 +1,7 @@
 package de.rooehler.rastertheque.core;
 
 import java.nio.ByteBuffer;
+import java.util.Hashtable;
 import java.util.List;
 
 import org.osgeo.proj4j.CoordinateReferenceSystem;
@@ -33,16 +34,27 @@ public class Raster {
      * The raw raster data.
      */
     ByteBuffer data;
+    
+    /**
+     * Nodata for this raster.
+     */
+    NoData nodata = NoData.NONE;
+    
+    /**
+     * metadata for this raster;
+     */
+    Hashtable<?, ?> metadata;
 
     
     
-    public Raster(Envelope bb, CoordinateReferenceSystem crs, Envelope size, List<Band> bands, ByteBuffer data) {
+    public Raster(Envelope pBounds, CoordinateReferenceSystem pCrs, Envelope pSize, List<Band> pBands, ByteBuffer pData, Hashtable<?, ?> pMetaData) {
     	
-    	this.bb = bb;
-    	this.crs = crs;
-    	this.dimension = size;
-    	this.bands = bands;
-    	this.data = data;
+    	this.bb = pBounds;
+    	this.crs = pCrs;
+    	this.dimension = pSize;
+    	this.bands = pBands;
+    	this.data = pData;
+    	this.metadata = pMetaData;
     }
 
 	/**
@@ -55,8 +67,8 @@ public class Raster {
     /**
      * Sets the bounds of the raster in world coordinates.
      */
-    public void setBoundingBox(Envelope boundingBox) {
-        this.bb = boundingBox;
+    public void setBoundingBox(Envelope pBoundingBox) {
+        this.bb = pBoundingBox;
     }
 
     /**
@@ -69,8 +81,8 @@ public class Raster {
     /**
      * Sets the world projection of the raster.
      */
-    public void setCRS(CoordinateReferenceSystem crs) {
-        this.crs = crs;
+    public void setCRS(CoordinateReferenceSystem pCrs) {
+        this.crs = pCrs;
     }
 
     /**
@@ -83,8 +95,8 @@ public class Raster {
     /**
      * Sets the dimensions of the raster.
      */
-    public void setDimension(Envelope size) {
-        this.dimension = size;
+    public void setDimension(Envelope pSize) {
+        this.dimension = pSize;
     }
 
     /**
@@ -97,8 +109,8 @@ public class Raster {
     /**
      * Sets the raw data for the raster.
      */
-    public void setData(ByteBuffer data) {
-        this.data = data;
+    public void setData(ByteBuffer pData) {
+        this.data = pData;
     }
 
     /**
@@ -111,8 +123,39 @@ public class Raster {
     /**
      * Sets the bands contained in the raster.
      */
-    public void setBands(List<Band> bands) {
-        this.bands = bands;
+    public void setBands(List<Band> pBands) {
+        this.bands = pBands;
+    }
+    
+
+    /**
+     * The nodata for the raster.
+     */
+    public NoData nodata() {
+        return nodata;
+    }
+
+    /**
+     * Sets the nodata for the raster.
+     */
+    public Raster setNodata(NoData pNodata) {
+        this.nodata = pNodata;
+        return this;
+    }
+    
+    /**
+     * The metadata for this raster
+     */
+    public Hashtable<?, ?> metadata(){
+    	return metadata;
+    }
+    
+    /**
+     * Sets the metadata for this raster
+     */
+    public void setMetadata(Hashtable<?, ?> pMetadata){
+    	
+    	this.metadata = pMetadata;
     }
 
 }

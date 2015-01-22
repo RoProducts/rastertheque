@@ -32,8 +32,6 @@ public class TestIO extends android.test.AndroidTestCase {
 		assertTrue(driver.canOpen(FILE));
 		
 		GDALDataset dataset = driver.open(FILE);
-				
-		assertNotNull(dataset.getCenterPoint());
 		
 		assertNotNull(dataset.getBoundingBox());
 		

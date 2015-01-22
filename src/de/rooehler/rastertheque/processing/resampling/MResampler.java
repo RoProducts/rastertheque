@@ -42,7 +42,7 @@ public class MResampler implements Resampler {
 	 * @param dstWidth the width of the resampled image
 	 * @param dstHeight the height of the resampled image
 	 */
-	public void resampleBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
+	private void resampleBilinear(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
 
 		int a, b, c, d, x, y, index;
 		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
@@ -102,7 +102,7 @@ public class MResampler implements Resampler {
 	 * @param dstWidth the width of the resampled image
 	 * @param dstHeight the height of the resampled image
 	 */
-	public void resampleBicubic(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
+	private void resampleBicubic(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight){
 
 		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
 		float y_ratio = ((float) (srcHeight - 1)) / dstHeight;
@@ -193,7 +193,7 @@ public class MResampler implements Resampler {
 		return w;
 	}
 	
-	protected void resampleNN(int[] srcPixels, int srcWidth, int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
+	private void resampleNN(int[] srcPixels, int srcWidth, int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
 
 		int x, y, index;
 		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
