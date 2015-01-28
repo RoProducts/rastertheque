@@ -64,19 +64,29 @@ public class OpenCVRawResampler implements RawResampler {
 		Imgproc.resize(srcMat, dstMat, new Size(raster.getDimension().getWidth(), raster.getDimension().getHeight()), 0, 0, i);
 		Log.d(OpenCVRawResampler.class.getSimpleName(), "resizing  took : "+(System.currentTimeMillis() - now));
 		
-		int bufferSize = ((int)raster.getDimension().getWidth()) * ((int)raster.getDimension().getHeight()) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
+		final int bufferSize = ((int)raster.getDimension().getWidth()) * ((int)raster.getDimension().getHeight()) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
 		
 		raster.setData(bytesFromMat(
 				dstMat,
 				raster.getBands().get(0).datatype(),
-				bufferSize,
-				(int) raster.getDimension().getWidth(),
-				(int) raster.getDimension().getHeight()));
+				bufferSize));
 		Log.d(OpenCVRawResampler.class.getSimpleName(), "reconverting to bytes took : "+(System.currentTimeMillis() - now));
 		
 	}
 	
+	/**
+	 * converts the bytes from a raster into an OpenCV Mat 
+	 * having width * height cells of datatype according to the rasters datatype
+	 * @param type the datatype of the raster
+	 * @param bytes the data
+	 * @param width the width of the raster
+	 * @param height the height of the raster
+	 * @return the Mat object containing the data in the given format
+	 * @throws IOException
+	 */
 	public Mat matAccordingToDatatype( DataType type, final byte[] bytes, final int width, final int height) throws IOException{
+		
+		//dataypes -> http://answers.opencv.org/question/5/how-to-get-and-modify-the-pixel-of-mat-in-java/
 		
 		switch(type){
 		case BYTE:
@@ -173,18 +183,26 @@ public class OpenCVRawResampler implements RawResampler {
 		}
 		throw new IllegalArgumentException("Invalid datatype");
 	}
-	
-	public ByteBuffer bytesFromMat(Mat mat, DataType type, int bufferSize, final int width, final int height){
+	/**
+	 * converts a Mat (with likely the result of some operation) 
+	 * into a ByteBuffer according to the datatype
+	 * @param mat the Mat to convert
+	 * @param type the datatype of the data
+	 * @param bufferSize the size of the ByteBuffer to create
+	 * @return a ByteBuffer containing the data of the Mat
+	 */
+	public ByteBuffer bytesFromMat(Mat mat, DataType type, int bufferSize){
 		
 
-		byte[] bytes = new byte[bufferSize];
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 		buffer.order(ByteOrder.nativeOrder());
+		final int height = (int) mat.size().height;
+		final int width = (int) mat.size().width;
 		
 		switch(type){
 		case BYTE:
-			mat.get(0, 0, bytes);
-			return ByteBuffer.wrap(bytes);
+			mat.get(0, 0, buffer.array());
+			return buffer;
 			
 		case CHAR:
 			for(int y = 0; y < height; y++){
