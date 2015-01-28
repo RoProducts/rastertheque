@@ -26,9 +26,9 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		
 		final GDALDriver driver = new GDALDriver();
 		
-		assertTrue(driver.canOpen(TestIO.FILE));
+		assertTrue(driver.canOpen(TestIO.GRAY_50M_BYTE));
 		
-		final GDALDataset dataset = driver.open(TestIO.FILE);
+		final GDALDataset dataset = driver.open(TestIO.GRAY_50M_BYTE);
 		
 		final Envelope  dim = dataset.getDimension();
 		final int height = (int) dim.getHeight();
@@ -47,7 +47,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         final Raster raster = dataset.read(query);
         
-        final MRenderer renderer = new MRenderer(TestIO.FILE, true);
+        final MRenderer renderer = new MRenderer(TestIO.GRAY_50M_BYTE, true);
         
         final int[] pixels  = renderer.render(raster);
         
@@ -120,9 +120,9 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 				
 		final GDALDriver driver = new GDALDriver();
 		
-		assertTrue(driver.canOpen(TestIO.FILE));
+		assertTrue(driver.canOpen(TestIO.GRAY_50M_BYTE));
 		
-		final GDALDataset dataset = driver.open(TestIO.FILE);
+		final GDALDataset dataset = driver.open(TestIO.GRAY_50M_BYTE);
 
 		final int readSize = 256;
 		final int targetSize = 756;
@@ -153,7 +153,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         final long gdalNow = System.currentTimeMillis();
         
         final Raster raster = dataset.read(gdalResampleQuery);    
-		final MRenderer renderer = new MRenderer(TestIO.FILE, true);
+		final MRenderer renderer = new MRenderer(TestIO.GRAY_50M_BYTE, true);
 		
         final int[] gdalResampledPixels  = renderer.render(raster);
         assertNotNull(gdalResampledPixels);
@@ -177,7 +177,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		
         Log.d(TestProcessing.class.getSimpleName(), "gdal read took "+ (System.currentTimeMillis() - manualNow)+" ms");
         
-    	final MRenderer renderer = new MRenderer(TestIO.FILE, true);
+    	final MRenderer renderer = new MRenderer(TestIO.GRAY_50M_BYTE, true);
         
         final int[] manualResampledSourcePixels  = renderer.render(manualRaster);
         

@@ -34,10 +34,10 @@ import de.rooehler.mapboxrenderer.fileselection.SupportedType;
 import de.rooehler.mapboxrenderer.renderer.GDALTileLayer;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
+import de.rooehler.rastertheque.processing.RawResampler;
 import de.rooehler.rastertheque.processing.Renderer;
-import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
-import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.OpenCVRawResampler;
 
 
 
@@ -267,7 +267,7 @@ public class MapBoxSampleActivity extends Activity {
 			return;
 		}
 		Renderer renderer = new MRenderer(filePath, true);
-		Resampler resampler = new OpenCVResampler();
+		RawResampler resampler = new OpenCVRawResampler();
 		
 		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset, resampler, renderer);
 

@@ -2,7 +2,7 @@ package de.rooehler.rastertheque.processing.resampling;
 
 import javax.media.jai.Interpolation;
 
-import de.rooehler.native_jai.JaiInterpolate;
+import de.rooehler.raster_jai.JaiInterpolate;
 import de.rooehler.rastertheque.processing.Resampler;
 
 public class JAIResampler implements Resampler{

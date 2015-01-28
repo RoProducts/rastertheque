@@ -18,7 +18,7 @@ public class MRawResampler implements RawResampler {
 	public void resample(Raster raster, ResampleMethod method) {
 
 
-		if(Double.compare(raster.getBoundingBox().getWidth(), raster.getDimension().getWidth()) == 0 ||
+		if(Double.compare(raster.getBoundingBox().getWidth(), raster.getDimension().getWidth()) == 0 &&
 		   Double.compare(raster.getBoundingBox().getHeight(), raster.getDimension().getHeight()) == 0){
 			return;
 		}
@@ -37,9 +37,11 @@ public class MRawResampler implements RawResampler {
 		float y_ratio = ((float) (srcHeight - 1)) / dstHeight;
 		float x_diff, y_diff;
 		
-		int bufferSize = ((int)dstWidth) * ((int)dstHeight) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
-		
-		final ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+		final int oldBufferSize = ((int)srcWidth) * ((int)srcHeight) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
+
+		final int newBufferSize = ((int)dstWidth) * ((int)dstHeight) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
+				
+		final ByteBuffer buffer = ByteBuffer.allocate(newBufferSize);
 		buffer.order(ByteOrder.nativeOrder()); 
 		
 		for(int h = 0; h <raster.getBands().size(); h++){
@@ -57,7 +59,7 @@ public class MRawResampler implements RawResampler {
 					// current pos
 					index = y * srcWidth + x;
 
-					Object[] values = getNeighbors(reader, index, srcWidth* srcHeight,srcWidth, raster.getBands().get(h).datatype());
+					Object[] values = getNeighbors(reader, index, oldBufferSize , srcWidth, raster.getBands().get(h).datatype());
 					
 					final int nearestX = (int) Math.rint(x + x_diff);
 					final int nearestY = (int) Math.rint(y + y_diff);
@@ -315,24 +317,26 @@ public class MRawResampler implements RawResampler {
 
 	}
 	
-
-
-	
 	/**
-	 * retrieve a value from the ByteBufferReader according to its datatype
-	 * actually the data is read and for a unified return type is cast to double
+	 * retrieve an array of neighbor values for a given position in the array
+	 * consisting in the pixels x, x + 1, x + rasterWidth, x + rasterWidth + 1
+	 *   
 	 * @param reader the reader to read from
+	 * @param position the position inside the array
+	 * @param readerSize the size of the reader -> up to which position can be read
+	 * @param rasterWidth the width of a row in the raster
 	 * @param dataType the datatype according to which the data is read
-	 * @return the value of the pixel
+	 * @return the neighbors of this pixel
 	 */
-	private Object[] getNeighbors(ByteBufferReader reader, int position, int readerSize, int rasterWidth, final DataType dataType){
+	private Object[] getNeighbors(final ByteBufferReader reader,final int position,final int readerSize,final int rasterWidth, final DataType dataType){
 
 		final int dataSize = dataType.size();
 		
-		reader.seekToOffset(position);
+		reader.seekToOffset(position * dataSize);
 		
 		try{
 			switch(dataType) {
+			
 			case CHAR:
 				final Object[] chars = (Object[])  Array.newInstance(Character.class, 4);
 				chars[0] = reader.readChar();

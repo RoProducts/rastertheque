@@ -25,6 +25,7 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
+import de.rooehler.rastertheque.processing.RawResampler;
 import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
@@ -47,7 +48,7 @@ public class GDALTileLayer extends TileLayer {
 	
 	private Renderer mRenderer;
 	
-	private Resampler mResampler;
+	private RawResampler mResampler;
 	
 	private int mRasterBandCount = 1;
 	
@@ -70,7 +71,7 @@ public class GDALTileLayer extends TileLayer {
 	 * @param pResampler the resampler used by this TileLayer
 	 * @param pRenderer the renderer used by this TileLayer
 	 */
-	public GDALTileLayer(final File file, final GDALDataset dataset,final Resampler pResampler,final Renderer pRenderer) {
+	public GDALTileLayer(final File file, final GDALDataset dataset,final RawResampler pResampler,final Renderer pRenderer) {
 		super(file.getName(), file.getAbsolutePath());
 
 		mSource = dataset.getSource();
@@ -293,10 +294,17 @@ public class GDALTileLayer extends TileLayer {
 		}
 
 		if(resample){
-            int pixels[] = mRenderer.render(raster);
-        	int[] resampledPixels = new int[targetWidth * targetHeight];
-        	mResampler.resample(pixels, (int) readDim.getWidth(), (int) readDim.getHeight(), resampledPixels, targetWidth, targetHeight,ResampleMethod.BILINEAR );
-        	return resampledPixels;
+			
+			//OLD , first rendering, second resampling
+//			int pixels[] = mRenderer.render(raster);
+//			int[] resampledPixels = new int[targetWidth * targetHeight];
+//			mResampler.resample(pixels, (int) readDim.getWidth(), (int) readDim.getHeight(), resampledPixels, targetWidth, targetHeight,ResampleMethod.BILINEAR );
+//			return resampledPixels;
+			//NEW , first resampling, second rendering
+			raster.setDimension(new Envelope(0, targetWidth, 0, targetHeight));
+			mResampler.resample(raster,ResampleMethod.BILINEAR );
+            return mRenderer.render(raster);
+        	
         }else{
         	return mRenderer.render(raster);
         }

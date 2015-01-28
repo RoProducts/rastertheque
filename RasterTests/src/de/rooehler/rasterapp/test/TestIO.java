@@ -20,7 +20,9 @@ import de.rooehler.rastertheque.processing.rendering.MRenderer;
 public class TestIO extends android.test.AndroidTestCase {
 
 	
-	public final static String FILE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/GRAY_50M_SR_OB.tif";
+	public final static String GRAY_50M_BYTE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/GRAY_50M_SR_OB.tif";
+	public final static String DEM_FLOAT = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/dem.tif";
+	public final static String RGB_BANDS_BYTE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/land_shallow_topo_21600.tif";
 	
 	/**
 	 * tests opening of the file
@@ -29,9 +31,9 @@ public class TestIO extends android.test.AndroidTestCase {
 				
 		GDALDriver driver = new GDALDriver();
 		
-		assertTrue(driver.canOpen(FILE));
+		assertTrue(driver.canOpen(GRAY_50M_BYTE));
 		
-		GDALDataset dataset = driver.open(FILE);
+		GDALDataset dataset = driver.open(GRAY_50M_BYTE);
 		
 		assertNotNull(dataset.getBoundingBox());
 		
@@ -53,9 +55,9 @@ public class TestIO extends android.test.AndroidTestCase {
 		
 		GDALDriver driver = new GDALDriver();
 		
-		assertTrue(driver.canOpen(FILE));
+		assertTrue(driver.canOpen(GRAY_50M_BYTE));
 		
-		GDALDataset dataset = driver.open(FILE);
+		GDALDataset dataset = driver.open(GRAY_50M_BYTE);
 		
 		final Envelope dim = dataset.getDimension();
 		final int height = (int) dim.getHeight();
@@ -72,7 +74,7 @@ public class TestIO extends android.test.AndroidTestCase {
         
         final Raster raster = dataset.read(query);
         
-        final Renderer renderer = new MRenderer(FILE, false);
+        final Renderer renderer = new MRenderer(GRAY_50M_BYTE, false);
         
         final int[] pixels  = renderer.render(raster);
         
