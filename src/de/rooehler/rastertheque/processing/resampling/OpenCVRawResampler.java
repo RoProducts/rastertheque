@@ -233,6 +233,7 @@ public class OpenCVRawResampler implements RawResampler {
 					buffer.putFloat((float) doh[0]);
 				}
 			}
+
 			break;
 
 		case INT:

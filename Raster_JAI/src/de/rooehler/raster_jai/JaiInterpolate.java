@@ -19,8 +19,7 @@ public class JaiInterpolate {
 			break;
 		}
 		
-		
-		return interpolation.interpolate(values[0],values[1],values[2],values[3],getSubSampleBits(x_diff), getSubSampleBits(y_diff));
+		return interpolation.interpolate(values[0],values[1],values[2],values[3],x_diff, y_diff);
 		
 	}
 	public static float interpolateRawFloats(float[] values, float x_diff, float y_diff, int _interpolation){
@@ -38,9 +37,7 @@ public class JaiInterpolate {
 			break;
 		}
 		
-		
-		return interpolation.interpolate(values[0],values[1],values[2],values[3],getSubSampleBits(x_diff), getSubSampleBits(y_diff));
-		
+		return interpolation.interpolate(values[0],values[1],values[2],values[3], x_diff, y_diff);
 	}
 	public static int interpolateRawInts(int[] values, float x_diff, float y_diff, int _interpolation){
 		
@@ -144,8 +141,9 @@ public class JaiInterpolate {
 
 	}
 
-	public  static int getSubSampleBits(float ratio){
+	public static int getSubSampleBits(float ratio){
 
-		return (int) (256 * ratio);
+//		return (int) (256 * ratio);
+		return (int) Math.pow(2 ,ratio);
 	}
 }

@@ -13,7 +13,7 @@ public class Raster {
     /**
      * The bounds of the raster.
      */
-    Envelope bb;
+    Envelope bounds;
 
     /**
      * The projection of the raster.
@@ -41,7 +41,7 @@ public class Raster {
     NoData nodata = NoData.NONE;
     
     /**
-     * metadata for this raster;
+     * Metadata for this raster;
      */
     Hashtable<?, ?> metadata;
 
@@ -49,7 +49,7 @@ public class Raster {
     
     public Raster(Envelope pBounds, CoordinateReferenceSystem pCrs, Envelope pSize, List<Band> pBands, ByteBuffer pData, Hashtable<?, ?> pMetaData) {
     	
-    	this.bb = pBounds;
+    	this.bounds = pBounds;
     	this.crs = pCrs;
     	this.dimension = pSize;
     	this.bands = pBands;
@@ -61,14 +61,14 @@ public class Raster {
      * The bounds of the raster in world coordinates.
      */
     public Envelope getBoundingBox() {
-        return bb;
+        return bounds;
     }
 
     /**
      * Sets the bounds of the raster in world coordinates.
      */
     public void setBoundingBox(Envelope pBoundingBox) {
-        this.bb = pBoundingBox;
+        this.bounds = pBoundingBox;
     }
 
     /**
