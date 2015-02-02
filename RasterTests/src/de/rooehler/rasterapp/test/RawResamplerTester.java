@@ -15,14 +15,18 @@ import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.processing.RawResampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
-import de.rooehler.rastertheque.processing.resampling.JAIRawResampler;
-import de.rooehler.rastertheque.processing.resampling.MRawResampler;
-import de.rooehler.rastertheque.processing.resampling.OpenCVRawResampler;
+import de.rooehler.rastertheque.processing.resampling.raw.JAIRawResampler;
+import de.rooehler.rastertheque.processing.resampling.raw.MRawResampler;
+import de.rooehler.rastertheque.processing.resampling.raw.OpenCVRawResampler;
 
 public class RawResamplerTester extends android.test.ActivityTestCase {
 
 	public void testFloatRasterRawResampling() throws IOException {
 
+		final ResampleMethod method = ResampleMethod.BILINEAR;
+		
+		final int threshold = 2;
+		
 		GDALDriver driver = new GDALDriver();
 
 		assertTrue(driver.canOpen(TestIO.DEM_FLOAT));
@@ -60,7 +64,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		RawResampler openCVResampler = new OpenCVRawResampler();
 
-		openCVResampler.resample(raster, ResampleMethod.BILINEAR);
+		openCVResampler.resample(raster, method);
 
 		final byte[] resampled = raster.getData().array().clone();
 
@@ -72,9 +76,9 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		Log.d(RawResamplerTester.class.getSimpleName(), String.format("orig [last] %f resampled [last] %f", floats[floats.length - 1], resampledFloats[resampledFloats.length - 1]));
 
-		assertEquals(floats[0], resampledFloats[0]);
+		assertTrue(compareFloatsWithThreshold(floats[0], resampledFloats[0], threshold));
 
-		assertEquals(floats[floats.length - 1], resampledFloats[resampledFloats.length - 1]);
+		assertTrue(compareFloatsWithThreshold(floats[floats.length - 1], resampledFloats[resampledFloats.length - 1],threshold));
 
 
 		Log.d(RawResamplerTester.class.getSimpleName(), "OpenCV took : "+(System.currentTimeMillis() - now));
@@ -90,7 +94,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		RawResampler mResampler = new MRawResampler();
 
-		mResampler.resample(raster2, ResampleMethod.BILINEAR);
+		mResampler.resample(raster2, method);
 
 		final byte[] resampled2 = raster2.getData().array().clone();
 
@@ -102,9 +106,9 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		
 		Log.d(RawResamplerTester.class.getSimpleName(), String.format("orig [last] %f resampled [last] %f", floats[floats.length - 1], resampledFloats2[resampledFloats2.length - 1]));
 
-		assertEquals(floats[0], resampledFloats2[0]);
+		assertTrue(compareFloatsWithThreshold(floats[0], resampledFloats2[0], threshold));
 
-		assertTrue(similarUnscaled(floats[floats.length - 1], resampledFloats2[resampledFloats2.length - 1],1));
+		assertTrue(compareFloatsWithThreshold(floats[floats.length - 1], resampledFloats2[resampledFloats2.length - 1],threshold));
 
 		Log.d(RawResamplerTester.class.getSimpleName(), "MResampler (float) took : "+(System.currentTimeMillis() - now2));
 
@@ -118,7 +122,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		RawResampler jaiResampler = new JAIRawResampler();
 
-		jaiResampler.resample(raster3, ResampleMethod.BILINEAR);
+		jaiResampler.resample(raster3, method);
 
 		final byte[] resampled3 = raster3.getData().array().clone();
 
@@ -130,9 +134,9 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		Log.d(RawResamplerTester.class.getSimpleName(), String.format("orig [last] %f resampled [last] %f", floats[floats.length - 1], resampledFloats3[resampledFloats3.length - 1]));
 
-		assertEquals(floats[0], resampledFloats3[0]);
+		assertTrue(compareFloatsWithThreshold(floats[0], resampledFloats3[0], threshold));
 
-		assertTrue(similarUnscaled(floats[floats.length - 1], resampledFloats3[resampledFloats3.length - 1],1));
+		assertTrue(compareFloatsWithThreshold(floats[floats.length - 1], resampledFloats3[resampledFloats3.length - 1], threshold));
 
 		Log.d(RawResamplerTester.class.getSimpleName(), "JAIResampler (float) took : "+(System.currentTimeMillis() - now3));
 
@@ -142,7 +146,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 	}
 	
-	public static boolean similarUnscaled(float a, float b, float threshold) {
+	public static boolean compareFloatsWithThreshold(float a, float b, float threshold) {
 
 	    return  Math.abs(a - b) <= threshold;
 	}
@@ -151,6 +155,10 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		GDALDriver driver = new GDALDriver();
 
+		final ResampleMethod method = ResampleMethod.BILINEAR;
+		
+		final int threshold = 2;
+		
 		assertTrue(driver.canOpen(TestIO.GRAY_50M_BYTE));
 		try{
 
@@ -182,14 +190,14 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 			
 			RawResampler rawResampler = new OpenCVRawResampler();
 
-			rawResampler.resample(raster, ResampleMethod.BILINEAR);
+			rawResampler.resample(raster, method);
 
 			byte first = raster.getData().array()[0];
 			byte last = raster.getData().array()[targetSize - 1];
 
-			assertTrue(first == orig[0]);
+			assertTrue(compareBytesWithThreshold(first,orig[0],threshold));
 
-			assertTrue(last == orig[origSize - 1]);
+			assertTrue(compareBytesWithThreshold(last, orig[origSize - 1],threshold));
 
 			assertTrue(raster.getData().array().length == targetEnv.getHeight() * targetEnv.getWidth() * raster.getBands().get(0).datatype().size());
 
@@ -206,14 +214,14 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 			
 			RawResampler mResampler = new MRawResampler();
 
-			mResampler.resample(raster2, ResampleMethod.BILINEAR);
+			mResampler.resample(raster2, method);
 
 			byte first2 = raster2.getData().array()[0];
 			byte last2 = raster2.getData().array()[targetSize - 1];
 
-			assertTrue(first2 == orig[0]);
+			assertTrue(compareBytesWithThreshold(first2,orig[0],threshold));
 
-			assertTrue(last2 == orig[origSize - 1]);
+			assertTrue(compareBytesWithThreshold(last2, orig[origSize - 1],threshold));
 
 			assertTrue(raster2.getData().array().length == targetEnv.getHeight() * targetEnv.getWidth() * raster.getBands().get(0).datatype().size());
 
@@ -230,14 +238,14 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 			
 			RawResampler jaiResampler = new JAIRawResampler();
 			
-			jaiResampler.resample(raster3, ResampleMethod.BILINEAR);
+			jaiResampler.resample(raster3, method);
 			
 			byte first3 = raster3.getData().array()[0];
 			byte last3 = raster3.getData().array()[targetSize - 1];
 
-			assertTrue(first3 == orig[0]);
+			assertTrue(compareBytesWithThreshold(first3,orig[0],threshold));
 
-			assertTrue(last3 == orig[origSize - 1]);
+			assertTrue(compareBytesWithThreshold(last3, orig[origSize - 1],threshold));
 
 			assertTrue(raster3.getData().array().length == targetEnv.getHeight() * targetEnv.getWidth() * raster.getBands().get(0).datatype().size());
 
@@ -249,6 +257,11 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		}catch(Exception e){
 			Log.e(RawResamplerTester.class.getSimpleName(), "Exception raw resampling",e);
 		}
+	}
+	
+	public boolean compareBytesWithThreshold(byte a, byte b, int thrshold){
+		
+		return Math.abs(a - b) <= thrshold;
 	}
 
 }

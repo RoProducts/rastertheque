@@ -12,9 +12,9 @@ import android.graphics.BitmapFactory;
 import android.os.Environment;
 import android.util.Log;
 import de.rooehler.mapsforgerenderer.test.R;
-import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.PixelResampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
-import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.rendered.OpenCVResampler;
 
 
 public class TestInterpolationOutput extends android.test.ActivityTestCase {
@@ -43,7 +43,7 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 
 		original.getPixels(pixels, 0, os, 0, 0, os, os);
 
-		Resampler resampler = new OpenCVResampler();	
+		PixelResampler resampler = new OpenCVResampler();	
 
 		for(int i = 0; i < ResampleMethod.values().length; i++){
 

@@ -8,9 +8,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
 import de.rooehler.mapsforgerenderer.test.R;
-import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.PixelResampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
-import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.rendered.OpenCVResampler;
 
 public class TestResampler extends android.test.ActivityTestCase  {
 	
@@ -40,7 +40,7 @@ public class TestResampler extends android.test.ActivityTestCase  {
 		
 	}
 	
-	private void testResampler(final Resampler resampler,final int[] pixels, final int os ,final int ts){
+	private void testResampler(final PixelResampler resampler,final int[] pixels, final int os ,final int ts){
 		
 		final int targetSize = ts * ts;
 		

@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.processing.resampling;
+package de.rooehler.rastertheque.processing.resampling.rendered;
 
 
 import java.io.File;
@@ -15,9 +15,9 @@ import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.os.Environment;
 import android.util.Log;
-import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.PixelResampler;
 
-public class OpenCVResampler implements Resampler {
+public class OpenCVResampler implements PixelResampler {
 	
 	static {
 	    if (!OpenCVLoader.initDebug()) {

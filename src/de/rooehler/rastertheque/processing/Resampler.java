@@ -8,8 +8,5 @@ public abstract interface Resampler {
 		BILINEAR,
 		BICUBIC;
 	}
-	
-	void resample(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight, final ResampleMethod method);
 
-	
 }

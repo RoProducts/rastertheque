@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.processing.resampling;
+package de.rooehler.rastertheque.processing.resampling.raw;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -9,7 +9,6 @@ import de.rooehler.raster_jai.JaiInterpolate;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.processing.RawResampler;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 
 public class JAIRawResampler implements RawResampler {
 

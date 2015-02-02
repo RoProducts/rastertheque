@@ -6,8 +6,6 @@ import org.gdal.gdal.gdal;
 
 import android.util.Log;
 
-import com.vividsolutions.jts.geom.Envelope;
-
 import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 

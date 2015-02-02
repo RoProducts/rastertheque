@@ -8,11 +8,11 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
 import de.rooehler.mapsforgerenderer.test.R;
-import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.PixelResampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
-import de.rooehler.rastertheque.processing.resampling.JAIResampler;
-import de.rooehler.rastertheque.processing.resampling.MResampler;
-import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.rendered.JAIResampler;
+import de.rooehler.rastertheque.processing.resampling.rendered.MResampler;
+import de.rooehler.rastertheque.processing.resampling.rendered.OpenCVResampler;
 
 public class TestInterpolationSpeed extends android.test.ActivityTestCase {
 	
@@ -40,13 +40,13 @@ public class TestInterpolationSpeed extends android.test.ActivityTestCase {
 
 		original.getPixels(pixels, 0, os, 0, 0, os, os);
 
-		final Resampler[] resamplers = new Resampler[]{
+		final PixelResampler[] resamplers = new PixelResampler[]{
 				new OpenCVResampler(),
 				new JAIResampler(),
 				new MResampler()
 		};
 
-		for(Resampler resampler : resamplers){
+		for(PixelResampler resampler : resamplers){
 
 			for(int i = 0; i < ResampleMethod.values().length; i++){
 

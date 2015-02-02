@@ -48,6 +48,13 @@ public class ColorMap {
 		
 		int index = (int) (val - mMinValue);
 		
+		if(index < 0){
+			if(mNoData != null){				
+				return mNoData.second;
+			}else{
+				return mEntries.get(0).getColor();
+			}
+		}
 		try{
 			return  mEntries.get(index).getColor();
 			
@@ -55,7 +62,7 @@ public class ColorMap {
 			if(mNoData == null){
 				mNoData = new Pair<Double, Integer>(val, mEntries.get(0).getColor());
 			}else{				
-				Log.e("ColorMap", "IndexOutOfBoundsException");
+				Log.e("ColorMap", "IndexOutOfBoundsException for index "+index +", min : "+mMinValue+", noData "+ mNoData.second);
 			}
 			return mEntries.get(0).getColor();
 		}

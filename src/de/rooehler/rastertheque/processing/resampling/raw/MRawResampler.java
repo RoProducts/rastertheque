@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.processing.resampling;
+package de.rooehler.rastertheque.processing.resampling.raw;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -11,7 +11,6 @@ import com.vividsolutions.jts.geom.Coordinate;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.processing.RawResampler;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 
 public class MRawResampler implements RawResampler {
 
@@ -96,8 +95,7 @@ public class MRawResampler implements RawResampler {
 							byte interpolatedByte = 0;
 							switch(method){
 							case BICUBIC:
-//								throw new IllegalArgumentException("not implemented currently");
-								
+
 								final double a = 0.0d;
 								
 								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
@@ -107,7 +105,7 @@ public class MRawResampler implements RawResampler {
 								
 								final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
 								final int y0 = (int) Math.floor(_y);
-								byte pixel = 0;
+								byte bicubic_byte = 0;
 
 								double q = 0;
 								for (int _j = 0; _j < 4; _j++) {
@@ -117,28 +115,52 @@ public class MRawResampler implements RawResampler {
 									for (int _i = 0; _i < 4; _i++) {
 										final int u = x0 - 1 + _i;
 										final int _index = v * srcWidth + u;
-										try{
+										
+										if( v < 0){
+											if(u >= 0){
+												reader.seekToOffset(u * dataSize);
+												bicubic_byte = reader.readByte();
+											}else{
+												reader.seekToOffset(0 * dataSize);
+												bicubic_byte = reader.readByte();
+											}
+										}else if(u < 0){
+											reader.seekToOffset(v * srcWidth * dataSize);
+											bicubic_byte = reader.readByte();
+										}else if(v >= srcWidth){
+											if(u < srcWidth){
+												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
+												bicubic_byte = reader.readByte();							
+											}else{
+												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
+												bicubic_byte = reader.readByte();													
+											}
+										}else if(u >= srcWidth){
+											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
+											bicubic_byte = reader.readByte();	
+										}else{
 											reader.seekToOffset(_index * dataSize);
-											pixel = reader.readByte();
-										}catch(IOException e){
-											//TODO what about the border ??????
+											bicubic_byte = reader.readByte();
 										}
 
-									    p = p + ((pixel >> 16) & 0xff) * cubic(x - u, a);
+									    p = p + bicubic_byte * cubic(x - u, a);
 									}
 
 									q = q + p * cubic(y - v, a);
 								}
 
-								interpolatedByte = pixel;
-
+								interpolatedByte = (byte) q;
+								break;
+								
 							case BILINEAR:
+								
 								interpolatedByte = 
 								(byte) (bytes[0] * (1 - x_diff) * (1 - y_diff) +
 										bytes[1] * (x_diff) * (1 - y_diff) +
 										bytes[2] * (y_diff) * (1 - x_diff) +
 										bytes[3] * (x_diff * y_diff));
 								break;
+								
 							case NEARESTNEIGHBOUR:
 
 								if(nearestX == x && nearestY == y){
@@ -185,8 +207,63 @@ public class MRawResampler implements RawResampler {
 							char interpolatedValue = 0;
 							switch(method){
 							case BICUBIC:
-								throw new IllegalArgumentException("not implemented currently");
+								
+								final double a = 0.0d;
+								
+								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
 
+								final double _x = coord.x;
+								final double _y = coord.y;
+								
+								final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+								final int y0 = (int) Math.floor(_y);
+								char bicubic_char = 0;
+
+								double q = 0;
+								for (int _j = 0; _j < 4; _j++) {
+									final int v = y0 - 1 + _j;
+									double  p = 0;
+									
+									for (int _i = 0; _i < 4; _i++) {
+										final int u = x0 - 1 + _i;
+										final int _index = v * srcWidth + u;
+										
+										if( v < 0){
+											if(u >= 0){
+												reader.seekToOffset(u * dataSize);
+												bicubic_char = reader.readChar();
+											}else{
+												reader.seekToOffset(0 * dataSize);
+												bicubic_char = reader.readChar();
+											}
+										}else if(u < 0){
+											reader.seekToOffset(v * srcWidth * dataSize);
+											bicubic_char = reader.readChar();
+										}else if(v >= srcWidth){
+											if(u < srcWidth){
+												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
+												bicubic_char = reader.readChar();							
+											}else{
+												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
+												bicubic_char = reader.readChar();													
+											}
+										}else if(u >= srcWidth){
+											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
+											bicubic_char = reader.readChar();	
+										}else{
+											reader.seekToOffset(_index * dataSize);
+											bicubic_char = reader.readChar();
+										}
+
+									    p = p + bicubic_char * cubic(x - u, a);
+									}
+
+									q = q + p * cubic(y - v, a);
+								}
+
+								interpolatedValue = (char) q;
+								break;
+								
 							case BILINEAR:
 
 								interpolatedValue = 
@@ -195,7 +272,9 @@ public class MRawResampler implements RawResampler {
 										chars[2] * (y_diff) * (1 - x_diff) +
 										chars[3] * (x_diff * y_diff));
 								break;
+								
 							case NEARESTNEIGHBOUR:
+								
 								if(nearestX == x && nearestY == y){
 									interpolatedValue = chars[0];
 								}else if(nearestX == x && nearestY == (y + 1)){
@@ -240,8 +319,63 @@ public class MRawResampler implements RawResampler {
 
 							switch(method){
 							case BICUBIC:
-								throw new IllegalArgumentException("not implemented currently");
+								
+								final double a = 0.0d;
+								
+								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
 
+								final double _x = coord.x;
+								final double _y = coord.y;
+								
+								final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+								final int y0 = (int) Math.floor(_y);
+								double bicubic_double = 0;
+
+								double q = 0;
+								for (int _j = 0; _j < 4; _j++) {
+									final int v = y0 - 1 + _j;
+									double  p = 0;
+									
+									for (int _i = 0; _i < 4; _i++) {
+										final int u = x0 - 1 + _i;
+										final int _index = v * srcWidth + u;
+										
+										if( v < 0){
+											if(u >= 0){
+												reader.seekToOffset(u * dataSize);
+												bicubic_double = reader.readDouble();
+											}else{
+												reader.seekToOffset(0 * dataSize);
+												bicubic_double = reader.readDouble();
+											}
+										}else if(u < 0){
+											reader.seekToOffset(v * srcWidth * dataSize);
+											bicubic_double = reader.readDouble();
+										}else if(v >= srcWidth){
+											if(u < srcWidth){
+												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
+												bicubic_double = reader.readDouble();							
+											}else{
+												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
+												bicubic_double = reader.readDouble();													
+											}
+										}else if(u >= srcWidth){
+											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
+											bicubic_double = reader.readDouble();	
+										}else{
+											reader.seekToOffset(_index * dataSize);
+											bicubic_double = reader.readDouble();
+										}
+
+									    p = p + bicubic_double * cubic(x - u, a);
+									}
+
+									q = q + p * cubic(y - v, a);
+								}
+
+								interpolatedDouble = q;
+								break;
+								
 							case BILINEAR:
 
 								// Yb = Ab(1-w)(1-h) + Bb(w)(1-h) + Cb(h)(1-w) + Db(wh)
@@ -251,7 +385,9 @@ public class MRawResampler implements RawResampler {
 								doubles[2] * (y_diff) * (1 - x_diff) +
 								doubles[3] * (x_diff * y_diff);
 								break;
+								
 							case NEARESTNEIGHBOUR:
+								
 								if(nearestX == x && nearestY == y){
 									interpolatedDouble = doubles[0];
 								}else if(nearestX == x && nearestY == (y + 1)){
@@ -296,8 +432,63 @@ public class MRawResampler implements RawResampler {
 
 							switch(method){
 							case BICUBIC:
-								throw new IllegalArgumentException("not implemented currently");
+								
+								final double a = 0.0d;
+								
+								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
 
+								final double _x = coord.x;
+								final double _y = coord.y;
+								
+								final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+								final int y0 = (int) Math.floor(_y);
+								float bicubic_float = 0;
+
+								double q = 0;
+								for (int _j = 0; _j < 4; _j++) {
+									final int v = y0 - 1 + _j;
+									double  p = 0;
+									
+									for (int _i = 0; _i < 4; _i++) {
+										final int u = x0 - 1 + _i;
+										final int _index = v * srcWidth + u;
+										
+										if( v < 0){
+											if(u >= 0){
+												reader.seekToOffset(u * dataSize);
+												bicubic_float = reader.readFloat();
+											}else{
+												reader.seekToOffset(0 * dataSize);
+												bicubic_float = reader.readFloat();
+											}
+										}else if(u < 0){
+											reader.seekToOffset(v * srcWidth * dataSize);
+											bicubic_float = reader.readFloat();
+										}else if(v >= srcWidth){
+											if(u < srcWidth){
+												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
+												bicubic_float = reader.readFloat();							
+											}else{
+												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
+												bicubic_float = reader.readFloat();													
+											}
+										}else if(u >= srcWidth){
+											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
+											bicubic_float = reader.readFloat();	
+										}else{
+											reader.seekToOffset(_index * dataSize);
+											bicubic_float = reader.readFloat();
+										}
+
+									    p = p + bicubic_float * cubic(x - u, a);
+									}
+
+									q = q + p * cubic(y - v, a);
+								}
+
+								interpolatedFloat = (float) q;
+								break;
+								
 							case BILINEAR:
 
 								interpolatedFloat = 
@@ -306,7 +497,9 @@ public class MRawResampler implements RawResampler {
 								floats[2] * (y_diff) * (1 - x_diff) +
 								floats[3] * (x_diff * y_diff);
 								break;
+								
 							case NEARESTNEIGHBOUR:
+								
 								if(nearestX == x && nearestY == y){
 									interpolatedFloat = floats[0];
 								}else if(nearestX == x && nearestY == (y + 1)){
@@ -350,8 +543,63 @@ public class MRawResampler implements RawResampler {
 							int interpolatedInt = 0;
 							switch(method){
 							case BICUBIC:
-								throw new IllegalArgumentException("not implemented currently");
+								
+								final double a = 0.0d;
+								
+								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
 
+								final double _x = coord.x;
+								final double _y = coord.y;
+								
+								final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+								final int y0 = (int) Math.floor(_y);
+								float bicubic_int = 0;
+
+								double q = 0;
+								for (int _j = 0; _j < 4; _j++) {
+									final int v = y0 - 1 + _j;
+									double  p = 0;
+									
+									for (int _i = 0; _i < 4; _i++) {
+										final int u = x0 - 1 + _i;
+										final int _index = v * srcWidth + u;
+										
+										if( v < 0){
+											if(u >= 0){
+												reader.seekToOffset(u * dataSize);
+												bicubic_int = reader.readInt();
+											}else{
+												reader.seekToOffset(0 * dataSize);
+												bicubic_int = reader.readInt();
+											}
+										}else if(u < 0){
+											reader.seekToOffset(v * srcWidth * dataSize);
+											bicubic_int = reader.readInt();
+										}else if(v >= srcWidth){
+											if(u < srcWidth){
+												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
+												bicubic_int = reader.readInt();							
+											}else{
+												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
+												bicubic_int = reader.readInt();													
+											}
+										}else if(u >= srcWidth){
+											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
+											bicubic_int = reader.readInt();	
+										}else{
+											reader.seekToOffset(_index * dataSize);
+											bicubic_int = reader.readInt();
+										}
+
+									    p = p + bicubic_int * cubic(x - u, a);
+									}
+
+									q = q + p * cubic(y - v, a);
+								}
+
+								interpolatedInt = (int) q;
+								break;
+								
 							case BILINEAR:
 
 								interpolatedInt = 
@@ -361,6 +609,7 @@ public class MRawResampler implements RawResampler {
 										ints[3] * (x_diff * y_diff));
 								break;
 							case NEARESTNEIGHBOUR:
+								
 								if(nearestX == x && nearestY == y){
 									interpolatedInt = ints[0];
 								}else if(nearestX == x && nearestY == (y + 1)){
@@ -405,8 +654,63 @@ public class MRawResampler implements RawResampler {
 
 							switch(method){
 							case BICUBIC:
-								throw new IllegalArgumentException("not implemented currently");
+								
+								final double a = 0.0d;
+								
+								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
 
+								final double _x = coord.x;
+								final double _y = coord.y;
+								
+								final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+								final int y0 = (int) Math.floor(_y);
+								long bicubic_long = 0;
+
+								double q = 0;
+								for (int _j = 0; _j < 4; _j++) {
+									final int v = y0 - 1 + _j;
+									double  p = 0;
+									
+									for (int _i = 0; _i < 4; _i++) {
+										final int u = x0 - 1 + _i;
+										final int _index = v * srcWidth + u;
+										
+										if( v < 0){
+											if(u >= 0){
+												reader.seekToOffset(u * dataSize);
+												bicubic_long = reader.readLong();
+											}else{
+												reader.seekToOffset(0 * dataSize);
+												bicubic_long = reader.readLong();
+											}
+										}else if(u < 0){
+											reader.seekToOffset(v * srcWidth * dataSize);
+											bicubic_long = reader.readLong();
+										}else if(v >= srcWidth){
+											if(u < srcWidth){
+												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
+												bicubic_long = reader.readLong();							
+											}else{
+												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
+												bicubic_long = reader.readLong();													
+											}
+										}else if(u >= srcWidth){
+											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
+											bicubic_long = reader.readLong();	
+										}else{
+											reader.seekToOffset(_index * dataSize);
+											bicubic_long = reader.readLong();
+										}
+
+									    p = p + bicubic_long * cubic(x - u, a);
+									}
+
+									q = q + p * cubic(y - v, a);
+								}
+
+								interpolatedLong = (long) q;
+								break;
+								
 							case BILINEAR:
 
 								interpolatedLong = 
@@ -415,7 +719,9 @@ public class MRawResampler implements RawResampler {
 										longs[2] * (y_diff) * (1 - x_diff) +
 										longs[3] * (x_diff * y_diff));
 								break;
+								
 							case NEARESTNEIGHBOUR:
+								
 								if(nearestX == x && nearestY == y){
 									interpolatedLong = longs[0];
 								}else if(nearestX == x && nearestY == (y + 1)){
@@ -458,9 +764,64 @@ public class MRawResampler implements RawResampler {
 							}
 							short interpolatedShort= 0;
 							switch(method){
-							case BICUBIC:
-								throw new IllegalArgumentException("not implemented currently");
+							case BICUBIC:								
 
+								final double a = 0.0d;
+								
+								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
+
+								final double _x = coord.x;
+								final double _y = coord.y;
+								
+								final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+								final int y0 = (int) Math.floor(_y);
+								short bicubic_short = 0;
+
+								double q = 0;
+								for (int _j = 0; _j < 4; _j++) {
+									final int v = y0 - 1 + _j;
+									double  p = 0;
+									
+									for (int _i = 0; _i < 4; _i++) {
+										final int u = x0 - 1 + _i;
+										final int _index = v * srcWidth + u;
+										
+										if( v < 0){
+											if(u >= 0){
+												reader.seekToOffset(u * dataSize);
+												bicubic_short = reader.readShort();
+											}else{
+												reader.seekToOffset(0 * dataSize);
+												bicubic_short = reader.readShort();
+											}
+										}else if(u < 0){
+											reader.seekToOffset(v * srcWidth * dataSize);
+											bicubic_short = reader.readShort();
+										}else if(v >= srcWidth){
+											if(u < srcWidth){
+												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
+												bicubic_short = reader.readShort();							
+											}else{
+												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
+												bicubic_short = reader.readShort();													
+											}
+										}else if(u >= srcWidth){
+											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
+											bicubic_short = reader.readShort();	
+										}else{
+											reader.seekToOffset(_index * dataSize);
+											bicubic_short = reader.readShort();
+										}
+
+									    p = p + bicubic_short * cubic(x - u, a);
+									}
+
+									q = q + p * cubic(y - v, a);
+								}
+
+								interpolatedShort = (short) q;
+								break;
+								
 							case BILINEAR:
 
 								interpolatedShort = 
@@ -469,7 +830,9 @@ public class MRawResampler implements RawResampler {
 										shorts[2] * (y_diff) * (1 - x_diff) +
 										shorts[3] * (x_diff * y_diff));
 								break;
+								
 							case NEARESTNEIGHBOUR:
+								
 								if(nearestX == x && nearestY == y){
 									interpolatedShort = shorts[0];
 								}else if(nearestX == x && nearestY == (y + 1)){

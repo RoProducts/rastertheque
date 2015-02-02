@@ -1,9 +1,8 @@
 package de.rooehler.rastertheque.processing;
 
 import de.rooehler.rastertheque.core.Raster;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 
-public interface RawResampler {
+public interface RawResampler extends Resampler {
 	
 	/**
 	 * resample the Raster data from the rasters bounds dimension of this raster

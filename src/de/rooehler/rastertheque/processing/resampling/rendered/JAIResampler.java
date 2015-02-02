@@ -1,11 +1,11 @@
-package de.rooehler.rastertheque.processing.resampling;
+package de.rooehler.rastertheque.processing.resampling.rendered;
 
 import javax.media.jai.Interpolation;
 
 import de.rooehler.raster_jai.JaiInterpolate;
-import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.PixelResampler;
 
-public class JAIResampler implements Resampler{
+public class JAIResampler implements PixelResampler{
 
 
 	@Override

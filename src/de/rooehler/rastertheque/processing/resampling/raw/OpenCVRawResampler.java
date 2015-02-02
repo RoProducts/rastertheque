@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.processing.resampling;
+package de.rooehler.rastertheque.processing.resampling.raw;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,7 +18,6 @@ import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.processing.RawResampler;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 
 public class OpenCVRawResampler implements RawResampler {
 
@@ -45,7 +44,7 @@ public class OpenCVRawResampler implements RawResampler {
 			i = Imgproc.INTER_CUBIC;
 			break;
 		}	
-		long now = System.currentTimeMillis();
+//		long now = System.currentTimeMillis();
 		
 		Mat srcMat = null;
 		try {
@@ -57,12 +56,12 @@ public class OpenCVRawResampler implements RawResampler {
 		} catch (IOException e) {
 			Log.e(OpenCVRawResampler.class.getSimpleName(), "Error creating mat from raster",e);
 		}
-		Log.d(OpenCVRawResampler.class.getSimpleName(), "creating mat took : "+(System.currentTimeMillis() - now));
+//		Log.d(OpenCVRawResampler.class.getSimpleName(), "creating mat took : "+(System.currentTimeMillis() - now));
 
 		Mat dstMat = new Mat();
 		
 		Imgproc.resize(srcMat, dstMat, new Size(raster.getDimension().getWidth(), raster.getDimension().getHeight()), 0, 0, i);
-		Log.d(OpenCVRawResampler.class.getSimpleName(), "resizing  took : "+(System.currentTimeMillis() - now));
+//		Log.d(OpenCVRawResampler.class.getSimpleName(), "resizing  took : "+(System.currentTimeMillis() - now));
 		
 		final int bufferSize = ((int)raster.getDimension().getWidth()) * ((int)raster.getDimension().getHeight()) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
 		
@@ -70,7 +69,7 @@ public class OpenCVRawResampler implements RawResampler {
 				dstMat,
 				raster.getBands().get(0).datatype(),
 				bufferSize));
-		Log.d(OpenCVRawResampler.class.getSimpleName(), "reconverting to bytes took : "+(System.currentTimeMillis() - now));
+//		Log.d(OpenCVRawResampler.class.getSimpleName(), "reconverting to bytes took : "+(System.currentTimeMillis() - now));
 		
 	}
 	
@@ -278,18 +277,18 @@ public class OpenCVRawResampler implements RawResampler {
 		
 		String root = Environment.getExternalStorageDirectory().getAbsolutePath();
 		File file = new File(root + "/rastertheque/HN+24_900913.tif");    
-	    File writefile = new File(root + "/rastertheque/dem_openCV.tif");    
-	    
-	    Mat m = Highgui.imread(file.getAbsolutePath());
-	    
+		File writefile = new File(root + "/rastertheque/dem_openCV.tif");    
+
+		Mat m = Highgui.imread(file.getAbsolutePath());
+
 		int depth = m.depth();
 		int channels = m.channels();
-	    
-	    Mat dst = new Mat();
-	    
-	   Imgproc.resize(m, dst, new Size(),2,2, Imgproc.INTER_LINEAR);
-   
-	   Highgui.imwrite(writefile.getAbsolutePath(), dst);
+
+		Mat dst = new Mat();
+
+		Imgproc.resize(m, dst, new Size(),2,2, Imgproc.INTER_LINEAR);
+
+		Highgui.imwrite(writefile.getAbsolutePath(), dst);
 	    
 	}
 

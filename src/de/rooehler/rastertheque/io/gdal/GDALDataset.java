@@ -24,10 +24,10 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.processing.RawResampler;
-import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.PixelResampler;
 import de.rooehler.rastertheque.proj.Proj;
 
-public class GDALDataset implements RasterDataset, Resampler, RawResampler{
+public class GDALDataset implements RasterDataset, PixelResampler, RawResampler{
 	
 	GDALDriver mDriver;
 

@@ -62,8 +62,9 @@ import de.rooehler.rastertheque.io.mbtiles.MBTilesDriver;
 import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
-import de.rooehler.rastertheque.processing.resampling.MResampler;
-import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.raw.OpenCVRawResampler;
+import de.rooehler.rastertheque.processing.resampling.rendered.MResampler;
+import de.rooehler.rastertheque.processing.resampling.rendered.OpenCVResampler;
 import de.rooehler.rastertheque.proj.Proj;
 
 
@@ -83,8 +84,6 @@ public class MainActivity extends Activity implements IWorkStatus{
 	private ActionBarDrawerToggle mDrawerToggle;
 	private CharSequence mDrawerTitle;
     private CharSequence mTitle;
-	
-//    private ProgressDialog pd;
     
     private boolean isRendering = false;
     
@@ -319,7 +318,9 @@ public class MainActivity extends Activity implements IWorkStatus{
 			}
 			
 			Renderer renderer = new MRenderer(filePath, true);
-			Resampler resampler = new OpenCVResampler();
+			
+			boolean raw = false;
+ 			Resampler resampler = raw == true ? new OpenCVRawResampler() : new OpenCVResampler();
 			
 			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE,((GDALDataset) ds), renderer,resampler, true);
 			//TODO refactor the initial zoom calculation

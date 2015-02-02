@@ -25,6 +25,7 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
+import de.rooehler.rastertheque.processing.PixelResampler;
 import de.rooehler.rastertheque.processing.RawResampler;
 import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
@@ -48,7 +49,7 @@ public class GDALTileLayer extends TileLayer {
 	
 	private Renderer mRenderer;
 	
-	private RawResampler mResampler;
+	private Resampler mResampler;
 	
 	private int mRasterBandCount = 1;
 	
@@ -294,20 +295,27 @@ public class GDALTileLayer extends TileLayer {
 		}
 
 		if(resample){
-			
-			//OLD , first rendering, second resampling
-//			int pixels[] = mRenderer.render(raster);
-//			int[] resampledPixels = new int[targetWidth * targetHeight];
-//			mResampler.resample(pixels, (int) readDim.getWidth(), (int) readDim.getHeight(), resampledPixels, targetWidth, targetHeight,ResampleMethod.BILINEAR );
-//			return resampledPixels;
-			//NEW , first resampling, second rendering
-			raster.setDimension(new Envelope(0, targetWidth, 0, targetHeight));
-			mResampler.resample(raster,ResampleMethod.BILINEAR );
-            return mRenderer.render(raster);
-        	
-        }else{
-        	return mRenderer.render(raster);
-        }
+			if(mResampler instanceof PixelResampler){
+				//OLD , first rendering, second resampling
+				int pixels[] = mRenderer.render(raster);
+				int[] resampledPixels = new int[targetWidth * targetHeight];
+				((PixelResampler)mResampler).resample(
+						pixels,
+						(int) readDim.getWidth(),
+						(int) readDim.getHeight(),
+						resampledPixels,
+						targetWidth,
+						targetHeight,ResampleMethod.BILINEAR );
+				return resampledPixels;
+			}else {
+				// first resampling, second rendering
+				raster.setDimension(new Envelope(0, targetWidth, 0, targetHeight));
+				((RawResampler)mResampler).resample(raster,ResampleMethod.BILINEAR );
+				return mRenderer.render(raster);
+			}
+		}else{
+			return mRenderer.render(raster);
+		}
 	}
 
 	

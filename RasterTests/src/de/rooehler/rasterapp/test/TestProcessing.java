@@ -10,12 +10,12 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
-import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.PixelResampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
-import de.rooehler.rastertheque.processing.resampling.JAIResampler;
-import de.rooehler.rastertheque.processing.resampling.MResampler;
-import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.rendered.JAIResampler;
+import de.rooehler.rastertheque.processing.resampling.rendered.MResampler;
+import de.rooehler.rastertheque.processing.resampling.rendered.OpenCVResampler;
 
 public class TestProcessing extends android.test.AndroidTestCase  {
 	
@@ -209,7 +209,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		
 		int[] resampled = new int[pic.length * 4];
 		
-		Resampler resampler = new MResampler();
+		PixelResampler resampler = new MResampler();
 		
 		resampler.resample(pic, 2, 2, resampled, 4, 4, ResampleMethod.BICUBIC);
 		

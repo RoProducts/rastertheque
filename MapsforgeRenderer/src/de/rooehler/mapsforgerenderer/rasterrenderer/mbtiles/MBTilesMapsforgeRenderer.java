@@ -8,9 +8,9 @@ import android.graphics.BitmapFactory;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterJob;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterRenderer;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
+import de.rooehler.rastertheque.processing.PixelResampler;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
-import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 
 public class MBTilesMapsforgeRenderer implements RasterRenderer{
 
@@ -83,9 +83,11 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 		}
 
 		if (tileSize != MBTILES_SIZE) {
-
-			mResampler.resample(mbTilesPixels, MBTILES_SIZE, MBTILES_SIZE, pixels, tileSize, tileSize, ResampleMethod.BILINEAR);
-
+			if(mResampler instanceof PixelResampler){
+				((PixelResampler)mResampler).resample(mbTilesPixels, MBTILES_SIZE, MBTILES_SIZE, pixels, tileSize, tileSize, ResampleMethod.BILINEAR);
+			}else{
+				throw new IllegalArgumentException("instance of PixelResampler necessary to resample MBTiles");
+			}
 		} else {
 
 			pixels = mbTilesPixels;

@@ -1,12 +1,12 @@
-package de.rooehler.rastertheque.processing.resampling;
+package de.rooehler.rastertheque.processing.resampling.rendered;
 
 
 import com.vividsolutions.jts.geom.Coordinate;
 
 import android.util.Log;
-import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.PixelResampler;
 
-public class MResampler implements Resampler {
+public class MResampler implements PixelResampler {
 	
 
 	@Override
@@ -184,12 +184,16 @@ public class MResampler implements Resampler {
 	}
 	
 	private double cubic(double r, double a) {
-		if (r < 0) r = -r;
+		
+		if (r < 0) {
+			r = -r;
+		}
 		double w = 0;
-		if (r < 1) 
+		if (r < 1) {
 			w = (a+2)*r*r*r - (a+3)*r*r + 1;
-		else if (r < 2) 
+		}else if (r < 2) {			
 			w = a*r*r*r - 5*a*r*r + 8*a*r - 4*a;
+		}
 		return w;
 	}
 	
