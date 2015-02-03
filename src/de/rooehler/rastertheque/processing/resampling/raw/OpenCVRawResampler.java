@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Arrays;
 
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -14,6 +13,9 @@ import org.opencv.imgproc.Imgproc;
 
 import android.os.Environment;
 import android.util.Log;
+
+import com.vividsolutions.jts.geom.Envelope;
+
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
@@ -22,15 +24,18 @@ import de.rooehler.rastertheque.processing.RawResampler;
 public class OpenCVRawResampler implements RawResampler {
 
 	@Override
-	public void resample(Raster raster, ResampleMethod method) {
+	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method) {
 	
 		final int srcWidth = (int) raster.getBoundingBox().getWidth();
 		final int srcHeight = (int) raster.getBoundingBox().getHeight();
 		
-		if(Double.compare(srcWidth,  raster.getDimension().getWidth()) == 0 &&
-		   Double.compare(srcHeight, raster.getDimension().getHeight()) == 0){
+		if(Double.compare(srcWidth,  dstDimension.getWidth()) == 0 &&
+		   Double.compare(srcHeight, dstDimension.getHeight()) == 0){
 			return;
 		}
+		
+		final int dstWidth = (int) dstDimension.getWidth();
+		final int dstHeight = (int) dstDimension.getHeight();
 		
 		int i = 0;
 		switch (method) {
@@ -44,32 +49,30 @@ public class OpenCVRawResampler implements RawResampler {
 			i = Imgproc.INTER_CUBIC;
 			break;
 		}	
-//		long now = System.currentTimeMillis();
+		long now = System.currentTimeMillis();
 		
-		Mat srcMat = null;
-		try {
-			srcMat = matAccordingToDatatype(
+		final Mat srcMat = matAccordingToDatatype(
 					raster.getBands().get(0).datatype(),
-					raster.getData().array(),
+					raster.getData(),
 					(int) raster.getBoundingBox().getWidth(),
 					(int) raster.getBoundingBox().getHeight());
-		} catch (IOException e) {
-			Log.e(OpenCVRawResampler.class.getSimpleName(), "Error creating mat from raster",e);
-		}
-//		Log.d(OpenCVRawResampler.class.getSimpleName(), "creating mat took : "+(System.currentTimeMillis() - now));
+
+		Log.d(OpenCVRawResampler.class.getSimpleName(), "creating mat took : "+(System.currentTimeMillis() - now));
 
 		Mat dstMat = new Mat();
 		
-		Imgproc.resize(srcMat, dstMat, new Size(raster.getDimension().getWidth(), raster.getDimension().getHeight()), 0, 0, i);
-//		Log.d(OpenCVRawResampler.class.getSimpleName(), "resizing  took : "+(System.currentTimeMillis() - now));
+		Imgproc.resize(srcMat, dstMat, new Size(dstWidth, dstHeight), 0, 0, i);
+		Log.d(OpenCVRawResampler.class.getSimpleName(), "resizing  took : "+(System.currentTimeMillis() - now));
 		
-		final int bufferSize = ((int)raster.getDimension().getWidth()) * ((int)raster.getDimension().getHeight()) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
+		final int bufferSize = dstWidth * dstHeight * raster.getBands().size() * raster.getBands().get(0).datatype().size();
+		
+		raster.setDimension(dstDimension);
 		
 		raster.setData(bytesFromMat(
 				dstMat,
 				raster.getBands().get(0).datatype(),
 				bufferSize));
-//		Log.d(OpenCVRawResampler.class.getSimpleName(), "reconverting to bytes took : "+(System.currentTimeMillis() - now));
+		Log.d(OpenCVRawResampler.class.getSimpleName(), "reconverting to bytes took : "+(System.currentTimeMillis() - now));
 		
 	}
 	
@@ -83,7 +86,7 @@ public class OpenCVRawResampler implements RawResampler {
 	 * @return the Mat object containing the data in the given format
 	 * @throws IOException
 	 */
-	public Mat matAccordingToDatatype( DataType type, final byte[] bytes, final int width, final int height) throws IOException{
+	public Mat matAccordingToDatatype(DataType type, final ByteBuffer buffer, final int width, final int height) {
 		
 		//dataypes -> http://answers.opencv.org/question/5/how-to-get-and-modify-the-pixel-of-mat-in-java/
 		
@@ -91,19 +94,24 @@ public class OpenCVRawResampler implements RawResampler {
 		case BYTE:
 			
 			Mat byteMat = new Mat(height, width, CvType.CV_8U);
-			byteMat.put(0, 0, Arrays.copyOfRange(bytes,0, width * height));
+			byteMat.put(0, 0, buffer.array());
+			//for direct bytebuffer
+			//byteMat.put(0, 0, Arrays.copyOfRange(buffer.array(),0, width * height));
 			return byteMat;
 			
 		case CHAR:
 			
 			Mat charMat = new Mat(height, width, CvType.CV_16UC1);
 			
-			ByteBufferReader charReader = new ByteBufferReader(bytes, ByteOrder.nativeOrder());
-
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					charMat.put(y, x, charReader.readChar());
+			try{
+				ByteBufferReader charReader = new ByteBufferReader(buffer.array(), ByteOrder.nativeOrder());
+				for(int y = 0; y < height; y++){
+					for(int x = 0; x < width ; x++){
+						charMat.put(y, x, charReader.readChar());
+					}
 				}
+			} catch (IOException e) {
+				Log.e(OpenCVRawResampler.class.getSimpleName(), "Error creating char mat from raster",e);
 			}
 			
 			return charMat;
@@ -112,55 +120,51 @@ public class OpenCVRawResampler implements RawResampler {
 			
 			Mat doubleMat = new Mat(height, width, CvType.CV_64FC1);
 			
-			ByteBufferReader doubleReader = new ByteBufferReader(bytes, ByteOrder.nativeOrder());
+			final double[] doubles = new double[height * width];
+		    
+		    buffer.asDoubleBuffer().get(doubles);
 
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					doubleMat.put(y, x, doubleReader.readDouble());
-				}
-			}
+		    doubleMat.put(0,0,doubles);
 			
 			return doubleMat;
 
 		case FLOAT:
 			
 			Mat floatMat = new Mat(height, width, CvType.CV_32FC1);
+						
+			final float[] dst = new float[height * width];
 			
-			ByteBufferReader floatReader = new ByteBufferReader(bytes, ByteOrder.nativeOrder());
+		    buffer.asFloatBuffer().get(dst);
 
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					float f = floatReader.readFloat();
-					floatMat.put(y, x, f);
-				}
-			}
-			
+		    floatMat.put(0,0,dst);
+		    
 			return floatMat;
 
 		case INT:
 			
 			Mat intMat = new Mat(height, width, CvType.CV_32SC1);
 			
-			ByteBufferReader intReader = new ByteBufferReader(bytes, ByteOrder.nativeOrder());
+			final int[] ints = new int[height * width];
+		    
+		    buffer.asIntBuffer().get(ints);
 
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					intMat.put(y, x, intReader.readInt());
-				}
-			}
+		    intMat.put(0,0,ints);
 			
 			return intMat;
 			
 		case LONG:
 			
 			Mat longMat = new Mat(height, width, CvType.CV_32SC2);
-			
-			ByteBufferReader longReader = new ByteBufferReader(bytes, ByteOrder.nativeOrder());
+			try{
+				ByteBufferReader longReader = new ByteBufferReader(buffer.array(), ByteOrder.nativeOrder());
 
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					longMat.put(y, x, longReader.readLong());
+				for(int y = 0; y < height; y++){
+					for(int x = 0; x < width ; x++){
+						longMat.put(y, x, longReader.readLong());
+					}
 				}
+			} catch (IOException e) {
+				Log.e(OpenCVRawResampler.class.getSimpleName(), "Error creating long mat from raster",e);
 			}
 			
 			return longMat;
@@ -169,13 +173,11 @@ public class OpenCVRawResampler implements RawResampler {
 			
 			Mat shortMat = new Mat(height, width, CvType.CV_16SC1);
 			
-			ByteBufferReader shortReader = new ByteBufferReader(bytes, ByteOrder.nativeOrder());
+			final short[] shorts = new short[height * width];
+		    
+		    buffer.asShortBuffer().get(shorts);
 
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					shortMat.put(y, x, shortReader.readShort());
-				}
-			}
+		    shortMat.put(0,0,shorts);
 			
 			return shortMat;
 			
@@ -201,70 +203,64 @@ public class OpenCVRawResampler implements RawResampler {
 		switch(type){
 		case BYTE:
 			mat.get(0, 0, buffer.array());
-			return buffer;
+			
+			break;
 			
 		case CHAR:
+			
+			//TODO test char
+			int[] _char = new int[1];
 			for(int y = 0; y < height; y++){
 				for(int x = 0; x < width ; x++){
 					
-					double[] doh = mat.get(y,x);
-					buffer.putChar( (char) doh[0]);
+					mat.get(y,x,_char);
+					buffer.putChar( (char) _char[0]);
 				}
 			}
 			break;
 		case DOUBLE:
 			
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					
-					double[] doh = mat.get(y,x);
-					buffer.putDouble(doh[0]);
-				}
-			}
+			final double[] doubles = new double[bufferSize / 8];
+			mat.get(0, 0, doubles);
+			buffer.asDoubleBuffer().put(doubles);
 
 			break;
 		case FLOAT:
 
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					
-					double[] doh = mat.get(y,x);
-					buffer.putFloat((float) doh[0]);
-				}
-			}
-
+			final float[] dst = new float[bufferSize / 4];
+			mat.get(0, 0, dst);
+			buffer.asFloatBuffer().put(dst);
+			
 			break;
 
 		case INT:
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					
-					double[] doh = mat.get(y,x);
-					int i = (int) doh[0];
-					buffer.putInt(i);
-				}
-			}
 			
+			final int[] ints = new int[bufferSize / 4];
+			mat.get(0, 0, ints);
+			buffer.asIntBuffer().put(ints);
+						
 			break;
 			
 		case LONG:
+			
+			//TODO test long
+			//there seems to be no long support in OpenCV
+			int[] _long = new int[1];
 			for(int y = 0; y < height; y++){
 				for(int x = 0; x < width ; x++){
 					
-					double[] doh = mat.get(y,x);
-					buffer.putLong((long)doh[0]);
+					mat.get(y,x,_long);
+					buffer.putLong((long)_long[0]);
 				}
 			}
 			break;
 			
 		case SHORT:
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					
-					double[] doh = mat.get(y,x);
-					buffer.putShort((short)doh[0]);
-				}
-			}
+			
+			final short[] shorts = new short[bufferSize / 2];
+			mat.get(0, 0, shorts);
+			buffer.asShortBuffer().put(shorts);
+			
 			break;			
 		}
 		

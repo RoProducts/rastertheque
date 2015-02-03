@@ -1,8 +1,5 @@
 package de.rooehler.rastertheque.core;
 
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
-
 import org.gdal.gdal.Band;
 
 /**
@@ -85,29 +82,6 @@ public enum DataType {
 		}
 		throw new IllegalArgumentException("unsupported data type: " + datatype);
 	}
-	
-//	public static Object getArrayAccordingToDatatype(final DataType dt, final ByteBuffer pBuffer){
-//
-//		Buffer b = null;
-//		switch(dt) {
-//		case CHAR:
-//			b = pBuffer.asCharBuffer();
-//		case BYTE:
-//			b = pBuffer;
-//		case SHORT:
-//			b =  pBuffer.asShortBuffer();
-//		case INT:
-//			b =  pBuffer.asIntBuffer();
-//		case LONG:
-//			b =  pBuffer.asLongBuffer();
-//		case FLOAT:
-//			b =  pBuffer.asFloatBuffer();
-//		case DOUBLE:
-//			b =  pBuffer.asDoubleBuffer();
-//		}
-//
-//		return  b.array();
-//	}
 
 	/**
 	 * The size of the datatype in bytes.

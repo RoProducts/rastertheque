@@ -55,7 +55,13 @@ public class JaiInterpolate {
 		}
 
 
-		return interpolation.interpolate(values[0],values[1],values[2],values[3],getSubSampleBits(x_diff), getSubSampleBits(y_diff));
+		return interpolation.interpolate(
+				values[0],
+				values[1],
+				values[2],
+				values[3],
+				calcSubSampleFrac(interpolation.getSubsampleBitsH(),x_diff), 
+				calcSubSampleFrac(interpolation.getSubsampleBitsV(),y_diff));
 
 	}
 
@@ -114,19 +120,22 @@ public class JaiInterpolate {
 						((b >> 16) & 0xff), 
 						((c >> 16) & 0xff),
 						((d >> 16) & 0xff),
-						getSubSampleBits(x_diff), getSubSampleBits(y_diff));
+						calcSubSampleFrac(ib.getSubsampleBitsH(),x_diff),
+						calcSubSampleFrac(ib.getSubsampleBitsV(),y_diff));
 				green = ib.interpolate(
 						((a >> 8) & 0xff),
 						((b >> 8) & 0xff),
 						((c >> 8) & 0xff),
 						((d >> 8) & 0xff),
-						getSubSampleBits(x_diff), getSubSampleBits(y_diff));
+						calcSubSampleFrac(ib.getSubsampleBitsH(),x_diff),
+						calcSubSampleFrac(ib.getSubsampleBitsV(),y_diff));
 				blue = ib.interpolate(
 						(a & 0xff),
 						(b & 0xff),
 						(c & 0xff),
 						(d & 0xff),
-						getSubSampleBits(x_diff), getSubSampleBits(y_diff));
+						calcSubSampleFrac(ib.getSubsampleBitsH(),x_diff),
+						calcSubSampleFrac(ib.getSubsampleBitsV(),y_diff));
 
 				dstPixels[offset++] = 0xff000000 |
 						((((int) red) << 16) & 0xff0000) |
@@ -141,9 +150,9 @@ public class JaiInterpolate {
 
 	}
 
-	public static int getSubSampleBits(float ratio){
+	public static int calcSubSampleFrac(int subsampleBits, float ratio){
 
-//		return (int) (256 * ratio);
-		return (int) Math.pow(2 ,ratio);
+		return (int) (Math.pow(2 , subsampleBits) * ratio);
+//		return (int) Math.pow(2 ,ratio);
 	}
 }

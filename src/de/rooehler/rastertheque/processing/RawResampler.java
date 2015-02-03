@@ -1,5 +1,7 @@
 package de.rooehler.rastertheque.processing;
 
+import com.vividsolutions.jts.geom.Envelope;
+
 import de.rooehler.rastertheque.core.Raster;
 
 public interface RawResampler extends Resampler {
@@ -13,6 +15,6 @@ public interface RawResampler extends Resampler {
 	 * @param raster the raster to resample
 	 * @param method the resampling method to apply
 	 */
-	void resample(Raster raster, ResampleMethod method);
+	void resample(Raster raster, Envelope dstDimension, ResampleMethod method);
 
 }

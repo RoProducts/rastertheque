@@ -322,7 +322,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         		return resampledPixels;
         	}else{
         		raster.setDimension(new Envelope(0, targetWidth, 0, targetHeight));
-        		((RawResampler)mResampler).resample(raster,ResampleMethod.BILINEAR );
+        		((RawResampler)mResampler).resample(raster, readDim, ResampleMethod.BILINEAR );
         		return mRenderer.render(raster);
         	}
         }else{

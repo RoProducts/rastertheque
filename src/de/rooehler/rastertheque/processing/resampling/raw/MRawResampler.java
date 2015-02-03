@@ -7,6 +7,7 @@ import java.nio.ByteOrder;
 import android.util.Log;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
@@ -15,19 +16,19 @@ import de.rooehler.rastertheque.processing.RawResampler;
 public class MRawResampler implements RawResampler {
 
 	@Override
-	public void resample(Raster raster, ResampleMethod method) {
+	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method) {
 
 
-		if(Double.compare(raster.getBoundingBox().getWidth(), raster.getDimension().getWidth()) == 0 &&
-				Double.compare(raster.getBoundingBox().getHeight(), raster.getDimension().getHeight()) == 0){
+		if(Double.compare(raster.getBoundingBox().getWidth(), dstDimension.getWidth()) == 0 &&
+				Double.compare(raster.getBoundingBox().getHeight(), dstDimension.getHeight()) == 0){
 			return;
 		}
 
 		final int srcWidth = (int) raster.getBoundingBox().getWidth();
 		final int srcHeight = (int) raster.getBoundingBox().getHeight();
 
-		final int dstWidth = (int) raster.getDimension().getWidth();
-		final int dstHeight = (int) raster.getDimension().getHeight();
+		final int dstWidth = (int) dstDimension.getWidth();
+		final int dstHeight = (int) dstDimension.getHeight();
 
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 
@@ -854,6 +855,8 @@ public class MRawResampler implements RawResampler {
 					}
 				}
 			}
+			
+			raster.setDimension(dstDimension);
 			
 			raster.setData(buffer);
 			

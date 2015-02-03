@@ -15,6 +15,7 @@ import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.util.Log;
 
+import com.vividsolutions.jts.geom.Dimension;
 import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Band;
@@ -67,7 +68,8 @@ public class GDALDataset implements RasterDataset, PixelResampler, RawResampler{
 				
 		final int bufferSize = ((int)dstDim.getWidth()) * ((int)dstDim.getHeight()) * query.getDataType().size() * query.getBands().size();
 		
-		final ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
+//		final ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
+		final ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 		buffer.order(ByteOrder.nativeOrder()); 
 
 		if(query.getBands().size() == 1){
@@ -163,7 +165,7 @@ public class GDALDataset implements RasterDataset, PixelResampler, RawResampler{
 		//Nothing, resampling is done  during the read process using a different target dimension than the read bounds
 	}
 	@Override
-	public void resample(Raster raster, ResampleMethod method) {		
+	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method) {		
 		//Nothing, resampling is done  during the read process using a different target dimension than the read bounds
 	};
 

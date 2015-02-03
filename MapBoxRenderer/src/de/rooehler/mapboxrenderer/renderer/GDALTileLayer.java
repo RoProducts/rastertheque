@@ -72,7 +72,7 @@ public class GDALTileLayer extends TileLayer {
 	 * @param pResampler the resampler used by this TileLayer
 	 * @param pRenderer the renderer used by this TileLayer
 	 */
-	public GDALTileLayer(final File file, final GDALDataset dataset,final RawResampler pResampler,final Renderer pRenderer) {
+	public GDALTileLayer(final File file, final GDALDataset dataset,final Resampler pResampler,final Renderer pRenderer) {
 		super(file.getName(), file.getAbsolutePath());
 
 		mSource = dataset.getSource();
@@ -310,7 +310,7 @@ public class GDALTileLayer extends TileLayer {
 			}else {
 				// first resampling, second rendering
 				raster.setDimension(new Envelope(0, targetWidth, 0, targetHeight));
-				((RawResampler)mResampler).resample(raster,ResampleMethod.BILINEAR );
+				((RawResampler)mResampler).resample(raster, readDim, ResampleMethod.BILINEAR );
 				return mRenderer.render(raster);
 			}
 		}else{
