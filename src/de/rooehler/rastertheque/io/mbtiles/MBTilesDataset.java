@@ -12,6 +12,8 @@ import android.database.sqlite.SQLiteException;
 import android.util.Log;
 import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Driver;
+import de.rooehler.rastertheque.core.Raster;
+import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.proj.Proj;
 
 public class MBTilesDataset implements Dataset {
@@ -24,7 +26,7 @@ public class MBTilesDataset implements Dataset {
 	
 	private String mSource;
 	
-	private  SQLiteDatabase db;
+	private SQLiteDatabase db;
 
 	
 	public MBTilesDataset(final String pFilePath){

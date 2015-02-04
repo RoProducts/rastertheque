@@ -1,15 +1,15 @@
-package de.rooehler.rastertheque.processing.resampling.rendered;
+package de.rooehler.rastertheque.io.mbtiles;
 
+
+import android.util.Log;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
-import android.util.Log;
-import de.rooehler.rastertheque.processing.PixelResampler;
+import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 
-public class MResampler implements PixelResampler {
+public class MResampler {
 	
 
-	@Override
 	public void resample(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight,final ResampleMethod method){
 		
 		if(srcWidth == dstWidth && srcHeight == dstHeight){

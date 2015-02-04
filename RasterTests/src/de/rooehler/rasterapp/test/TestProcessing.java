@@ -10,12 +10,11 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
-import de.rooehler.rastertheque.processing.PixelResampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
-import de.rooehler.rastertheque.processing.resampling.rendered.JAIResampler;
-import de.rooehler.rastertheque.processing.resampling.rendered.MResampler;
-import de.rooehler.rastertheque.processing.resampling.rendered.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.JAIResampler;
+import de.rooehler.rastertheque.processing.resampling.MResampler;
+import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 
 public class TestProcessing extends android.test.AndroidTestCase  {
 	
@@ -61,11 +60,13 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         final int[] jaiResampled = new int[resampledSize * resampledSize];
         final int[] openCVResampled = new int[resampledSize * resampledSize];
         
+        final Envelope targetEnv = new Envelope(0, resampledSize, 0, resampledSize);
+        
         /////// MImp ///////
         
         long now = System.currentTimeMillis();
         
-        new MResampler().resample(pixels, tileSize,tileSize, mResampled, resampledSize, resampledSize,ResampleMethod.BILINEAR);
+        new MResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR);
         
         Log.d(TestProcessing.class.getSimpleName(), "MInterpolation took "+ (System.currentTimeMillis() - now));
            
@@ -73,7 +74,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         now = System.currentTimeMillis();
         
-        new JAIResampler().resample(pixels, tileSize, tileSize, jaiResampled, resampledSize, resampledSize,ResampleMethod.BILINEAR);
+        new JAIResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR);
         
         Log.d(TestProcessing.class.getSimpleName(), "JAI took "+ (System.currentTimeMillis() - now));
         
@@ -83,7 +84,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         now = System.currentTimeMillis();
         
-        new OpenCVResampler().resample(pixels, tileSize, tileSize, openCVResampled, resampledSize, resampledSize,ResampleMethod.BILINEAR);
+        new OpenCVResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR);
         
         Log.d(TestProcessing.class.getSimpleName(), "OpenCV took "+ (System.currentTimeMillis() - now));
         
@@ -177,43 +178,16 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		
         Log.d(TestProcessing.class.getSimpleName(), "gdal read took "+ (System.currentTimeMillis() - manualNow)+" ms");
         
-    	final MRenderer renderer = new MRenderer(TestIO.GRAY_50M_BYTE, true);
-        
-        final int[] manualResampledSourcePixels  = renderer.render(manualRaster);
-        
-        final int[] manualResampledTargetPixels = new int[targetSize * targetSize];
-        
         new MResampler().resample(
-        		manualResampledSourcePixels,
-        		readSize,
-        		readSize,
-        		manualResampledTargetPixels,
-        		targetSize,
-        		targetSize,
+        		manualRaster,
+        		new Envelope(0, targetSize, 0, targetSize),
         		ResampleMethod.BILINEAR);
         
         Log.d(TestProcessing.class.getSimpleName(), "manual resampling took "+ (System.currentTimeMillis() - manualNow)+" ms");
         
         
-        assertNotNull(manualResampledTargetPixels);
         
-        return manualResampledTargetPixels.length;
+        return (int) (manualRaster.getDimension().getHeight() * manualRaster.getDimension().getWidth());
 	}
 
-	public void testBicubic(){
-		
-		int white = 0xffffffff;
-		int black = 0xff000000;
-		
-		int[] pic = new int[]{white,black,white,black};
-		
-		int[] resampled = new int[pic.length * 4];
-		
-		PixelResampler resampler = new MResampler();
-		
-		resampler.resample(pic, 2, 2, resampled, 4, 4, ResampleMethod.BICUBIC);
-		
-		assertTrue(resampled[0] == white);
-		
-	}
 }

@@ -62,9 +62,7 @@ import de.rooehler.rastertheque.io.mbtiles.MBTilesDriver;
 import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
-import de.rooehler.rastertheque.processing.resampling.raw.OpenCVRawResampler;
-import de.rooehler.rastertheque.processing.resampling.rendered.MResampler;
-import de.rooehler.rastertheque.processing.resampling.rendered.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 import de.rooehler.rastertheque.proj.Proj;
 
 
@@ -267,8 +265,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 				final MapViewPosition mbtmvp = mapView.getModel().mapViewPosition;		
 				mbtmvp.setMapPosition(mbtmp);
 
-				final Resampler resampler = new MResampler();
-				MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesDataset, resampler);
+				MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesDataset);
 				Layer mbTilesLayer = new RasterLayer(getBaseContext(), tileCache, mbtmvp, false, AndroidGraphicFactory.INSTANCE, mbTilesRenderer, this);
 				Log.d(TAG, "setting max to "+zoomMinMax[1]+ " min to "+ zoomMinMax[0]);
 				mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
@@ -319,8 +316,8 @@ public class MainActivity extends Activity implements IWorkStatus{
 			
 			Renderer renderer = new MRenderer(filePath, true);
 			
-			boolean raw = false;
- 			Resampler resampler = raw == true ? new OpenCVRawResampler() : new OpenCVResampler();
+
+ 			Resampler resampler = new OpenCVResampler();
 			
 			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE,((GDALDataset) ds), renderer,resampler, true);
 			//TODO refactor the initial zoom calculation

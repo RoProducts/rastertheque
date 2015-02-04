@@ -1,12 +1,9 @@
-package de.rooehler.rastertheque.processing.resampling.rendered;
-
+package de.rooehler.rastertheque.io.mbtiles;
 
 import java.io.File;
 
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
@@ -15,21 +12,18 @@ import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.os.Environment;
 import android.util.Log;
-import de.rooehler.rastertheque.processing.PixelResampler;
+import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 
-public class OpenCVResampler implements PixelResampler {
+public class MBTilesResampler {
 	
 	static {
-	    if (!OpenCVLoader.initDebug()) {
-	        // Handle initialization error
-	    	
-	    	Log.e(OpenCVResampler.class.getSimpleName(), "error initialising OpenCV");
-	    } 
-	}
-	
-	
+		if (!OpenCVLoader.initDebug()) {
+			// Handle initialization error
 
-	@Override
+			Log.e(MBTilesResampler.class.getSimpleName(), "error initialising OpenCV");
+		} 
+	}
+
 	public void resample(int[] srcPixels, int srcWidth, int srcHeight,	int[] dstPixels, int dstWidth, int dstHeight, ResampleMethod method) {
 		
 		if(srcWidth == dstWidth && srcHeight == dstHeight){
@@ -96,5 +90,6 @@ public class OpenCVResampler implements PixelResampler {
 	   Highgui.imwrite(writefile.getAbsolutePath(), dst);
 	    
 	}
-
 }
+
+

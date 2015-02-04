@@ -37,7 +37,7 @@ import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
-import de.rooehler.rastertheque.processing.resampling.rendered.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 
 
 

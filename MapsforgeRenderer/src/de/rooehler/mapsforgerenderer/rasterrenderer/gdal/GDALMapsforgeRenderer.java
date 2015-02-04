@@ -22,12 +22,9 @@ import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.PixelResampler;
-import de.rooehler.rastertheque.processing.RawResampler;
 import de.rooehler.rastertheque.processing.Renderer;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
-import de.rooehler.rastertheque.proj.Proj;
 /**
  * A Renderer of gdal data for Mapsforge
  * @author Robert Oehler
@@ -307,24 +304,10 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 
         if(resample){
         	Log.d(TAG, "using "+mResampler.getClass().getSimpleName() +" as resampler");
-        	if(mResampler instanceof PixelResampler){
-        		int pixels[] = mRenderer.render(raster);
-        		int[] resampledPixels = new int[targetWidth * targetHeight];
-        		final ResampleMethod method = ResampleMethod.BILINEAR;
-        		((PixelResampler)mResampler).resample(
-        				pixels,
-        				(int) readDim.getWidth(),
-        				(int) readDim.getHeight(),
-        				resampledPixels,
-        				targetWidth,
-        				targetHeight,
-        				method );
-        		return resampledPixels;
-        	}else{
-        		raster.setDimension(new Envelope(0, targetWidth, 0, targetHeight));
-        		((RawResampler)mResampler).resample(raster, readDim, ResampleMethod.BILINEAR );
-        		return mRenderer.render(raster);
-        	}
+
+        	mResampler.resample(raster, new Envelope(0, targetWidth, 0, targetHeight), ResampleMethod.BILINEAR );
+        	return mRenderer.render(raster);
+
         }else{
         	Log.d(TAG, "using gdal as resampler");
         	return mRenderer.render(raster);

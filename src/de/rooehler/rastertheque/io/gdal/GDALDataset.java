@@ -15,7 +15,6 @@ import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.util.Log;
 
-import com.vividsolutions.jts.geom.Dimension;
 import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Band;
@@ -24,11 +23,10 @@ import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.processing.RawResampler;
-import de.rooehler.rastertheque.processing.PixelResampler;
+import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.proj.Proj;
 
-public class GDALDataset implements RasterDataset, PixelResampler, RawResampler{
+public class GDALDataset implements RasterDataset, Resampler{
 	
 	GDALDriver mDriver;
 
@@ -159,11 +157,6 @@ public class GDALDataset implements RasterDataset, PixelResampler, RawResampler{
 		}
 	}
 
-	@Override
-	public void resample(int[] srcPixels, int srcWidth,int srcHeight, int[] dstPixels, int dstWidth, int dstHeight, ResampleMethod m) {
-				
-		//Nothing, resampling is done  during the read process using a different target dimension than the read bounds
-	}
 	@Override
 	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method) {		
 		//Nothing, resampling is done  during the read process using a different target dimension than the read bounds

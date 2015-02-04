@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.processing.resampling.raw;
+package de.rooehler.rastertheque.processing.resampling;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -11,9 +11,9 @@ import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
-import de.rooehler.rastertheque.processing.RawResampler;
+import de.rooehler.rastertheque.processing.Resampler;
 
-public class MRawResampler implements RawResampler {
+public class MResampler implements Resampler {
 
 	@Override
 	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method) {
@@ -861,7 +861,7 @@ public class MRawResampler implements RawResampler {
 			raster.setData(buffer);
 			
 		}catch(IOException e){
-			Log.e(MRawResampler.class.getSimpleName(), "Error reading raster values",e);
+			Log.e(MResampler.class.getSimpleName(), "Error reading raster values",e);
 		}
 
 	}

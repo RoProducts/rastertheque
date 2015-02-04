@@ -132,7 +132,7 @@ public class MRenderer implements Renderer{
         int[] pixels = new int[pixelAmount];
         
         for (int i = 0; i < pixelAmount; i++) {
-        	
+
         	double d = getValue(reader, raster.getBands().get(0).datatype());
 
     		pixels[i] = pixelValueForColorMapAccordingToData(d);

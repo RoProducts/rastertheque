@@ -1,10 +1,11 @@
-package de.rooehler.rastertheque.processing.resampling.raw;
+package de.rooehler.rastertheque.processing.resampling;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
@@ -19,9 +20,18 @@ import com.vividsolutions.jts.geom.Envelope;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
-import de.rooehler.rastertheque.processing.RawResampler;
+import de.rooehler.rastertheque.io.mbtiles.MBTilesResampler;
+import de.rooehler.rastertheque.processing.Resampler;
 
-public class OpenCVRawResampler implements RawResampler {
+public class OpenCVResampler implements Resampler {
+	
+	static {
+		if (!OpenCVLoader.initDebug()) {
+			// Handle initialization error
+
+			Log.e(MBTilesResampler.class.getSimpleName(), "error initialising OpenCV");
+		} 
+	}
 
 	@Override
 	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method) {
@@ -57,12 +67,12 @@ public class OpenCVRawResampler implements RawResampler {
 					(int) raster.getBoundingBox().getWidth(),
 					(int) raster.getBoundingBox().getHeight());
 
-		Log.d(OpenCVRawResampler.class.getSimpleName(), "creating mat took : "+(System.currentTimeMillis() - now));
+		Log.d(OpenCVResampler.class.getSimpleName(), "creating mat took : "+(System.currentTimeMillis() - now));
 
 		Mat dstMat = new Mat();
 		
 		Imgproc.resize(srcMat, dstMat, new Size(dstWidth, dstHeight), 0, 0, i);
-		Log.d(OpenCVRawResampler.class.getSimpleName(), "resizing  took : "+(System.currentTimeMillis() - now));
+		Log.d(OpenCVResampler.class.getSimpleName(), "resizing  took : "+(System.currentTimeMillis() - now));
 		
 		final int bufferSize = dstWidth * dstHeight * raster.getBands().size() * raster.getBands().get(0).datatype().size();
 		
@@ -72,7 +82,7 @@ public class OpenCVRawResampler implements RawResampler {
 				dstMat,
 				raster.getBands().get(0).datatype(),
 				bufferSize));
-		Log.d(OpenCVRawResampler.class.getSimpleName(), "reconverting to bytes took : "+(System.currentTimeMillis() - now));
+		Log.d(OpenCVResampler.class.getSimpleName(), "reconverting to bytes took : "+(System.currentTimeMillis() - now));
 		
 	}
 	
@@ -111,7 +121,7 @@ public class OpenCVRawResampler implements RawResampler {
 					}
 				}
 			} catch (IOException e) {
-				Log.e(OpenCVRawResampler.class.getSimpleName(), "Error creating char mat from raster",e);
+				Log.e(OpenCVResampler.class.getSimpleName(), "Error creating char mat from raster",e);
 			}
 			
 			return charMat;
@@ -164,7 +174,7 @@ public class OpenCVRawResampler implements RawResampler {
 					}
 				}
 			} catch (IOException e) {
-				Log.e(OpenCVRawResampler.class.getSimpleName(), "Error creating long mat from raster",e);
+				Log.e(OpenCVResampler.class.getSimpleName(), "Error creating long mat from raster",e);
 			}
 			
 			return longMat;

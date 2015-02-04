@@ -13,11 +13,10 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
-import de.rooehler.rastertheque.processing.RawResampler;
+import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
-import de.rooehler.rastertheque.processing.resampling.raw.JAIRawResampler;
-import de.rooehler.rastertheque.processing.resampling.raw.MRawResampler;
-import de.rooehler.rastertheque.processing.resampling.raw.OpenCVRawResampler;
+import de.rooehler.rastertheque.processing.resampling.MResampler;
+import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 
 
 /**
@@ -74,7 +73,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		long now = System.currentTimeMillis();
 
-		RawResampler openCVResampler = new OpenCVRawResampler();
+		Resampler openCVResampler = new OpenCVResampler();
 
 		openCVResampler.resample(raster, targetEnv, method);
 
@@ -100,7 +99,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		long now2 = System.currentTimeMillis();
 
-		RawResampler mResampler = new MRawResampler();
+		Resampler mResampler = new MResampler();
 
 		mResampler.resample(raster2, targetEnv, method);
 
@@ -127,7 +126,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 //
 //		long now3 = System.currentTimeMillis();
 //
-//		RawResampler jaiResampler = new JAIRawResampler();
+//		Resampler jaiResampler = new JAIResampler();
 //
 //		jaiResampler.resample(raster3, targetEnv, method);
 //
@@ -193,7 +192,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 			
 			////////////////OpenCV Raw resampler /////////////////
 			
-			RawResampler rawResampler = new OpenCVRawResampler();
+			Resampler rawResampler = new OpenCVResampler();
 
 			rawResampler.resample(raster, targetEnv, method);
 
@@ -215,7 +214,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 //			
 //			long now2 = System.currentTimeMillis();
 //			
-//			RawResampler mResampler = new MRawResampler();
+//			Resampler mResampler = new MResampler();
 //
 //			mResampler.resample(raster2, targetEnv, method);
 //
@@ -237,7 +236,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 //			
 //			long now3 = System.currentTimeMillis();
 //			
-//			RawResampler jaiResampler = new JAIRawResampler();
+//			Resampler jaiResampler = new JAIResampler();
 //			
 //			jaiResampler.resample(raster3, targetEnv, method);
 //			

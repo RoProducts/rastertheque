@@ -1,6 +1,7 @@
 package de.rooehler.mapboxrenderer.renderer;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
 
 import uk.co.senab.bitmapcache.CacheableBitmapDrawable;
@@ -25,9 +26,9 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.PixelResampler;
-import de.rooehler.rastertheque.processing.RawResampler;
 import de.rooehler.rastertheque.processing.Renderer;
+import de.rooehler.rastertheque.processing.RenderingHints;
+import de.rooehler.rastertheque.processing.RenderingHints.Key;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 import de.rooehler.rastertheque.util.Constants;
@@ -281,6 +282,8 @@ public class GDALTileLayer extends TileLayer {
      */
 	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
 		
+
+		
 		final RasterQuery query = new RasterQuery(
 				bounds,
 				mRasterDataset.getCRS(),
@@ -293,26 +296,27 @@ public class GDALTileLayer extends TileLayer {
 		synchronized(this){
 			raster = mRasterDataset.read(query);
 		}
+		
+		
+		//new do rasterOp
+		
+//		HashMap<Key,Object> hm = new HashMap<>();
+//		hm.put(RenderingHints.KEY_INTERPOLATION,
+//				RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+//		hm.put(RenderingHints.KEY_SYMBOLIZATION,
+//				RenderingHints.VALUE_AMPLITUDE_RESCALING);
+//		
+//		final RenderingHints hints = new RenderingHints(hm);
+		
+		
+		//old
 
 		if(resample){
-			if(mResampler instanceof PixelResampler){
-				//OLD , first rendering, second resampling
-				int pixels[] = mRenderer.render(raster);
-				int[] resampledPixels = new int[targetWidth * targetHeight];
-				((PixelResampler)mResampler).resample(
-						pixels,
-						(int) readDim.getWidth(),
-						(int) readDim.getHeight(),
-						resampledPixels,
-						targetWidth,
-						targetHeight,ResampleMethod.BILINEAR );
-				return resampledPixels;
-			}else {
-				// first resampling, second rendering
-				raster.setDimension(new Envelope(0, targetWidth, 0, targetHeight));
-				((RawResampler)mResampler).resample(raster, readDim, ResampleMethod.BILINEAR );
-				return mRenderer.render(raster);
-			}
+
+			// first resampling, second rendering
+			mResampler.resample(raster, new Envelope(0, targetWidth, 0, targetHeight), ResampleMethod.BILINEAR );
+			return mRenderer.render(raster);
+
 		}else{
 			return mRenderer.render(raster);
 		}
