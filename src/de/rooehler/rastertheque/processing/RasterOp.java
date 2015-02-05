@@ -1,36 +1,35 @@
 package de.rooehler.rastertheque.processing;
 
-import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
 
 import de.rooehler.rastertheque.core.Raster;
-import de.rooehler.rastertheque.processing.RenderingHints.Key;
 
 public class RasterOp {
 	
 	
-	
-	public static Raster execute(
-			Raster raster,
-			Map <String,Serializable> params,
-			RenderingHints hints,
-			ProgressListener listener){
-		
-		if(hints == null){
-			HashMap<Key,Object> hm = new HashMap<>();
-			hm.put(RenderingHints.KEY_INTERPOLATION,
-					RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-			hm.put(RenderingHints.KEY_SYMBOLIZATION,
-					RenderingHints.VALUE_AMPLITUDE_RESCALING);
-			
-			hints = new RenderingHints(hm);
-		}
-		
-		
-		listener.onProgress(5);
-		
-		return raster;
-	}
+//	@SuppressWarnings("serial")
+//	static ArrayList<String> operations = new ArrayList<String>(){{
+//		add("Resize");
+//		add("Render");
+//	}};
+//	
+//	
+//	@SuppressWarnings("unchecked")
+//	public static void execute(Raster raster, final String operation, final HashMap<Key,Object> params){
+//		
+//		
+//		
+//		ArrayList<Resize> resizers = (ArrayList<Resize>) RasterOps.getRasterOps("org/rastertheque/processing/raster/",Resize.class);
+//		
+//		ArrayList<Render> renderers = (ArrayList<Render>) RasterOps.getRasterOps("org/rastertheque/processing/raster/",Render.class);
+//				
+//	}
+//	
+//	
+//	
+//	public ArrayList<String> getAvailableOps(){
+//		
+//		return operations;		
+//	}
 
 }

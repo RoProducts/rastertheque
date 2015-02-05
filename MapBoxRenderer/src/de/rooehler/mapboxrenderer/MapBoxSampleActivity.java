@@ -266,10 +266,8 @@ public class MapBoxSampleActivity extends Activity {
 			AlertFactory.showErrorAlert(this, "Error", "There was an error opening the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
 			return;
 		}
-		Renderer renderer = new MRenderer(filePath, true);
-		Resampler resampler = new OpenCVResampler();
 		
-		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset, resampler, renderer);
+		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset);
 
 		Log.e(TAG, "setting zoom for new file to "+ (((GDALTileLayer) mCurrentLayer).getStartZoomLevel()));
 		mv.setZoom(((GDALTileLayer) mCurrentLayer).getStartZoomLevel());

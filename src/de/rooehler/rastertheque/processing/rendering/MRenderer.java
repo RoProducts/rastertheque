@@ -9,6 +9,7 @@ import android.util.Log;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
+import de.rooehler.rastertheque.core.util.ByteBufferReaderUtil;
 import de.rooehler.rastertheque.processing.Renderer;
 
 public class MRenderer implements Renderer{
@@ -23,21 +24,21 @@ public class MRenderer implements Renderer{
 	
 	public MRenderer(final String pFilePath, final boolean useColorMapIfAvailable){
 		
-		final String colorMapFilePath = pFilePath.substring(0, pFilePath.lastIndexOf(".") + 1) + "sld";
+		if(pFilePath != null){
+			final String colorMapFilePath = pFilePath.substring(0, pFilePath.lastIndexOf(".") + 1) + "sld";
 
-		File file = new File(colorMapFilePath);
+			File file = new File(colorMapFilePath);
 
-		if(file.exists()){
+			if(file.exists()){
 
-			this.mColorMap = SLDColorMapParser.parseColorMapFile(file);
+				this.mColorMap = SLDColorMapParser.parseColorMapFile(file);
 
+			}
 		}
-		
 		mUseColorMap = useColorMapIfAvailable;
 		
 	}
 	
-	@Override
 	public void useRGBBands(boolean hasRgbBands){
 		
 		this.mHasRGBBands = hasRgbBands;
@@ -89,13 +90,13 @@ public class MRenderer implements Renderer{
 		double[] pixelsB = new double[pixelAmount];
            
 		for (int i = 0; i < pixelAmount; i++) {	
-			pixelsR[i] =  getValue(reader, raster.getBands().get(0).datatype());
+			pixelsR[i] =  ByteBufferReaderUtil.getValue(reader, raster.getBands().get(0).datatype());
 		}
 		for (int j = 0; j < pixelAmount; j++) {	
-			pixelsG[j] =  getValue(reader, raster.getBands().get(1).datatype());
+			pixelsG[j] =  ByteBufferReaderUtil.getValue(reader, raster.getBands().get(1).datatype());
 		}
 		for (int k = 0; k < pixelAmount; k++) {	
-			pixelsB[k] =  getValue(reader, raster.getBands().get(2).datatype());
+			pixelsB[k] =  ByteBufferReaderUtil.getValue(reader, raster.getBands().get(2).datatype());
 		}
 		
         for (int l = 0; l < pixelAmount; l++) {	
@@ -133,7 +134,7 @@ public class MRenderer implements Renderer{
         
         for (int i = 0; i < pixelAmount; i++) {
 
-        	double d = getValue(reader, raster.getBands().get(0).datatype());
+        	double d = ByteBufferReaderUtil.getValue(reader, raster.getBands().get(0).datatype());
 
     		pixels[i] = pixelValueForColorMapAccordingToData(d);
 
@@ -167,7 +168,7 @@ public class MRenderer implements Renderer{
 
     	for (int i = 0; i < pixelAmount; i++) {
         	
-        	double d = getValue(reader, raster.getBands().get(0).datatype());
+        	double d = ByteBufferReaderUtil.getValue(reader, raster.getBands().get(0).datatype());
 
     		pixels[i] = pixelValueForGrayScale(d, minMax[0], minMax[1]);
 
@@ -200,53 +201,7 @@ public class MRenderer implements Renderer{
 
 		return mColorMap.getColorAccordingToValue(val);
 	}
-	/**
-	 * retrieve a value from the ByteBufferReader according to its datatype
-	 * actually the data is read and for a unified return type is cast to double
-	 * @param reader the reader to read from
-	 * @param dataType the datatype according to which the data is read
-	 * @return the value of the pixel
-	 */
-	private double getValue(ByteBufferReader reader,final DataType dataType){
 
-		double d = 0.0d;
-		try{
-			switch(dataType) {
-			case CHAR:
-				char _char = reader.readChar();
-				d = (double) _char;
-				break;
-			case BYTE:
-				byte _byte = reader.readByte();
-				d = (double) _byte;
-				break;
-			case SHORT:
-				short _short = reader.readShort();
-				d = (double) _short;
-				break;
-			case INT:
-				int _int = reader.readInt();
-				d = (double) _int;
-				break;
-			case LONG:
-				long _long = reader.readLong();
-				d = (double) _long;
-				break;
-			case FLOAT:
-				float _float = reader.readFloat();
-				d = (double) _float;
-				break;
-			case DOUBLE:
-				double _double =  reader.readDouble();
-				d = _double;
-				break;
-			}
-		}catch(IOException  e){
-			Log.e(TAG, "error reading from byteBufferedReader");
-		}
-
-		return d;
-	}
 	/**
 	 * iterates over the pixelsize, determining min and max value of the data in 
 	 * the ByteBufferReader according to its datatype

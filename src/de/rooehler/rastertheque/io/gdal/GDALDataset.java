@@ -23,10 +23,10 @@ import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 import de.rooehler.rastertheque.proj.Proj;
 
-public class GDALDataset implements RasterDataset, Resampler{
+public class GDALDataset implements RasterDataset{
 	
 	GDALDriver mDriver;
 
@@ -156,13 +156,6 @@ public class GDALDataset implements RasterDataset, Resampler{
 			return mBounds;
 		}
 	}
-
-	@Override
-	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method) {		
-		//Nothing, resampling is done  during the read process using a different target dimension than the read bounds
-	};
-
-
 	
 	/**
 	 * applies a projection, defined in the @param wkt to the current dataset

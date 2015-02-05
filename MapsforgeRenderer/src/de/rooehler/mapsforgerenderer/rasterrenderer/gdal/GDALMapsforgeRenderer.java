@@ -3,6 +3,7 @@ package de.rooehler.mapsforgerenderer.rasterrenderer.gdal;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 
 import org.mapsforge.core.graphics.GraphicFactory;
@@ -22,9 +23,10 @@ import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.Renderer;
-import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.processing.RenderOp;
+import de.rooehler.rastertheque.processing.RenderingHints.Key;
+import de.rooehler.rastertheque.processing.ResizeOp;
+import de.rooehler.rastertheque.processing.rendering.OpenCVRenderer;
 /**
  * A Renderer of gdal data for Mapsforge
  * @author Robert Oehler
@@ -46,37 +48,14 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	
 	private GDALDataset mRasterDataset;
 	
-	private Renderer mRenderer;
-	
-	private Resampler mResampler;
-	
-	private boolean mUseColorMap;
-	
-	private int mRasterBandCount;
-	
-//	private CoordinateReferenceSystem mCurrentCRS;
 
 
-	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster, final Renderer pRenderer,final Resampler pResampler, final boolean pUseColorMap) {
+	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster) {
 		
 		this.graphicFactory = graphicFactory;
 		
 		this.mRasterDataset = pRaster;
 		
-		this.mRenderer = pRenderer;
-		
-		this.mResampler = pResampler;
-		
-		this.mUseColorMap = pUseColorMap;
-		
-		this.mRasterBandCount = this.mRasterDataset.getBands().size();
-		
-		if(mRasterBandCount == 3){
-			mRenderer.useRGBBands(checkIfHasRGBBands());
-		}
-		
-//		this.mCurrentCRS = mRasterDataset.getCRS();
-
 	}
 	/**
 	 * checks if this dataset consists of three bands red, green and blue
@@ -301,16 +280,27 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         		datatype);
         
         final Raster raster = mRasterDataset.read(query);
+        
+		HashMap<Key,Object> renderParams = new HashMap<>();
+
+//		renderParams.put(RenderOp.KEY_RENDERER, new MRenderer(mRasterDataset.getSource(), true));
+		renderParams.put(RenderOp.KEY_RENDERER, new OpenCVRenderer());
+		renderParams.put(RenderOp.KEY_FILEPATH, mRasterDataset.getSource());
+		renderParams.put(RenderOp.KEY_RGB_BANDS, Boolean.valueOf(checkIfHasRGBBands()));	
 
         if(resample){
-        	Log.d(TAG, "using "+mResampler.getClass().getSimpleName() +" as resampler");
+        
+        	HashMap<Key,Object> resizeParams = new HashMap<>();
 
-        	mResampler.resample(raster, new Envelope(0, targetWidth, 0, targetHeight), ResampleMethod.BILINEAR );
-        	return mRenderer.render(raster);
+			resizeParams.put(ResizeOp.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
+
+			new ResizeOp().resize(raster, resizeParams, null, null);
+			
+			return new RenderOp().render(raster, renderParams, null, null);
 
         }else{
-        	Log.d(TAG, "using gdal as resampler");
-        	return mRenderer.render(raster);
+        	
+        	return new RenderOp().render(raster, renderParams, null, null);
         }
 	}
 
@@ -447,7 +437,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
      */
 	public boolean useGDALAsResampler(int desiredTileSize, int readFromDataSetSize){
 		
-		return desiredTileSize <= readFromDataSetSize || mResampler instanceof GDALDataset;
+		return desiredTileSize <= readFromDataSetSize;
 	}
 	
 	@Override
@@ -482,11 +472,6 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		return Math.pow(2,  -(zoom - this.mInternalZoom));
 		
 	}
-	public void toggleUseColorMap(){
-		
-		this.mUseColorMap = !mUseColorMap;
-		
-	}
 
 	@Override
 	public String getFilePath() {
@@ -494,9 +479,5 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		return mRasterDataset.getSource();
 	}
 	
-	public boolean canSwitchColorMap(){
-		
-		return mRasterBandCount == 1;
-	}
 
 }

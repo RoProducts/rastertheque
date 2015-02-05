@@ -314,12 +314,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 				return;
 			}
 			
-			Renderer renderer = new MRenderer(filePath, true);
-			
-
- 			Resampler resampler = new OpenCVResampler();
-			
-			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE,((GDALDataset) ds), renderer,resampler, true);
+			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE,((GDALDataset) ds));
 			//TODO refactor the initial zoom calculation
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
 			DisplayMetrics displaymetrics = new DisplayMetrics();
@@ -450,7 +445,7 @@ public class MainActivity extends Activity implements IWorkStatus{
     	boolean isEditableMap = isEditableMap();
     	
     	menu.findItem(R.id.menu_transform).setVisible(isEditableMap);
-    	menu.findItem(R.id.menu_colormap).setVisible(isEditableMap);
+//    	menu.findItem(R.id.menu_colormap).setVisible(isEditableMap);
 //        menu.findItem(R.id.menu_save).setVisible(isEditableMap);
         
         return super.onPrepareOptionsMenu(menu);
@@ -492,19 +487,19 @@ public class MainActivity extends Activity implements IWorkStatus{
         		}
         	break;
         case R.id.menu_colormap:
-        		if(isEditableMap()){
-        			GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
-        			if(renderer.canSwitchColorMap()){
-        				
-        				renderer.toggleUseColorMap();
-        				tileCache.destroy();
-        				Toast.makeText(getBaseContext(), "Color Mode toggled",Toast.LENGTH_SHORT).show();
-        			}else{
-        				Toast.makeText(getBaseContext(), "Cannot toggle color mode for this raster",Toast.LENGTH_SHORT).show();        				
-        			}
-        			
-        			mapView.getLayerManager().redrawLayers();
-        		}
+//        		if(isEditableMap()){
+//        			GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
+//        			if(renderer.canSwitchColorMap()){
+//        				
+//        				renderer.toggleUseColorMap();
+//        				tileCache.destroy();
+//        				Toast.makeText(getBaseContext(), "Color Mode toggled",Toast.LENGTH_SHORT).show();
+//        			}else{
+//        				Toast.makeText(getBaseContext(), "Cannot toggle color mode for this raster",Toast.LENGTH_SHORT).show();        				
+//        			}
+//        			
+//        			mapView.getLayerManager().redrawLayers();
+//        		}
         	break;
 //        case R.id.menu_save:
 //        	if(isEditableMap()){

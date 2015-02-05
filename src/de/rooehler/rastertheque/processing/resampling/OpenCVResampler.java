@@ -19,8 +19,8 @@ import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
-import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesResampler;
+import de.rooehler.rastertheque.processing.ProgressListener;
 import de.rooehler.rastertheque.processing.Resampler;
 
 public class OpenCVResampler implements Resampler {
@@ -34,10 +34,10 @@ public class OpenCVResampler implements Resampler {
 	}
 
 	@Override
-	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method) {
+	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method, ProgressListener listener) {
 	
-		final int srcWidth = (int) raster.getBoundingBox().getWidth();
-		final int srcHeight = (int) raster.getBoundingBox().getHeight();
+		final int srcWidth = (int) raster.getDimension().getWidth();
+		final int srcHeight = (int) raster.getDimension().getHeight();
 		
 		if(Double.compare(srcWidth,  dstDimension.getWidth()) == 0 &&
 		   Double.compare(srcHeight, dstDimension.getHeight()) == 0){
@@ -86,6 +86,7 @@ public class OpenCVResampler implements Resampler {
 		
 	}
 	
+	
 	/**
 	 * converts the bytes from a raster into an OpenCV Mat 
 	 * having width * height cells of datatype according to the rasters datatype
@@ -106,25 +107,23 @@ public class OpenCVResampler implements Resampler {
 			Mat byteMat = new Mat(height, width, CvType.CV_8U);
 			byteMat.put(0, 0, buffer.array());
 			//for direct bytebuffer
-			//byteMat.put(0, 0, Arrays.copyOfRange(buffer.array(),0, width * height));
+//			byteMat.put(0, 0, Arrays.copyOfRange(buffer.array(),0, width * height));
 			return byteMat;
 			
 		case CHAR:
 			
-			Mat charMat = new Mat(height, width, CvType.CV_16UC1);
+			//Use short for chars
+			//TODO test			
+			Mat charMat = new Mat(height, width, CvType.CV_32SC1);
 			
-			try{
-				ByteBufferReader charReader = new ByteBufferReader(buffer.array(), ByteOrder.nativeOrder());
-				for(int y = 0; y < height; y++){
-					for(int x = 0; x < width ; x++){
-						charMat.put(y, x, charReader.readChar());
-					}
-				}
-			} catch (IOException e) {
-				Log.e(OpenCVResampler.class.getSimpleName(), "Error creating char mat from raster",e);
-			}
+			final short[] chars = new short[height * width];
+		    
+		    buffer.asShortBuffer().get(chars);
+
+		    charMat.put(0,0,chars);
 			
 			return charMat;
+			
 			
 		case DOUBLE:
 			
@@ -164,18 +163,15 @@ public class OpenCVResampler implements Resampler {
 			
 		case LONG:
 			
-			Mat longMat = new Mat(height, width, CvType.CV_32SC2);
-			try{
-				ByteBufferReader longReader = new ByteBufferReader(buffer.array(), ByteOrder.nativeOrder());
+			//use double for long as Mat does not have an appropriate data type
+			//TODO test
+			Mat longMat = new Mat(height, width, CvType.CV_64FC1);
+			
+			final double[] longs = new double[height * width];
+		    
+		    buffer.asDoubleBuffer().get(longs);
 
-				for(int y = 0; y < height; y++){
-					for(int x = 0; x < width ; x++){
-						longMat.put(y, x, longReader.readLong());
-					}
-				}
-			} catch (IOException e) {
-				Log.e(OpenCVResampler.class.getSimpleName(), "Error creating long mat from raster",e);
-			}
+		    longMat.put(0,0,longs);
 			
 			return longMat;
 			
@@ -219,14 +215,10 @@ public class OpenCVResampler implements Resampler {
 		case CHAR:
 			
 			//TODO test char
-			int[] _char = new int[1];
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					
-					mat.get(y,x,_char);
-					buffer.putChar( (char) _char[0]);
-				}
-			}
+			final short[] chars = new short[bufferSize / 2];
+			mat.get(0, 0, chars);
+			buffer.asShortBuffer().put(chars);
+						
 			break;
 		case DOUBLE:
 			
@@ -255,14 +247,10 @@ public class OpenCVResampler implements Resampler {
 			
 			//TODO test long
 			//there seems to be no long support in OpenCV
-			int[] _long = new int[1];
-			for(int y = 0; y < height; y++){
-				for(int x = 0; x < width ; x++){
-					
-					mat.get(y,x,_long);
-					buffer.putLong((long)_long[0]);
-				}
-			}
+			final double[] longs = new double[bufferSize / 8];
+			mat.get(0, 0, longs);
+			buffer.asDoubleBuffer().put(longs);
+			
 			break;
 			
 		case SHORT:
@@ -276,6 +264,8 @@ public class OpenCVResampler implements Resampler {
 		
 		return buffer;
 	}
+	
+
 
 	
 	@SuppressWarnings("unused")

@@ -22,6 +22,6 @@ public interface Resampler {
 	 * @param raster the raster to resample
 	 * @param method the resampling method to apply
 	 */
-	void resample(Raster raster, Envelope dstDimension, ResampleMethod method);
+	void resample(Raster raster, Envelope dstDimension, ResampleMethod method, ProgressListener listener);
 
 }

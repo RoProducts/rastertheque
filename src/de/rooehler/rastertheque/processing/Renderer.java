@@ -7,7 +7,7 @@ public interface Renderer {
 	
 	int[] render(final Raster raster);
 	
-	void useRGBBands(boolean hasRgbBands);
+//	void useRGBBands(boolean hasRgbBands);
 	
 
 }

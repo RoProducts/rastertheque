@@ -1,6 +1,7 @@
 package de.rooehler.rasterapp.test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import android.util.Log;
 
@@ -10,7 +11,10 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
+import de.rooehler.rastertheque.processing.RasterOps;
+import de.rooehler.rastertheque.processing.Render;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.processing.Resize;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
 import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
@@ -66,7 +70,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         long now = System.currentTimeMillis();
         
-        new MResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR);
+        new MResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR, null);
         
         Log.d(TestProcessing.class.getSimpleName(), "MInterpolation took "+ (System.currentTimeMillis() - now));
            
@@ -74,7 +78,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         now = System.currentTimeMillis();
         
-        new JAIResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR);
+        new JAIResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR, null);
         
         Log.d(TestProcessing.class.getSimpleName(), "JAI took "+ (System.currentTimeMillis() - now));
         
@@ -84,7 +88,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         now = System.currentTimeMillis();
         
-        new OpenCVResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR);
+        new OpenCVResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR, null);
         
         Log.d(TestProcessing.class.getSimpleName(), "OpenCV took "+ (System.currentTimeMillis() - now));
         
@@ -181,13 +185,32 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         new MResampler().resample(
         		manualRaster,
         		new Envelope(0, targetSize, 0, targetSize),
-        		ResampleMethod.BILINEAR);
+        		ResampleMethod.BILINEAR, 
+        		null);
         
         Log.d(TestProcessing.class.getSimpleName(), "manual resampling took "+ (System.currentTimeMillis() - manualNow)+" ms");
         
         
         
         return (int) (manualRaster.getDimension().getHeight() * manualRaster.getDimension().getWidth());
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void testProcessingDrivers(){
+		
+		ArrayList<Resize> resizers = (ArrayList<Resize>) RasterOps.getRasterOps("org/rastertheque/processing/raster/",Resize.class);
+		
+		ArrayList<Render> renderers = (ArrayList<Render>) RasterOps.getRasterOps("org/rastertheque/processing/raster/", Render.class);
+		
+		assertNotNull(resizers);
+		
+		assertNotNull(renderers);
+		
+		//there is currently one resampler impl
+		assertTrue(resizers.size() == 1);
+		
+		//there is one real and one test renderer impl
+		assertTrue(renderers.size() == 2);
 	}
 
 }

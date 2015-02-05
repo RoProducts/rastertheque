@@ -1,4 +1,4 @@
-package de.rooehler.rasterapp.test;
+package de.rooehler.rasterapp.test.testImpl;
 
 import java.io.IOException;
 

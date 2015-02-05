@@ -26,12 +26,10 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.Renderer;
-import de.rooehler.rastertheque.processing.RenderingHints;
+import de.rooehler.rastertheque.processing.RenderOp;
 import de.rooehler.rastertheque.processing.RenderingHints.Key;
-import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
-import de.rooehler.rastertheque.util.Constants;
+import de.rooehler.rastertheque.processing.ResizeOp;
+import de.rooehler.rastertheque.processing.rendering.MRenderer;
 import de.rooehler.rastertheque.util.Formulae;
 /**
  * A GDALTileLayer extends the Mapbox TileLayer to extract Tiles out of the
@@ -43,18 +41,8 @@ import de.rooehler.rastertheque.util.Formulae;
 public class GDALTileLayer extends TileLayer {
 	
 	private final static String TAG = GDALTileLayer.class.getSimpleName();
-	
-	private byte mInternalZoom = 1;
-	
+
 	private GDALDataset mRasterDataset;
-	
-	private Renderer mRenderer;
-	
-	private Resampler mResampler;
-	
-	private int mRasterBandCount = 1;
-	
-	private final String mSource;
 	
 	private int mStartZoomLevel;
 	
@@ -68,21 +56,15 @@ public class GDALTileLayer extends TileLayer {
 	 * 
 	 * To change the number of executing threads look for NUMBER_OF_TILE_DOWNLOAD_THREADS in com.mapbox.mapboxsdk.tileprovider.constants
 	 * 
-	 * @param file the raster file (explicitely needed to conform to the super class TileLayer)
+	 * @param file the raster file (explicitly needed to conform to the super class TileLayer)
 	 * @param dataset the dataset of this file
 	 * @param pResampler the resampler used by this TileLayer
 	 * @param pRenderer the renderer used by this TileLayer
 	 */
-	public GDALTileLayer(final File file, final GDALDataset dataset,final Resampler pResampler,final Renderer pRenderer) {
+	public GDALTileLayer(final File file, final GDALDataset dataset) {
 		super(file.getName(), file.getAbsolutePath());
 
-		mSource = dataset.getSource();
-
 		mRasterDataset = dataset;
-
-		mRenderer = pRenderer;
-		
-		mResampler = pResampler;
 
 		initialize();
 	}	
@@ -93,12 +75,6 @@ public class GDALTileLayer extends TileLayer {
     private void initialize() {
     	
 		this.mTileSize = getTileSizePixels();
-
-		this.mRasterBandCount = this.mRasterDataset.getBands().size();
-
-		if(mRasterBandCount == 3){
-			mRenderer.useRGBBands( checkIfHasRGBBands());
-		}
     	
 		final Envelope bb = mRasterDataset.getBoundingBox();
 
@@ -109,9 +85,8 @@ public class GDALTileLayer extends TileLayer {
 		double res_in_Meters = Formulae.distanceBetweenInMeters(bb.getMinY(),bb.getMinX(), bb.getMaxY(),bb.getMaxX()) /
 				Math.hypot(mRasterDataset.getDimension().getHeight(),mRasterDataset.getDimension().getWidth());
 		
-		mInternalZoom = 1;
 		int startZoomLevel = 0;
-		while(Constants.getResolutionInMetersPerPixelForZoomLevel(startZoomLevel) > res_in_Meters){
+		while(Formulae.getResolutionInMetersPerPixelForZoomLevel(startZoomLevel) > res_in_Meters){
 			startZoomLevel++;
 		}
 		Log.d(TAG, "calculated start zoom level "+ startZoomLevel);
@@ -122,7 +97,7 @@ public class GDALTileLayer extends TileLayer {
 		
 		mMaximumZoomLevel = Math.min(18, startZoomLevel + 8);
 
-		mName = mSource;
+		mName = mRasterDataset.getSource();
 		mDescription = "GDALLayer";
 
 		mBoundingBox = new BoundingBox(ne, sw);
@@ -297,28 +272,30 @@ public class GDALTileLayer extends TileLayer {
 			raster = mRasterDataset.read(query);
 		}
 		
-		
-		//new do rasterOp
-		
-//		HashMap<Key,Object> hm = new HashMap<>();
-//		hm.put(RenderingHints.KEY_INTERPOLATION,
-//				RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-//		hm.put(RenderingHints.KEY_SYMBOLIZATION,
-//				RenderingHints.VALUE_AMPLITUDE_RESCALING);
-//		
-//		final RenderingHints hints = new RenderingHints(hm);
-		
-		
-		//old
+		HashMap<Key,Object> renderParams = new HashMap<>();
+
+		renderParams.put(RenderOp.KEY_RENDERER, new MRenderer(mRasterDataset.getSource(), true));
+		renderParams.put(RenderOp.KEY_FILEPATH, mRasterDataset.getSource());
+		renderParams.put(RenderOp.KEY_RGB_BANDS, Boolean.valueOf(checkIfHasRGBBands()));	
 
 		if(resample){
+				
+			//new do rasterOp
+			HashMap<Key,Object> params = new HashMap<>();
 
-			// first resampling, second rendering
-			mResampler.resample(raster, new Envelope(0, targetWidth, 0, targetHeight), ResampleMethod.BILINEAR );
-			return mRenderer.render(raster);
+			params.put(ResizeOp.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
+
+			new ResizeOp().resize(raster, params, null, null);
+
+			//			mResampler.resample(raster, new Envelope(0, targetWidth, 0, targetHeight), ResampleMethod.BILINEAR ,null);	
+			return new RenderOp().render(raster, renderParams, null, null);
+
+			//			return mRenderer.render(raster);
 
 		}else{
-			return mRenderer.render(raster);
+			
+			return new RenderOp().render(raster, renderParams, null, null);
+//			return mRenderer.render(raster);
 		}
 	}
 
@@ -446,7 +423,7 @@ public class GDALTileLayer extends TileLayer {
      */
 	public boolean useGDALAsResampler(int desiredTileSize, int readFromDataSetSize){
 		
-		return desiredTileSize <= readFromDataSetSize || mResampler instanceof GDALDataset;
+		return desiredTileSize <= readFromDataSetSize;
 	}
     
 	public void close(){

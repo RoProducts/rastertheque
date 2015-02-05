@@ -11,20 +11,21 @@ import com.vividsolutions.jts.geom.Envelope;
 import de.rooehler.raster_jai.JaiInterpolate;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
+import de.rooehler.rastertheque.processing.ProgressListener;
 import de.rooehler.rastertheque.processing.Resampler;
 
 public class JAIResampler implements Resampler {
 
 	@Override
-	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method) {
+	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method, ProgressListener listener) {
 		
-		if(Double.compare(raster.getBoundingBox().getWidth(),  dstDimension.getWidth()) == 0 &&
-		   Double.compare(raster.getBoundingBox().getHeight(), dstDimension.getHeight()) == 0){
+		if(Double.compare(raster.getDimension().getWidth(),  dstDimension.getWidth()) == 0 &&
+		   Double.compare(raster.getDimension().getHeight(), dstDimension.getHeight()) == 0){
 			return;
 		}
 		
-		final int srcWidth = (int) raster.getBoundingBox().getWidth();
-		final int srcHeight = (int) raster.getBoundingBox().getHeight();
+		final int srcWidth = (int) raster.getDimension().getWidth();
+		final int srcHeight = (int) raster.getDimension().getHeight();
 		
 		final int dstWidth = (int) dstDimension.getWidth();
 		final int dstHeight = (int) dstDimension.getHeight();
@@ -56,6 +57,9 @@ public class JAIResampler implements Resampler {
 		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
 		float y_ratio = ((float) (srcHeight - 1)) / dstHeight;
 		float x_diff, y_diff;
+		
+		final float onePercent = raster.getBands().size() * dstHeight * dstWidth / 100f;
+		float current = onePercent;
 
 		for(int h = 0; h <raster.getBands().size(); h++){
 			
@@ -73,6 +77,13 @@ public class JAIResampler implements Resampler {
 					y_diff = (y_ratio * i) - y;
 
 					index = (y * srcWidth + x);
+					
+					if(index * raster.getBands().size() > current){
+						if(listener != null){							
+							listener.onProgress((int) current);
+						}
+						current += onePercent;
+					}
 					
 					reader.seekToOffset(index * dataSize);
 					

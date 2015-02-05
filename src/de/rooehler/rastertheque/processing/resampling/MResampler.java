@@ -11,23 +11,24 @@ import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
+import de.rooehler.rastertheque.processing.ProgressListener;
 import de.rooehler.rastertheque.processing.Resampler;
 
 public class MResampler implements Resampler {
 
 	@Override
-	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method) {
+	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method, ProgressListener listener) {
 
 
-		if(Double.compare(raster.getBoundingBox().getWidth(), dstDimension.getWidth()) == 0 &&
-				Double.compare(raster.getBoundingBox().getHeight(), dstDimension.getHeight()) == 0){
+		if(Double.compare(raster.getDimension().getWidth(),  dstDimension.getWidth()) == 0 &&
+		   Double.compare(raster.getDimension().getHeight(), dstDimension.getHeight()) == 0){
 			return;
 		}
 
-		final int srcWidth = (int) raster.getBoundingBox().getWidth();
-		final int srcHeight = (int) raster.getBoundingBox().getHeight();
+		final int srcWidth =  (int) raster.getDimension().getWidth();
+		final int srcHeight = (int) raster.getDimension().getHeight();
 
-		final int dstWidth = (int) dstDimension.getWidth();
+		final int dstWidth =  (int) dstDimension.getWidth();
 		final int dstHeight = (int) dstDimension.getHeight();
 
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
@@ -41,6 +42,8 @@ public class MResampler implements Resampler {
 
 		final int newBufferSize = ((int)dstWidth) * ((int)dstHeight) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
 
+		final float onePercent = raster.getBands().size() * dstHeight * dstWidth / 100f;
+		float current = onePercent;
 		try{
 
 			final ByteBuffer buffer = ByteBuffer.allocate(newBufferSize);
@@ -61,6 +64,13 @@ public class MResampler implements Resampler {
 						
 						// current pos
 						index = y * srcWidth + x;
+						
+						if(index * raster.getBands().size() > current){
+							if(listener != null){								
+								listener.onProgress((int) current);
+							}
+							current += onePercent;
+						}
 						
 						reader.seekToOffset(index * dataSize);
 

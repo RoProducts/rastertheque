@@ -8,6 +8,7 @@ import android.util.Log;
 
 import com.vividsolutions.jts.geom.Envelope;
 
+import de.rooehler.rasterapp.test.testImpl.TestPluggedDriver;
 import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.core.Drivers;
 import de.rooehler.rastertheque.core.Raster;

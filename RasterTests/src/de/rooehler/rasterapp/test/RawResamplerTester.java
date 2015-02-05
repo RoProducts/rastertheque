@@ -13,6 +13,7 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
+import de.rooehler.rastertheque.processing.ProgressListener;
 import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
@@ -75,7 +76,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		Resampler openCVResampler = new OpenCVResampler();
 
-		openCVResampler.resample(raster, targetEnv, method);
+		openCVResampler.resample(raster, targetEnv, method, null);
 
 		final byte[] resampled = raster.getData().array().clone();
 
@@ -101,7 +102,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		Resampler mResampler = new MResampler();
 
-		mResampler.resample(raster2, targetEnv, method);
+		mResampler.resample(raster2, targetEnv, method, null);
 
 		final byte[] resampled2 = raster2.getData().array().clone();
 
@@ -128,7 +129,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 //
 //		Resampler jaiResampler = new JAIResampler();
 //
-//		jaiResampler.resample(raster3, targetEnv, method);
+//		jaiResampler.resample(raster3, targetEnv, method, null);
 //
 //		final byte[] resampled3 = raster3.getData().array().clone();
 //
@@ -194,7 +195,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 			
 			Resampler rawResampler = new OpenCVResampler();
 
-			rawResampler.resample(raster, targetEnv, method);
+			rawResampler.resample(raster, targetEnv, method, null);
 
 			byte first = raster.getData().array()[0];
 			byte last = raster.getData().array()[targetSize - 1];
@@ -216,7 +217,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 //			
 //			Resampler mResampler = new MResampler();
 //
-//			mResampler.resample(raster2, targetEnv, method);
+//			mResampler.resample(raster2, targetEnv, method, null);
 //
 //			byte first2 = raster2.getData().array()[0];
 //			byte last2 = raster2.getData().array()[targetSize - 1];
@@ -238,7 +239,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 //			
 //			Resampler jaiResampler = new JAIResampler();
 //			
-//			jaiResampler.resample(raster3, targetEnv, method);
+//			jaiResampler.resample(raster3, targetEnv, method, null);
 //			
 //			byte first3 = raster3.getData().array()[0];
 //			byte last3 = raster3.getData().array()[targetSize - 1];
