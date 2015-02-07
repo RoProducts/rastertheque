@@ -13,6 +13,7 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.processing.ProgressListener;
 import de.rooehler.rastertheque.processing.Resampler;
+import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 
 public class MResampler implements Resampler {
 

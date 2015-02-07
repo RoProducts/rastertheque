@@ -1,18 +1,20 @@
-package de.rooehler.rastertheque.processing;
+package de.rooehler.rastertheque.processing.ops;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Raster;
+import de.rooehler.rastertheque.processing.ProgressListener;
+import de.rooehler.rastertheque.processing.RenderingHints;
 import de.rooehler.rastertheque.processing.RenderingHints.Key;
+import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
 import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
 import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 
-public class ResizeOp implements Resize{
+public class ResampleOp {
 	
 	private static final int INT_KEY_RESAMPLER = 5;
 	
@@ -43,8 +45,8 @@ public class ResizeOp implements Resize{
 		}
 		
 	};
-	@Override
-	public void resize(
+
+	public static void resample(
 			Raster raster,
 			Map <Key,Object> params,
 			RenderingHints hints,

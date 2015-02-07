@@ -23,9 +23,9 @@ import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.RenderOp;
 import de.rooehler.rastertheque.processing.RenderingHints.Key;
-import de.rooehler.rastertheque.processing.ResizeOp;
+import de.rooehler.rastertheque.processing.ops.RenderOp;
+import de.rooehler.rastertheque.processing.ops.ResampleOp;
 import de.rooehler.rastertheque.processing.rendering.OpenCVRenderer;
 /**
  * A Renderer of gdal data for Mapsforge
@@ -292,15 +292,15 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         
         	HashMap<Key,Object> resizeParams = new HashMap<>();
 
-			resizeParams.put(ResizeOp.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
+			resizeParams.put(ResampleOp.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
 
-			new ResizeOp().resize(raster, resizeParams, null, null);
+			ResampleOp.resample(raster, resizeParams, null, null);
 			
-			return new RenderOp().render(raster, renderParams, null, null);
+			return RenderOp.render(raster, renderParams, null, null);
 
         }else{
         	
-        	return new RenderOp().render(raster, renderParams, null, null);
+        	return RenderOp.render(raster, renderParams, null, null);
         }
 	}
 

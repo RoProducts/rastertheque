@@ -77,7 +77,7 @@ public class TestIO extends android.test.AndroidTestCase {
         
         final Renderer renderer = new MRenderer(GRAY_50M_BYTE, false);
         
-        final int[] pixels  = renderer.render(raster);
+        final int[] pixels  = renderer.render(raster, null, null, null);
         
         assertNotNull(pixels);
         

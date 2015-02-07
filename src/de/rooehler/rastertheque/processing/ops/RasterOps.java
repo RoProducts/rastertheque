@@ -1,4 +1,4 @@
-package de.rooehler.rastertheque.processing;
+package de.rooehler.rastertheque.processing.ops;
 
 import java.util.ArrayList;
 import java.util.Iterator;

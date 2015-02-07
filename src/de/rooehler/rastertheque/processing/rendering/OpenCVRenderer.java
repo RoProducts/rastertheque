@@ -3,6 +3,7 @@ package de.rooehler.rastertheque.processing.rendering;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Map;
 
 import org.opencv.core.Core;
 import org.opencv.core.Core.MinMaxLocResult;
@@ -14,12 +15,26 @@ import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.core.util.ByteBufferReaderUtil;
+import de.rooehler.rastertheque.processing.ProgressListener;
 import de.rooehler.rastertheque.processing.Renderer;
+import de.rooehler.rastertheque.processing.RenderingHints;
+import de.rooehler.rastertheque.processing.RenderingHints.Key;
 
 public class OpenCVRenderer implements Renderer{
 
 	@Override
-	public int[] render(Raster raster) {
+	public int[] render(Raster raster, 
+			Map <Key,Object> params,
+			RenderingHints hints,
+			ProgressListener listener) {
+		
+		Object rendering = null;
+		if(hints != null && hints.containsKey(RenderingHints.KEY_SYMBOLIZATION)){
+			
+			rendering = params.get(RenderingHints.KEY_SYMBOLIZATION);
+		}
+		
+		//TODO apply rendering object
 		
 		final Mat srcMat = matAccordingToDatatype(
 				raster.getBands().get(0).datatype(),

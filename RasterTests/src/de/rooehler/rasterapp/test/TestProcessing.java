@@ -11,10 +11,12 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
-import de.rooehler.rastertheque.processing.RasterOps;
-import de.rooehler.rastertheque.processing.Render;
+import de.rooehler.rastertheque.processing.Renderer;
+import de.rooehler.rastertheque.processing.Resampler;
 import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
-import de.rooehler.rastertheque.processing.Resize;
+import de.rooehler.rastertheque.processing.ops.RasterOps;
+import de.rooehler.rastertheque.processing.ops.RenderOp;
+import de.rooehler.rastertheque.processing.ops.ResampleOp;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
 import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
@@ -52,7 +54,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         final MRenderer renderer = new MRenderer(TestIO.GRAY_50M_BYTE, true);
         
-        final int[] pixels  = renderer.render(raster);
+        final int[] pixels  = renderer.render(raster, null, null, null);
         
         assertNotNull(pixels);
         
@@ -160,7 +162,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         final Raster raster = dataset.read(gdalResampleQuery);    
 		final MRenderer renderer = new MRenderer(TestIO.GRAY_50M_BYTE, true);
 		
-        final int[] gdalResampledPixels  = renderer.render(raster);
+        final int[] gdalResampledPixels  = renderer.render(raster, null, null, null);
         assertNotNull(gdalResampledPixels);
         Log.d(TestProcessing.class.getSimpleName(), "GDAL resampling took "+ (System.currentTimeMillis() - gdalNow)+" ms");
 
@@ -198,16 +200,19 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 	@SuppressWarnings("unchecked")
 	public void testProcessingDrivers(){
 		
-		ArrayList<Resize> resizers = (ArrayList<Resize>) RasterOps.getRasterOps("org/rastertheque/processing/raster/",Resize.class);
 		
-		ArrayList<Render> renderers = (ArrayList<Render>) RasterOps.getRasterOps("org/rastertheque/processing/raster/", Render.class);
+		//TODO what are we looking for here, other renderers / resamplers not  ?
 		
-		assertNotNull(resizers);
+		ArrayList<Resampler> resamplers = (ArrayList<Resampler>) RasterOps.getRasterOps("org/rastertheque/processing/raster/",Resampler.class);
+		
+		ArrayList<Renderer> renderers = (ArrayList<Renderer>) RasterOps.getRasterOps("org/rastertheque/processing/raster/", Renderer.class);
+		
+		assertNotNull(resamplers);
 		
 		assertNotNull(renderers);
 		
-		//there is currently one resampler impl
-		assertTrue(resizers.size() == 1);
+		//there are currently three resampler impl
+		assertTrue(resamplers.size() == 3);
 		
 		//there is one real and one test renderer impl
 		assertTrue(renderers.size() == 2);

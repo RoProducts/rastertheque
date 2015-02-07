@@ -26,9 +26,9 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.RenderOp;
 import de.rooehler.rastertheque.processing.RenderingHints.Key;
-import de.rooehler.rastertheque.processing.ResizeOp;
+import de.rooehler.rastertheque.processing.ops.RenderOp;
+import de.rooehler.rastertheque.processing.ops.ResampleOp;
 import de.rooehler.rastertheque.processing.rendering.MRenderer;
 import de.rooehler.rastertheque.util.Formulae;
 /**
@@ -283,19 +283,15 @@ public class GDALTileLayer extends TileLayer {
 			//new do rasterOp
 			HashMap<Key,Object> params = new HashMap<>();
 
-			params.put(ResizeOp.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
+			params.put(ResampleOp.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
 
-			new ResizeOp().resize(raster, params, null, null);
+			ResampleOp.resample(raster, params, null, null);
 
-			//			mResampler.resample(raster, new Envelope(0, targetWidth, 0, targetHeight), ResampleMethod.BILINEAR ,null);	
-			return new RenderOp().render(raster, renderParams, null, null);
-
-			//			return mRenderer.render(raster);
+			return RenderOp.render(raster, renderParams, null, null);
 
 		}else{
 			
-			return new RenderOp().render(raster, renderParams, null, null);
-//			return mRenderer.render(raster);
+			return RenderOp.render(raster, renderParams, null, null);
 		}
 	}
 

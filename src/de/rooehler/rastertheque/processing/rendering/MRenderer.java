@@ -4,22 +4,25 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteOrder;
+import java.util.Map;
 
 import android.util.Log;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.core.util.ByteBufferReaderUtil;
+import de.rooehler.rastertheque.processing.ProgressListener;
 import de.rooehler.rastertheque.processing.Renderer;
+import de.rooehler.rastertheque.processing.RenderingHints;
+import de.rooehler.rastertheque.processing.RenderingHints.Key;
+import de.rooehler.rastertheque.processing.ops.RenderOp;
 
 public class MRenderer implements Renderer{
 	
 	private final static String TAG = MRenderer.class.getSimpleName();
 	
 	private ColorMap mColorMap;
-	
-	private boolean mHasRGBBands = false;
-	
+		
 	private boolean mUseColorMap;
 	
 	public MRenderer(final String pFilePath, final boolean useColorMapIfAvailable){
@@ -39,11 +42,6 @@ public class MRenderer implements Renderer{
 		
 	}
 	
-	public void useRGBBands(boolean hasRgbBands){
-		
-		this.mHasRGBBands = hasRgbBands;
-	}
-	
 	/**
 	 * render the data contained in @param buffer
 	 * Currently this will, depending on the data
@@ -56,11 +54,26 @@ public class MRenderer implements Renderer{
 	 * @param raster, containing the data to render
 	 */
 	@Override
-	public int[] render(final Raster raster) {
+	public int[] render(final Raster raster,
+			Map <Key,Object> params,
+			RenderingHints hints,
+			ProgressListener listener) {
+		
+		Object rendering = null;
+		if(hints != null && hints.containsKey(RenderingHints.KEY_SYMBOLIZATION)){
+			
+			rendering = params.get(RenderingHints.KEY_SYMBOLIZATION);
+		}
+		
+		boolean rgbBands = false;
+		
+		if(params != null && params.containsKey(RenderOp.KEY_RGB_BANDS)){
+			rgbBands = (boolean) params.get(RenderOp.KEY_RGB_BANDS);
+		}
 		
 		int[] pixels = null;
 		
-		if(mHasRGBBands){
+		if(rgbBands){
 			pixels = rgbBands(raster);
 		}else if(hasColorMap() && mUseColorMap){
 			pixels = colormap(raster);
