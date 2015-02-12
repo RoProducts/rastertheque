@@ -168,4 +168,9 @@ public class MAmplitudeRescaler implements RasterOp, Serializable {
 		result[1] = max;
 	}
 
+	@Override
+	public Priority getPriority() {
+	
+		return Priority.NORMAL;
+	}
 }

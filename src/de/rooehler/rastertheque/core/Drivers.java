@@ -11,6 +11,12 @@ public class Drivers {
 
 	private final static String PATH_TO_DRIVERS = "org/rastertheque/io/driver/";
 	
+	private static ArrayList<Driver> drivers;
+	
+	static{
+		drivers = getDrivers(PATH_TO_DRIVERS);
+	}
+	
 	/**
 	 * opens a dataset by
 	 * 1.if a driver is provided in the hints using it
@@ -28,8 +34,6 @@ public class Drivers {
 				return driver.open(filePath);
 			}
 		}
-		
-		ArrayList<Driver> drivers = getDrivers(PATH_TO_DRIVERS);
 		
 		for(Driver driver : drivers){
 			if(driver.canOpen(filePath)){

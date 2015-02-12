@@ -2,6 +2,7 @@ package de.rooehler.rasterapp.test;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -216,8 +217,20 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 	@SuppressWarnings("unchecked")
 	public void testRasterOpServices(){
 		
-		
-		ArrayList<RasterOp> ops = (ArrayList<RasterOp>) RasterOps.getRasterOps("org/rastertheque/processing/raster/",RasterOp.class);
+		//the getRasterOps method is private - it needs to reflection to test it
+		Method method = null;
+		try {
+			method = RasterOps.class.getDeclaredMethod("getRasterOps", String.class, Class.class);
+		} catch (Exception e) {
+			Log.e(TestProcessing.class.getSimpleName(),"exception getting getRasterOps() ");
+		}
+		method.setAccessible(true);
+		ArrayList<RasterOp> ops = null;
+		try {
+			ops = (ArrayList<RasterOp>) method.invoke(RasterOps.class.newInstance(), "org/rastertheque/processing/raster/",RasterOp.class);
+		} catch (Exception e) {
+			Log.e(TestProcessing.class.getSimpleName(),"exception invoking : " + method.getName());
+		}
 		
 		assertNotNull(ops);
 		

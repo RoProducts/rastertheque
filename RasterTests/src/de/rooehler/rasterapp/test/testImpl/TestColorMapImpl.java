@@ -20,7 +20,14 @@ public class TestColorMapImpl implements RasterOp {
 	@Override
 	public String getOperationName() {
 		
-		return "render";
+		return  "test";
 	}
+	
+	@Override
+	public Priority getPriority() {
+		
+		return Priority.LOW;
+	}
+	
 
 }

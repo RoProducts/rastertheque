@@ -266,7 +266,7 @@ public class MapBoxSampleActivity extends Activity {
 
 		mCurrentLayer = new GDALTileLayer(new File(filePath), (GDALDataset) dataset);
 
-		Log.e(TAG, "setting zoom for new file to "+ (((GDALTileLayer) mCurrentLayer).getStartZoomLevel()));
+		Log.d(TAG, "setting zoom for new file to "+ (((GDALTileLayer) mCurrentLayer).getStartZoomLevel()));
 		mv.setZoom(((GDALTileLayer) mCurrentLayer).getStartZoomLevel());
 		mv.setCenter(mCurrentLayer.getCenterCoordinate());
 		

@@ -69,6 +69,8 @@ public class MResampler implements RasterOp {
 
 			for(int h = 0; h < raster.getBands().size(); h++){
 				final int dataSize = raster.getBands().get(h).datatype().size();
+				final int bandIndex = h * srcHeight * srcWidth;
+				
 				for (int i = 0; i < dstHeight; i++) {
 					for (int j = 0; j < dstWidth; j++) {
 
@@ -90,7 +92,7 @@ public class MResampler implements RasterOp {
 							current += onePercent;
 						}
 						
-						reader.seekToOffset(index * dataSize);
+						reader.seekToOffset(index * dataSize + bandIndex);
 
 						final int nearestX = (int) Math.rint(x + x_diff);
 						final int nearestY = (int) Math.rint(y + y_diff);
@@ -910,6 +912,12 @@ public class MResampler implements RasterOp {
 		
 		return RasterOps.RESIZE;
 		
+	}
+	
+	@Override
+	public Priority getPriority() {
+		
+		return Priority.NORMAL;
 	}
 	
 }

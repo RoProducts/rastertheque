@@ -18,11 +18,6 @@ public class MColorMap implements RasterOp, Serializable{
 
 	private static final long serialVersionUID = 1L;
 
-	@Override
-	public String getOperationName() {
-		
-		return RasterOps.COLORMAP;
-	}
 	
 	/**
 	 * generates an array of colored pixels for a buffer of raster pixels according to a priorly loaded ColorMap
@@ -62,5 +57,19 @@ public class MColorMap implements RasterOp, Serializable{
 		
 		raster.setData(buffer);
 		
+	}
+	
+
+	@Override
+	public String getOperationName() {
+		
+		return RasterOps.COLORMAP;
+	}
+	
+	
+	@Override
+	public Priority getPriority() {
+	
+		return Priority.HIGHEST;
 	}
 }

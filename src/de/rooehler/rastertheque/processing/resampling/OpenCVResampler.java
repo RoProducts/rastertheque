@@ -79,21 +79,18 @@ public class OpenCVResampler implements RasterOp, Serializable {
 			i = Imgproc.INTER_CUBIC;
 			break;
 		}	
-//		long now = System.currentTimeMillis();
-		
+
 		final Mat srcMat = matAccordingToDatatype(
 					raster.getBands().get(0).datatype(),
 					raster.getData(),
 					(int) raster.getBoundingBox().getWidth(),
-					(int) raster.getBoundingBox().getHeight());
-
-//		Log.d(OpenCVResampler.class.getSimpleName(), "creating mat took : "+(System.currentTimeMillis() - now));
+					(int) raster.getBoundingBox().getHeight(),
+					raster.getBands().size());
 
 		Mat dstMat = new Mat();
 		
 		Imgproc.resize(srcMat, dstMat, new Size(dstWidth, dstHeight), 0, 0, i);
-//		Log.d(OpenCVResampler.class.getSimpleName(), "resizing  took : "+(System.currentTimeMillis() - now));
-		
+	
 		final int bufferSize = dstWidth * dstHeight * raster.getBands().size() * raster.getBands().get(0).datatype().size();
 		
 		raster.setDimension(dstDimension);
@@ -102,14 +99,19 @@ public class OpenCVResampler implements RasterOp, Serializable {
 				dstMat,
 				raster.getBands().get(0).datatype(),
 				bufferSize));
-//		Log.d(OpenCVResampler.class.getSimpleName(), "reconverting to bytes took : "+(System.currentTimeMillis() - now));
-		
+
 	}
 	
 	@Override
 	public String getOperationName() {
 		
 		return RasterOps.RESIZE;
+	}
+	
+	@Override
+	public Priority getPriority() {
+		
+		return Priority.HIGHEST;
 	}
 
 	
@@ -123,14 +125,14 @@ public class OpenCVResampler implements RasterOp, Serializable {
 	 * @return the Mat object containing the data in the given format
 	 * @throws IOException
 	 */
-	public Mat matAccordingToDatatype(DataType type, final ByteBuffer buffer, final int width, final int height) {
+	public Mat matAccordingToDatatype(DataType type, final ByteBuffer buffer, final int width, final int height, final int bandCount) {
 		
 		//dataypes -> http://answers.opencv.org/question/5/how-to-get-and-modify-the-pixel-of-mat-in-java/
 		
 		switch(type){
 		case BYTE:
 			
-			Mat byteMat = new Mat(height, width, CvType.CV_8U);
+			Mat byteMat = new Mat(height, width, CvType.CV_8UC(bandCount));
 			byteMat.put(0, 0, buffer.array());
 			//for direct bytebuffer
 //			byteMat.put(0, 0, Arrays.copyOfRange(buffer.array(),0, width * height));

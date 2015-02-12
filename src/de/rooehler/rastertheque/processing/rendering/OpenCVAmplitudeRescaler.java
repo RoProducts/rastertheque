@@ -188,5 +188,11 @@ public class OpenCVAmplitudeRescaler implements RasterOp, Serializable{
 		
 		return RasterOps.AMPLITUDE_RESCALING;
 	}
+	
+	@Override
+	public Priority getPriority() {
+	
+		return Priority.HIGH;
+	}
 
 }

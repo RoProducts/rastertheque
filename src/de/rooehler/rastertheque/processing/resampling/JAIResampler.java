@@ -83,6 +83,7 @@ public class JAIResampler implements RasterOp {
 		for(int h = 0; h <raster.getBands().size(); h++){
 			
 			final int dataSize = raster.getBands().get(h).datatype().size();
+			final int bandIndex = h * srcHeight * srcWidth;
 			
 			for (int i = 0; i < dstHeight; i++) {
 				for (int j = 0; j < dstWidth; j++) {
@@ -104,7 +105,7 @@ public class JAIResampler implements RasterOp {
 						current += onePercent;
 					}
 					
-					reader.seekToOffset(index * dataSize);
+					reader.seekToOffset(index * dataSize + bandIndex);
 					
 					try{
 
@@ -309,6 +310,12 @@ public class JAIResampler implements RasterOp {
 	public String getOperationName() {
 		
 		return RasterOps.RESIZE;
+	}
+	
+	@Override
+	public Priority getPriority() {
+	
+		return Priority.HIGH;
 	}
 
 }

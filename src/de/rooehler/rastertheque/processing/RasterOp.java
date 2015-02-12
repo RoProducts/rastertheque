@@ -12,6 +12,16 @@ import de.rooehler.rastertheque.util.ProgressListener;
 
 public interface RasterOp {
 	
+	
+	enum Priority{
+		LOW,
+		NORMAL,
+		HIGH,
+		HIGHEST
+	}
+	
+	Priority getPriority();
+	
 	String getOperationName();
 
 	void execute(Raster raster, Map <Key,Serializable> params, Hints hints, ProgressListener listener);
