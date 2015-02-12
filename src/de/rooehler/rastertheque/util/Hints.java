@@ -1,28 +1,4 @@
-/*
- * Copyright (c) 1998, 2006, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- */
-package de.rooehler.rastertheque.processing;
+package de.rooehler.rastertheque.util;
 
 import java.lang.ref.WeakReference;
 import java.util.Collection;
@@ -31,168 +7,106 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import com.vividsolutions.jts.geom.Envelope;
+
+import de.rooehler.rastertheque.core.Driver;
+import de.rooehler.rastertheque.processing.Interpolation;
+import de.rooehler.rastertheque.processing.RasterOp;
+import de.rooehler.rastertheque.processing.RasterOps;
+
 /**
- * The {@code RenderingHints} class defines and manages collections of
+ * The {@code Hints} class defines and manages collections of
  * keys and associated values which allow an application to provide input
  * into the choice of algorithms used by other classes which perform
  * rendering and image manipulation services.
  * 
- * This is an extract of the original RenderingHints class
- * 
- * java.awt.RenderingHints
- * 
  */
 
-public class RenderingHints implements Map<Object,Object>, Cloneable{
+public class Hints implements Map<Object,Object>, Cloneable{
 
+	/***KEYS IDs*****/
 
-	private static final int INT_KEY_INTERPOLATION = 5;
-
-	private static final int VAL_INTERPOLATION_NEAREST_NEIGHBOR = 0;
-
-	private static final int VAL_INTERPOLATION_BILINEAR = 1;
-
-	private static final int VAL_INTERPOLATION_BICUBIC = 2;
-
-	private static final int INT_KEY_SYMBOLIZATION = 8;
+	private static final int INT_KEY_INTERPOLATION = 1001;
 	
-	private static final int VAL_COLORMAP = 12;
+	private static final int INT_KEY_DRIVER = 1002;
 	
-	private static final int VAL_AMPLITUDE_RESCALING = 13;
+	private static final int INT_KEY_COLORMAP = 1003;
 	
+	private static final int INT_KEY_AMPLITUDE_RESCALING = 1004;
 	
-	/**
-	 * Interpolation hint key.
-	 * The {@code INTERPOLATION} hint controls how image pixels are
-	 * filtered or resampled during an image rendering operation.
-	 * <p>
-	 * Implicitly images are defined to provide color samples at
-	 * integer coordinate locations.
-	 * When images are rendered upright with no scaling onto a
-	 * destination, the choice of which image pixels map to which
-	 * device pixels is obvious and the samples at the integer
-	 * coordinate locations in the image are transfered to the
-	 * pixels at the corresponding integer locations on the device
-	 * pixel grid one for one.
-	 * When images are rendered in a scaled, rotated, or otherwise
-	 * transformed coordinate system, then the mapping of device
-	 * pixel coordinates back to the image can raise the question
-	 * of what color sample to use for the continuous coordinates
-	 * that lie between the integer locations of the provided image
-	 * samples.
-	 * Interpolation algorithms define functions which provide a
-	 * color sample for any continuous coordinate in an image based
-	 * on the color samples at the surrounding integer coordinates.
-	 * <p>
-	 * The allowable values for this hint are
-	 * <ul>
-	 * <li>{@link #VALUE_INTERPOLATION_NEAREST_NEIGHBOR}
-	 * <li>{@link #VALUE_INTERPOLATION_BILINEAR}
-	 * <li>{@link #VALUE_INTERPOLATION_BICUBIC}
-	 * </ul>
-	 */
-	public static final Key KEY_INTERPOLATION = new RenderingHints.Key(INT_KEY_INTERPOLATION){
+	private static final int INT_KEY_RGB_BANDS = 1005;	
+	
+	private static final int INT_KEY_SIZE = 1006;	
+	
+	private static final int INT_KEY_RESAMPLER = 1007;	
+	
+
+	
+	/*****KEYS*****/
+
+	public static final Key KEY_INTERPOLATION = new Hints.Key(INT_KEY_INTERPOLATION){
 		
 		@Override
 		public boolean isCompatibleValue(Object val) {
-			return val.equals(VALUE_INTERPOLATION_BICUBIC) ||
-					val.equals(VALUE_INTERPOLATION_BILINEAR) ||
-					val.equals(VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+			return val != null && val instanceof Interpolation;
 		}
 		
 	};
 	
-	public static final Key KEY_SYMBOLIZATION = new RenderingHints.Key(INT_KEY_SYMBOLIZATION){
-
+	public static final Key KEY_DRIVER = new Hints.Key(INT_KEY_DRIVER){
+		
 		@Override
 		public boolean isCompatibleValue(Object val) {
-			 return val.equals(VALUE_AMPLITUDE_RESCALING) ||
-					val.equals(VALUE_COLORMAP);
+			return val instanceof Driver;
+		}
+	};
+	
+	
+	public static final Key KEY_RGB_BANDS = new Hints.Key(INT_KEY_RGB_BANDS){
+		
+		@Override
+		public boolean isCompatibleValue(Object val) {
+			return val != null && val instanceof Boolean;
+		}
+		
+	};
+	
+	public static final Key KEY_SIZE = new Hints.Key(INT_KEY_SIZE){
+		
+		@Override
+		public boolean isCompatibleValue(Object val) {
+			return val != null && val instanceof Envelope;
+		}
+		
+	};
+	
+	public static final Key KEY_RESAMPLER = new Hints.Key(INT_KEY_RESAMPLER){
+		
+		@Override
+		public boolean isCompatibleValue(Object val) {
+			return val instanceof RasterOp && ((RasterOp) val).getOperationName().equals(RasterOps.RESIZE);
+		}
+		
+	};
+	
+	public static final Key KEY_COLORMAP = new Hints.Key(INT_KEY_COLORMAP){
+		
+		@Override
+		public boolean isCompatibleValue(Object val) {
+			return val instanceof RasterOp && ((RasterOp) val).getOperationName().equals(RasterOps.COLORMAP);
+		}
+		
+	};
+	public static final Key KEY_AMPLITUDE_RESCALING = new Hints.Key(INT_KEY_AMPLITUDE_RESCALING){
+		
+		@Override
+		public boolean isCompatibleValue(Object val) {
+			return val instanceof RasterOp && ((RasterOp) val).getOperationName().equals(RasterOps.AMPLITUDE_RESCALING);
 		}
 		
 	};
 
-
-	/**
-	 * Interpolation hint value -- the color sample of the nearest
-	 * neighboring integer coordinate sample in the image is used.
-	 * Conceptually the image is viewed as a grid of unit-sized
-	 * square regions of color centered around the center of each
-	 * image pixel.
-	 * <p>
-	 * As the image is scaled up, it will look correspondingly blocky.
-	 * As the image is scaled down, the colors for source pixels will
-	 * be either used unmodified, or skipped entirely in the output
-	 * representation.
-	 *
-	 */
-	public static final Object VALUE_INTERPOLATION_NEAREST_NEIGHBOR =
-			VAL_INTERPOLATION_NEAREST_NEIGHBOR;
-
-	/**
-	 * Interpolation hint value -- the color samples of the 4 nearest
-	 * neighboring integer coordinate samples in the image are
-	 * interpolated linearly to produce a color sample.
-	 * Conceptually the image is viewed as a set of infinitely small
-	 * point color samples which have value only at the centers of
-	 * integer coordinate pixels and the space between those pixel
-	 * centers is filled with linear ramps of colors that connect
-	 * adjacent discrete samples in a straight line.
-	 * <p>
-	 * As the image is scaled up, there are no blocky edges between
-	 * the colors in the image as there are with
-	 * {@link #VALUE_INTERPOLATION_NEAREST_NEIGHBOR NEAREST_NEIGHBOR},
-	 * but the blending may show some subtle discontinuities along the
-	 * horizontal and vertical edges that line up with the samples
-	 * caused by a sudden change in the slope of the interpolation
-	 * from one side of a sample to the other.
-	 * As the image is scaled down, more image pixels have their
-	 * color samples represented in the resulting output since each
-	 * output pixel recieves color information from up to 4 image
-	 * pixels.
-	 *
-	 */
-	public static final Object VALUE_INTERPOLATION_BILINEAR =
-			VAL_INTERPOLATION_BILINEAR;
-
-	/**
-	 * Interpolation hint value -- the color samples of 9 nearby
-	 * integer coordinate samples in the image are interpolated using
-	 * a cubic function in both {@code X} and {@code Y} to produce
-	 * a color sample.
-	 * Conceptually the view of the image is very similar to the view
-	 * used in the {@link #VALUE_INTERPOLATION_BILINEAR BILINEAR}
-	 * algorithm except that the ramps of colors that connect between
-	 * the samples are curved and have better continuity of slope
-	 * as they cross over between sample boundaries.
-	 * <p>
-	 * As the image is scaled up, there are no blocky edges and the
-	 * interpolation should appear smoother and with better depictions
-	 * of any edges in the original image than with {@code BILINEAR}.
-	 * As the image is scaled down, even more of the original color
-	 * samples from the original image will have their color information
-	 * carried through and represented.
-	 *
-	 */
-	public static final Object VALUE_INTERPOLATION_BICUBIC =
-			VAL_INTERPOLATION_BICUBIC;
 	
-	/**
-	 * Symbolization hint value -- the raster data values are analyzed
-	 * of their min / max value and amplitude rescaling is applied
-	 * i.e. minimum value will get black pixels, maximum values white pixels
-	 * values inbetween are linearly interpolated
-	 *
-	 */
-	public static final Object VALUE_AMPLITUDE_RESCALING =	VAL_AMPLITUDE_RESCALING;
-	
-	/**
-	 * Symbolization hint value -- the raster data is symbolized
-	 * using a provided colormap and according to the properties
-	 * set within in
-	 *
-	 */
-	public static final Object VALUE_COLORMAP =	VAL_COLORMAP;
 
 	HashMap hintmap = new HashMap(7);
 
@@ -202,7 +116,7 @@ public class RenderingHints implements Map<Object,Object>, Cloneable{
 	 * @param init a map of key/value pairs to initialize the hints
 	 *          or null if the object should be empty
 	 */
-	public RenderingHints(Map<Key,?> init) {
+	public Hints(Map<Key,?> init) {
 		if (init != null) {
 			hintmap.putAll(init);
 		}
@@ -214,7 +128,7 @@ public class RenderingHints implements Map<Object,Object>, Cloneable{
 	 * @param value the value of the hint property specified with
 	 * <code>key</code>
 	 */
-	public RenderingHints(Key key, Object value) {
+	public Hints(Key key, Object value) {
 		hintmap.put(key, value);
 	}
 
@@ -398,7 +312,7 @@ public class RenderingHints implements Map<Object,Object>, Cloneable{
 	public void putAll(Map<?,?> m) {
 		// ## javac bug?
 		//if (m instanceof RenderingHints) {
-		if (RenderingHints.class.isInstance(m)) {
+		if (Hints.class.isInstance(m)) {
 			//hintmap.putAll(((RenderingHints) m).hintmap);
 			for (Map.Entry<?,?> entry : m.entrySet())
 				hintmap.put(entry.getKey(), entry.getValue());
@@ -446,7 +360,7 @@ public class RenderingHints implements Map<Object,Object>, Cloneable{
 
 	/**
 	 * Defines the base type of all keys used along with the
-	 * {@link RenderingHints} class to control various
+	 * {@link Hints} class to control various
 	 * algorithm choices in the rendering and imaging pipelines.
 	 * Instances of this class are immutable and unique which
 	 * means that tests for matches can be made using the

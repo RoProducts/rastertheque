@@ -5,7 +5,7 @@ import android.util.Log;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 
 public class MResampler {
 	

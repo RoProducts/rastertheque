@@ -2,7 +2,9 @@ package de.rooehler.rasterapp.test;
 
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteOrder;
+import java.util.HashMap;
 
 import android.util.Log;
 
@@ -13,11 +15,12 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
-import de.rooehler.rastertheque.processing.ProgressListener;
-import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
+import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
 import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.util.Hints;
+import de.rooehler.rastertheque.util.Hints.Key;
 
 
 /**
@@ -36,8 +39,6 @@ import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 public class RawResamplerTester extends android.test.ActivityTestCase {
 
 	public void testFloatRasterRawResampling() throws IOException {
-
-		final ResampleMethod method = ResampleMethod.BILINEAR;
 		
 		final int threshold = 2;
 		
@@ -60,6 +61,12 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		final int origSize = (int) (env.getWidth() * env.getHeight());
 		final int targetSize = (int) (targetEnv.getWidth() * targetEnv.getHeight());
+		
+		HashMap<Key,Serializable> resizeParams = new HashMap<>();
+
+		resizeParams.put(Hints.KEY_SIZE, targetEnv);
+			
+		resizeParams.put(Hints.KEY_INTERPOLATION, ResampleMethod.BILINEAR);
 
 		////////////////OpenCV Raw resampler /////////////////
 		final Raster raster = dataset.read(query);
@@ -74,9 +81,9 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		long now = System.currentTimeMillis();
 
-		Resampler openCVResampler = new OpenCVResampler();
+		RasterOp openCVResampler = new OpenCVResampler();
 
-		openCVResampler.resample(raster, targetEnv, method, null);
+		openCVResampler.execute(raster, resizeParams, null, null);
 
 		final byte[] resampled = raster.getData().array().clone();
 
@@ -100,9 +107,9 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		long now2 = System.currentTimeMillis();
 
-		Resampler mResampler = new MResampler();
+		RasterOp mResampler = new MResampler();
 
-		mResampler.resample(raster2, targetEnv, method, null);
+		mResampler.execute(raster2, resizeParams, null, null);
 
 		final byte[] resampled2 = raster2.getData().array().clone();
 
@@ -127,9 +134,9 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 //
 //		long now3 = System.currentTimeMillis();
 //
-//		Resampler jaiResampler = new JAIResampler();
+//		RasterOp jaiResampler = new JAIResampler();
 //
-//		jaiResampler.resample(raster3, targetEnv, method, null);
+//		jaiResampler.execute(raster3, resizeParams, null, null);
 //
 //		final byte[] resampled3 = raster3.getData().array().clone();
 //
@@ -161,8 +168,6 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 	public void testByteRasterResampling() {
 
 		GDALDriver driver = new GDALDriver();
-
-		final ResampleMethod method = ResampleMethod.BILINEAR;
 		
 		final int threshold = 2;
 		
@@ -191,11 +196,17 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 			final int origSize = (int) (env.getWidth() * env.getHeight());
 			final int targetSize = (int) (targetEnv.getWidth() * targetEnv.getHeight());
 			
+			HashMap<Key,Serializable> resizeParams = new HashMap<>();
+
+			resizeParams.put(Hints.KEY_SIZE, targetEnv);
+				
+			resizeParams.put(Hints.KEY_INTERPOLATION, ResampleMethod.BILINEAR);
+			
 			////////////////OpenCV Raw resampler /////////////////
 			
-			Resampler rawResampler = new OpenCVResampler();
+			RasterOp rawResampler = new OpenCVResampler();
 
-			rawResampler.resample(raster, targetEnv, method, null);
+			rawResampler.execute(raster, resizeParams, null, null);
 
 			byte first = raster.getData().array()[0];
 			byte last = raster.getData().array()[targetSize - 1];
@@ -215,9 +226,9 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 //			
 //			long now2 = System.currentTimeMillis();
 //			
-//			Resampler mResampler = new MResampler();
+//			RasterOp mResampler = new MResampler();
 //
-//			mResampler.resample(raster2, targetEnv, method, null);
+//			mResampler.execute(raster2, resizeParams, null, null);
 //
 //			byte first2 = raster2.getData().array()[0];
 //			byte last2 = raster2.getData().array()[targetSize - 1];
@@ -237,9 +248,9 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 //			
 //			long now3 = System.currentTimeMillis();
 //			
-//			Resampler jaiResampler = new JAIResampler();
+//			RasterOp jaiResampler = new JAIResampler();
 //			
-//			jaiResampler.resample(raster3, targetEnv, method, null);
+//			jaiResampler.execute(raster3, resizeParams, null, null);
 //			
 //			byte first3 = raster3.getData().array()[0];
 //			byte last3 = raster3.getData().array()[targetSize - 1];

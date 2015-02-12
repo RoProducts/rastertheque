@@ -1,0 +1,6 @@
+de.rooehler.rastertheque.processing.rendering.MAmplitudeRescaler
+de.rooehler.rastertheque.processing.rendering.MColorMap
+de.rooehler.rastertheque.processing.rendering.OpenCVAmplitudeRescaler
+de.rooehler.rastertheque.processing.resampling.JAIResampler
+de.rooehler.rastertheque.processing.resampling.MResampler
+de.rooehler.rastertheque.processing.resampling.OpenCVResampler

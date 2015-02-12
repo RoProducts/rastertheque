@@ -6,9 +6,9 @@ import org.gdal.gdal.gdal;
 
 import android.util.Log;
 import de.rooehler.rastertheque.core.Driver;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 
-public class GDALDriver implements Driver<GDALDataset> {
+public class GDALDriver implements Driver {
 	
 	private static final String TAG = GDALDriver.class.getSimpleName();
 	
@@ -74,7 +74,7 @@ public class GDALDriver implements Driver<GDALDataset> {
 
 			Log.d(TAG, filePath.substring(filePath.lastIndexOf("/") + 1) +" successfully opened");
 			
-			return new GDALDataset(ResampleMethod.BILINEAR, filePath, dataset, this);
+			return new GDALDataset(filePath, dataset, this);
 		}
 	}
 

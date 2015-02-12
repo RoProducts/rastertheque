@@ -32,12 +32,9 @@ import de.rooehler.mapboxrenderer.fileselection.FilePickerDialog;
 import de.rooehler.mapboxrenderer.fileselection.FilePickerDialog.FilePathPickCallback;
 import de.rooehler.mapboxrenderer.fileselection.SupportedType;
 import de.rooehler.mapboxrenderer.renderer.GDALTileLayer;
+import de.rooehler.rastertheque.core.Dataset;
+import de.rooehler.rastertheque.core.Drivers;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.io.gdal.GDALDriver;
-import de.rooehler.rastertheque.processing.Renderer;
-import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.rendering.MRenderer;
-import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 
 
 
@@ -234,40 +231,40 @@ public class MapBoxSampleActivity extends Activity {
 
 	private void replaceWithGDAL(final String filePath) {
 
-		final GDALDriver driver = new GDALDriver();
 		
-		GDALDataset dataset = null;
+		Dataset dataset = null;
 		try{ //try to open the file and check if it is valid (has a projection and a bounding box)
-			if(driver.canOpen(filePath)){
-				
-				dataset = driver.open(filePath);
-		        
-		        if(dataset.getCRS() == null){      	
-		        	AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
-		        	dataset.close();
-		        	return;
-		        }
-		        if(dataset.getBoundingBox() == null){
-		        	AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
-		        	dataset.close();
-		        	return;
-		        }
-		        //this dataset is okay, close any earlier opened
-				if(mCurrentLayer != null && mCurrentLayer instanceof GDALTileLayer){
-					((GDALTileLayer) mCurrentLayer).close();
-				}
-			}else{
-				Log.w(TAG, "cannot open file "+filePath);
-				AlertFactory.showErrorAlert(this, "No Driver", "No Driver could open the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
-				return;
-			}
+			dataset = Drivers.open(filePath, null);
+			
 		}catch(IOException e){
 			Log.e(TAG, "error opening file "+filePath);
 			AlertFactory.showErrorAlert(this, "Error", "There was an error opening the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
 			return;
 		}
-		
-		mCurrentLayer = new GDALTileLayer(new File(filePath), dataset);
+
+		if(dataset != null){
+
+			if(dataset.getCRS() == null){      	
+				AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+				dataset.close();
+				return;
+			}
+			if(dataset.getBoundingBox() == null){
+				AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+				dataset.close();
+				return;
+			}
+			//this dataset is okay, close any earlier opened
+			if(mCurrentLayer != null && mCurrentLayer instanceof GDALTileLayer){
+				((GDALTileLayer) mCurrentLayer).close();
+			}
+		}else {
+			Log.w(TAG, "cannot open file "+filePath);
+			AlertFactory.showErrorAlert(this, "No Driver", "No Driver could open the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
+			return;
+		}
+
+		mCurrentLayer = new GDALTileLayer(new File(filePath), (GDALDataset) dataset);
 
 		Log.e(TAG, "setting zoom for new file to "+ (((GDALTileLayer) mCurrentLayer).getStartZoomLevel()));
 		mv.setZoom(((GDALTileLayer) mCurrentLayer).getStartZoomLevel());

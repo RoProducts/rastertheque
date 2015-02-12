@@ -55,14 +55,9 @@ import de.rooehler.mapsforgerenderer.rasterrenderer.gdal.GDALMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.rasterrenderer.mbtiles.MBTilesMapsforgeRenderer;
 import de.rooehler.mapsforgerenderer.util.SupportedType;
 import de.rooehler.rastertheque.core.Dataset;
+import de.rooehler.rastertheque.core.Drivers;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
-import de.rooehler.rastertheque.io.mbtiles.MBTilesDriver;
-import de.rooehler.rastertheque.processing.Renderer;
-import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.rendering.MRenderer;
-import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 import de.rooehler.rastertheque.proj.Proj;
 
 
@@ -248,72 +243,68 @@ public class MainActivity extends Activity implements IWorkStatus{
 			break;
 		case MBTILES:
 
-			final MBTilesDriver mbtdriver = new MBTilesDriver();
-			if(!mbtdriver.canOpen(filePath)){
-				Log.e(TAG, "cannot open "+ filePath+" with MBTiles driver");
-				return;
-			}
-			
-			try {
-				final MBTilesDataset mbTilesDataset = mbtdriver.open(filePath);
-				
-				final Coordinate coord = mbTilesDataset.getBoundingBox().centre();
-				LatLong loc = new LatLong(coord.y, coord.x);
-				int[] zoomMinMax = mbTilesDataset.getMinMaxZoom(); 
-				byte zoom = zoomMinMax == null ? (byte) 8 : (byte) zoomMinMax[0];
-				final MapPosition mbtmp = new MapPosition(loc, zoom);
-				final MapViewPosition mbtmvp = mapView.getModel().mapViewPosition;		
-				mbtmvp.setMapPosition(mbtmp);
-
-				MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, mbTilesDataset);
-				Layer mbTilesLayer = new RasterLayer(getBaseContext(), tileCache, mbtmvp, false, AndroidGraphicFactory.INSTANCE, mbTilesRenderer, this);
-				Log.d(TAG, "setting max to "+zoomMinMax[1]+ " min to "+ zoomMinMax[0]);
-				mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
-				mapView.getModel().mapViewPosition.setZoomLevelMax((byte) zoomMinMax[1]);
-				mapView.getModel().mapViewPosition.setZoomLevelMin((byte) zoomMinMax[0]);
-				mapView.getMapScaleBar().setVisible(false);
-				
-			} catch (IOException e) {
-				Log.e(TAG, "error opening "+ filePath+" with MBTiles driver");
-			}
-			break;
-
-		case RASTER:
-						
-			GDALDriver driver = new GDALDriver();
-
+			Dataset mbtilesDataset = null;
 			try{
-				if(driver.canOpen(filePath)){
-					
-					final GDALDataset newDs = driver.open(filePath);
-			        
-			        if(newDs.getCRS() == null){      	
-			        	AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
-			        	newDs.close();
-			        	return;
-			        }
-			        if(newDs.getBoundingBox() == null){
-			        	AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
-			        	newDs.close();
-			        	return;
-			        }
-			       //this dataset is okay, close any earlier opened
-					if(ds != null){
-						ds.close();
-					}
-					
-			        ds = newDs;
-				}else{
-					Log.w(TAG, "cannot open file "+filePath);
-					AlertFactory.showErrorAlert(this, "No Driver", "No Driver could open the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
-					return;
-				}
+				mbtilesDataset = Drivers.open(filePath, null);
 			}catch(IOException e){
 				Log.e(TAG, "error opening file "+filePath);
 				AlertFactory.showErrorAlert(this, "Error", "There was an error opening the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
 				return;
 			}
+
+			final Coordinate coord = mbtilesDataset.getBoundingBox().centre();
+			LatLong loc = new LatLong(coord.y, coord.x);
+			int[] zoomMinMax = ((MBTilesDataset)mbtilesDataset).getMinMaxZoom(); 
+			byte zoom = zoomMinMax == null ? (byte) 8 : (byte) zoomMinMax[0];
+			final MapPosition mbtmp = new MapPosition(loc, zoom);
+			final MapViewPosition mbtmvp = mapView.getModel().mapViewPosition;		
+			mbtmvp.setMapPosition(mbtmp);
+
+			MBTilesMapsforgeRenderer mbTilesRenderer = new MBTilesMapsforgeRenderer( AndroidGraphicFactory.INSTANCE, ((MBTilesDataset)mbtilesDataset));
+			Layer mbTilesLayer = new RasterLayer(getBaseContext(), tileCache, mbtmvp, false, AndroidGraphicFactory.INSTANCE, mbTilesRenderer, this);
+			Log.d(TAG, "setting max to "+zoomMinMax[1]+ " min to "+ zoomMinMax[0]);
+			mapView.getLayerManager().getLayers().add(0, mbTilesLayer);
+			mapView.getModel().mapViewPosition.setZoomLevelMax((byte) zoomMinMax[1]);
+			mapView.getModel().mapViewPosition.setZoomLevelMin((byte) zoomMinMax[0]);
+			mapView.getMapScaleBar().setVisible(false);
+
+			break;
+
+		case RASTER:
 			
+			Dataset gdalDataset = null;
+			try{
+				gdalDataset = Drivers.open(filePath, null);
+			}catch(IOException e){
+				Log.e(TAG, "error opening file "+filePath);
+				AlertFactory.showErrorAlert(this, "Error", "There was an error opening the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
+				return;
+			}
+
+			if(gdalDataset != null){
+
+				if(gdalDataset.getCRS() == null){      	
+					AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+					gdalDataset.close();
+					return;
+				}
+				if(gdalDataset.getBoundingBox() == null){
+					AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+					gdalDataset.close();
+					return;
+				}
+				//this dataset is okay, close any earlier opened
+				if(ds != null){
+					ds.close();
+				}
+
+				ds = gdalDataset;
+			}else{
+				Log.w(TAG, "cannot open file "+filePath);
+				AlertFactory.showErrorAlert(this, "No Driver", "No Driver could open the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
+				return;
+			}
+
 			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE,((GDALDataset) ds));
 			//TODO refactor the initial zoom calculation
 			final int tileSize = mapView.getModel().displayModel.getTileSize();

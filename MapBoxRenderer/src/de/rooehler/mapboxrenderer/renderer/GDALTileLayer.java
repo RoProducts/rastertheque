@@ -1,6 +1,7 @@
 package de.rooehler.mapboxrenderer.renderer;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 
@@ -26,11 +27,12 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.RenderingHints.Key;
-import de.rooehler.rastertheque.processing.ops.RenderOp;
-import de.rooehler.rastertheque.processing.ops.ResampleOp;
-import de.rooehler.rastertheque.processing.rendering.MRenderer;
+import de.rooehler.rastertheque.processing.RasterOps;
+import de.rooehler.rastertheque.processing.rendering.MColorMap;
+import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 import de.rooehler.rastertheque.util.Formulae;
+import de.rooehler.rastertheque.util.Hints;
+import de.rooehler.rastertheque.util.Hints.Key;
 /**
  * A GDALTileLayer extends the Mapbox TileLayer to extract Tiles out of the
  * GDAL raster data
@@ -257,8 +259,6 @@ public class GDALTileLayer extends TileLayer {
      */
 	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
 		
-
-		
 		final RasterQuery query = new RasterQuery(
 				bounds,
 				mRasterDataset.getCRS(),
@@ -271,28 +271,31 @@ public class GDALTileLayer extends TileLayer {
 		synchronized(this){
 			raster = mRasterDataset.read(query);
 		}
-		
-		HashMap<Key,Object> renderParams = new HashMap<>();
-
-		renderParams.put(RenderOp.KEY_RENDERER, new MRenderer(mRasterDataset.getSource(), true));
-		renderParams.put(RenderOp.KEY_FILEPATH, mRasterDataset.getSource());
-		renderParams.put(RenderOp.KEY_RGB_BANDS, Boolean.valueOf(checkIfHasRGBBands()));	
 
 		if(resample){
 				
-			//new do rasterOp
-			HashMap<Key,Object> params = new HashMap<>();
+			HashMap<Key,Serializable> resampleParams = new HashMap<>();
 
-			params.put(ResampleOp.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
-
-			ResampleOp.resample(raster, params, null, null);
-
-			return RenderOp.render(raster, renderParams, null, null);
-
-		}else{
+			resampleParams.put(Hints.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
 			
-			return RenderOp.render(raster, renderParams, null, null);
+			resampleParams.put(Hints.KEY_RESAMPLER, new OpenCVResampler());
+
+			RasterOps.execute(raster, RasterOps.RESIZE, resampleParams, null, null);
+
 		}
+		
+		HashMap<Key,Serializable> renderParams = new HashMap<>();
+		
+		renderParams.put(Hints.KEY_COLORMAP, new MColorMap());
+		renderParams.put(Hints.KEY_RGB_BANDS, Boolean.valueOf(checkIfHasRGBBands()));	
+		
+		RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
+		
+        final int[] pixels  = new int[targetWidth * targetHeight];
+	    
+        raster.getData().asIntBuffer().get(pixels);
+		
+		return pixels;
 	}
 
 	

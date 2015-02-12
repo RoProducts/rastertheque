@@ -1,7 +1,9 @@
 package de.rooehler.rasterapp.test;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import android.util.Log;
 
@@ -11,16 +13,15 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
-import de.rooehler.rastertheque.processing.Renderer;
-import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
-import de.rooehler.rastertheque.processing.ops.RasterOps;
-import de.rooehler.rastertheque.processing.ops.RenderOp;
-import de.rooehler.rastertheque.processing.ops.ResampleOp;
-import de.rooehler.rastertheque.processing.rendering.MRenderer;
+import de.rooehler.rastertheque.processing.RasterOp;
+import de.rooehler.rastertheque.processing.RasterOps;
+import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
+import de.rooehler.rastertheque.processing.rendering.MColorMap;
 import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
 import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.util.Hints;
+import de.rooehler.rastertheque.util.Hints.Key;
 
 public class TestProcessing extends android.test.AndroidTestCase  {
 	
@@ -52,9 +53,13 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         final Raster raster = dataset.read(query);
         
-        final MRenderer renderer = new MRenderer(TestIO.GRAY_50M_BYTE, true);
+        final RasterOp renderer = new MColorMap();
         
-        final int[] pixels  = renderer.render(raster, null, null, null);
+        renderer.execute(raster, null, null, null);
+        
+        final int[] pixels = new int[(int) (env.getWidth() * env.getHeight())];
+	    
+        raster.getData().asIntBuffer().get(pixels);
         
         assertNotNull(pixels);
         
@@ -68,11 +73,17 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         final Envelope targetEnv = new Envelope(0, resampledSize, 0, resampledSize);
         
+        HashMap<Key,Serializable> resizeParams = new HashMap<>();
+        
+        resizeParams.put(Hints.KEY_SIZE, targetEnv);
+        
+    	resizeParams.put(Hints.KEY_INTERPOLATION, ResampleMethod.BILINEAR);
+        
         /////// MImp ///////
         
         long now = System.currentTimeMillis();
         
-        new MResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR, null);
+        new MResampler().execute(raster,resizeParams,null, null);
         
         Log.d(TestProcessing.class.getSimpleName(), "MInterpolation took "+ (System.currentTimeMillis() - now));
            
@@ -80,7 +91,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         now = System.currentTimeMillis();
         
-        new JAIResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR, null);
+        new JAIResampler().execute(raster,resizeParams, null, null);
         
         Log.d(TestProcessing.class.getSimpleName(), "JAI took "+ (System.currentTimeMillis() - now));
         
@@ -90,7 +101,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         now = System.currentTimeMillis();
         
-        new OpenCVResampler().resample(raster,targetEnv,ResampleMethod.BILINEAR, null);
+        new OpenCVResampler().execute(raster,resizeParams,null, null);
         
         Log.d(TestProcessing.class.getSimpleName(), "OpenCV took "+ (System.currentTimeMillis() - now));
         
@@ -160,9 +171,14 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         final long gdalNow = System.currentTimeMillis();
         
         final Raster raster = dataset.read(gdalResampleQuery);    
-		final MRenderer renderer = new MRenderer(TestIO.GRAY_50M_BYTE, true);
+		final RasterOp renderer = new MColorMap();
 		
-        final int[] gdalResampledPixels  = renderer.render(raster, null, null, null);
+        renderer.execute(raster, null, null, null);
+        
+        final int[] gdalResampledPixels  = new int[targetSize * targetSize];
+	    
+        raster.getData().asIntBuffer().get(gdalResampledPixels);
+        
         assertNotNull(gdalResampledPixels);
         Log.d(TestProcessing.class.getSimpleName(), "GDAL resampling took "+ (System.currentTimeMillis() - gdalNow)+" ms");
 
@@ -184,38 +200,30 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		
         Log.d(TestProcessing.class.getSimpleName(), "gdal read took "+ (System.currentTimeMillis() - manualNow)+" ms");
         
-        new MResampler().resample(
-        		manualRaster,
-        		new Envelope(0, targetSize, 0, targetSize),
-        		ResampleMethod.BILINEAR, 
-        		null);
+        HashMap<Key,Serializable> resizeParams = new HashMap<>();
+
+		resizeParams.put(Hints.KEY_SIZE, new Envelope(0, targetSize, 0, targetSize));
+		
+		resizeParams.put(Hints.KEY_INTERPOLATION, ResampleMethod.BILINEAR);
+		
+        new MResampler().execute(manualRaster,resizeParams,null,null);
         
         Log.d(TestProcessing.class.getSimpleName(), "manual resampling took "+ (System.currentTimeMillis() - manualNow)+" ms");
-        
-        
-        
+               
         return (int) (manualRaster.getDimension().getHeight() * manualRaster.getDimension().getWidth());
 	}
 	
 	@SuppressWarnings("unchecked")
-	public void testProcessingDrivers(){
+	public void testRasterOpServices(){
 		
 		
-		//TODO what are we looking for here, other renderers / resamplers not  ?
+		ArrayList<RasterOp> ops = (ArrayList<RasterOp>) RasterOps.getRasterOps("org/rastertheque/processing/raster/",RasterOp.class);
 		
-		ArrayList<Resampler> resamplers = (ArrayList<Resampler>) RasterOps.getRasterOps("org/rastertheque/processing/raster/",Resampler.class);
+		assertNotNull(ops);
 		
-		ArrayList<Renderer> renderers = (ArrayList<Renderer>) RasterOps.getRasterOps("org/rastertheque/processing/raster/", Renderer.class);
+		//there are currently six rasterop impl + one test
+		assertTrue(ops.size() == 7);
 		
-		assertNotNull(resamplers);
-		
-		assertNotNull(renderers);
-		
-		//there are currently three resampler impl
-		assertTrue(resamplers.size() == 3);
-		
-		//there is one real and one test renderer impl
-		assertTrue(renderers.size() == 2);
 	}
 
 }

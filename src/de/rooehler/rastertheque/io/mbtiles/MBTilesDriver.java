@@ -6,7 +6,7 @@ import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Driver;
 
-public class MBTilesDriver implements Driver<MBTilesDataset>  {
+public class MBTilesDriver implements Driver  {
 	
 
 	@Override

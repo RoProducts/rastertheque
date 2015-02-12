@@ -1,29 +1,15 @@
 package de.rooehler.mapsforgerenderer.rasterrenderer.mbtiles;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
 import org.mapsforge.core.model.Tile;
 
 import android.graphics.BitmapFactory;
-import android.util.Log;
-
-import com.vividsolutions.jts.geom.Envelope;
-
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterJob;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterRenderer;
-import de.rooehler.rastertheque.core.Band;
-import de.rooehler.rastertheque.core.DataType;
-import de.rooehler.rastertheque.core.NoData;
-import de.rooehler.rastertheque.core.Raster;
-import de.rooehler.rastertheque.core.Band.Color;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesResampler;
-import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
-import de.rooehler.rastertheque.proj.Proj;
+import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 
 public class MBTilesMapsforgeRenderer implements RasterRenderer{
 

@@ -1,6 +1,7 @@
 package de.rooehler.rasterapp.test;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 import android.os.Environment;
@@ -8,15 +9,16 @@ import android.util.Log;
 
 import com.vividsolutions.jts.geom.Envelope;
 
-import de.rooehler.rasterapp.test.testImpl.TestPluggedDriver;
+import de.rooehler.rasterapp.test.testImpl.TestDriverImpl;
 import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.core.Drivers;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
-import de.rooehler.rastertheque.processing.Renderer;
-import de.rooehler.rastertheque.processing.rendering.MRenderer;
+import de.rooehler.rastertheque.io.mbtiles.MBTilesDriver;
+import de.rooehler.rastertheque.processing.RasterOp;
+import de.rooehler.rastertheque.processing.rendering.MAmplitudeRescaler;
 
 public class TestIO extends android.test.AndroidTestCase {
 
@@ -24,6 +26,7 @@ public class TestIO extends android.test.AndroidTestCase {
 	public final static String GRAY_50M_BYTE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/GRAY_50M_SR_OB.tif";
 	public final static String DEM_FLOAT = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/dem.tif";
 	public final static String RGB_BANDS_BYTE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/land_shallow_topo_21600.tif";
+	public final static String LENA = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/lena.png";
 	
 	/**
 	 * tests opening of the file
@@ -75,9 +78,13 @@ public class TestIO extends android.test.AndroidTestCase {
         
         final Raster raster = dataset.read(query);
         
-        final Renderer renderer = new MRenderer(GRAY_50M_BYTE, false);
+        final RasterOp renderer = new MAmplitudeRescaler();
         
-        final int[] pixels  = renderer.render(raster, null, null, null);
+        renderer.execute(raster, null, null, null);
+        
+        final int[] pixels  = new int[(int) (env.getWidth() * env.getHeight())];
+	    
+        raster.getData().asIntBuffer().get(pixels);
         
         assertNotNull(pixels);
         
@@ -101,31 +108,45 @@ public class TestIO extends android.test.AndroidTestCase {
         
 	}
 	/**
-	 * tests the identification of Driver implementations of GDAL drivers
-	 * there exists currently one real implementation (GDALDriver)
-	 * and one test implementation (TestPluggedDriver)
-	 * which both should be found and returned
+	 * tests the identification of Driver implementations 
+	 * there exists currently two implementation (GDALDriver, MBTilesDriver)
+	 * and one stub (TestPluggedDriver)
+	 * which all should be found
 	 */
-	@SuppressWarnings("serial")
-	public void testGDALDrivers(){
+	@SuppressWarnings({ "serial", "unchecked" })
+	public void testDrivers(){
 		
-		ArrayList<Driver<?>> gdalDrivers = Drivers.getDrivers("org/rastertheque/io/raster/gdal/");
+		Method method = null;
+		try {
+			method = Drivers.class.getDeclaredMethod("getDrivers", String.class);
+		} catch (Exception e) {
+			Log.e(TestIO.class.getSimpleName(),"exception getting getDrivers() ");
+		}
+		method.setAccessible(true);
+		ArrayList<Driver> drivers = null;
+		try {
+			drivers = (ArrayList<Driver>) method.invoke(Drivers.class.newInstance(), "org/rastertheque/io/driver/");
+		} catch (Exception e) {
+			Log.e(TestIO.class.getSimpleName(),"exception invoking : " + method.getName());
+		}
+		
 				
-		assertNotNull(gdalDrivers);
+		assertNotNull(drivers);
 		
-		assertTrue(gdalDrivers.size() > 0);
+		assertTrue(drivers.size() == 3);
 		
-		Log.d(TestIO.class.getSimpleName(),"gdal drivers found : " + gdalDrivers.size());
+		Log.d(TestIO.class.getSimpleName(),"gdal drivers found : " + drivers.size());
 		
 		ArrayList<Class<?>> classes = new ArrayList<Class<?>>(){{
 			add(GDALDriver.class);
-			add(TestPluggedDriver.class);
+			add(MBTilesDriver.class);
+			add(TestDriverImpl.class);
 		}};
 		
 
-		for(int i = 0; i < gdalDrivers.size(); i++){
+		for(int i = 0; i < drivers.size(); i++){
 
-			final Driver<?> driver = gdalDrivers.get(i);
+			final Driver driver = drivers.get(i);
 
 			Log.d(TestIO.class.getSimpleName(),"class : " + driver.getName().toString());
 
@@ -134,18 +155,4 @@ public class TestIO extends android.test.AndroidTestCase {
 		}
 	}
 	
-	/**
-	 * tests the identification of Driver implementations of MBTiles drivers
-	 */
-	public void testMBTilesDrivers(){
-		
-		ArrayList<Driver<?>> drivers = Drivers.getDrivers("org/rastertheque/io/raster/mbtiles/");
-				
-		assertNotNull(drivers);
-		
-		assertTrue(drivers.size() > 0);
-		
-		Log.d(TestIO.class.getSimpleName(),"MBTiles drivers found : " + drivers.size());
-		
-	}
 }

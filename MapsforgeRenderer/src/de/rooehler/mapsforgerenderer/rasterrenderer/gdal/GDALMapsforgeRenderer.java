@@ -3,6 +3,7 @@ package de.rooehler.mapsforgerenderer.rasterrenderer.gdal;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 
@@ -23,10 +24,11 @@ import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
-import de.rooehler.rastertheque.processing.RenderingHints.Key;
-import de.rooehler.rastertheque.processing.ops.RenderOp;
-import de.rooehler.rastertheque.processing.ops.ResampleOp;
-import de.rooehler.rastertheque.processing.rendering.OpenCVRenderer;
+import de.rooehler.rastertheque.processing.RasterOps;
+import de.rooehler.rastertheque.processing.rendering.MColorMap;
+import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.util.Hints;
+import de.rooehler.rastertheque.util.Hints.Key;
 /**
  * A Renderer of gdal data for Mapsforge
  * @author Robert Oehler
@@ -281,27 +283,31 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         
         final Raster raster = mRasterDataset.read(query);
         
-		HashMap<Key,Object> renderParams = new HashMap<>();
-
-//		renderParams.put(RenderOp.KEY_RENDERER, new MRenderer(mRasterDataset.getSource(), true));
-		renderParams.put(RenderOp.KEY_RENDERER, new OpenCVRenderer());
-		renderParams.put(RenderOp.KEY_FILEPATH, mRasterDataset.getSource());
-		renderParams.put(RenderOp.KEY_RGB_BANDS, Boolean.valueOf(checkIfHasRGBBands()));	
-
         if(resample){
-        
-        	HashMap<Key,Object> resizeParams = new HashMap<>();
-
-			resizeParams.put(ResampleOp.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
-
-			ResampleOp.resample(raster, resizeParams, null, null);
 			
-			return RenderOp.render(raster, renderParams, null, null);
+			HashMap<Key,Serializable> resampleParams = new HashMap<>();
 
-        }else{
-        	
-        	return RenderOp.render(raster, renderParams, null, null);
-        }
+			resampleParams.put(Hints.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
+			
+			resampleParams.put(Hints.KEY_RESAMPLER, new OpenCVResampler());
+
+			RasterOps.execute(raster, RasterOps.RESIZE, resampleParams, null, null);
+
+		}
+		
+		HashMap<Key,Serializable> renderParams = new HashMap<>();
+		
+		renderParams.put(Hints.KEY_COLORMAP, new MColorMap());
+		renderParams.put(Hints.KEY_RGB_BANDS, Boolean.valueOf(checkIfHasRGBBands()));	
+		
+		RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
+		
+        final int[] pixels  = new int[targetWidth * targetHeight];
+	    
+        raster.getData().asIntBuffer().get(pixels);
+		
+		return pixels;
+        
 	}
 
 	/**

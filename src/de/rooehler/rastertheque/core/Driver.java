@@ -17,7 +17,7 @@ package de.rooehler.rastertheque.core;
 import java.io.IOException;
 
 
-public interface Driver<T> {
+public interface Driver {
 
     /**
      * Name identifying the driver.
@@ -46,5 +46,5 @@ public interface Driver<T> {
      * @throws IOException In the event of a connection error such as a file system error or 
      *   database connection failure. 
      */
-    T open(String filePath) throws IOException;
+    Dataset open(String filePath) throws IOException;
 }

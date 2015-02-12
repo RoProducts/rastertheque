@@ -1,12 +1,49 @@
 package de.rooehler.rastertheque.io.gdal;
 
+import java.io.File;
+
 import de.rooehler.rastertheque.core.Band;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.NoData;
+import de.rooehler.rastertheque.processing.rendering.ColorMap;
+import de.rooehler.rastertheque.processing.rendering.SLDColorMapParser;
+import de.rooehler.rastertheque.util.Constants;
 
 public class GDALBand implements Band{
 	
 	org.gdal.gdal.Band band;
+	
+	private static ColorMap mColorMap;
+	
+	public static void clearColorMap(){
+		
+		mColorMap = null;
+	}
+	
+	public static void applyColorMap(final String filePath){
+		
+		if(mColorMap == null ){
+			if(filePath != null){
+				final String colorMapFilePath = filePath.substring(0, filePath.lastIndexOf(".") + 1) + "sld";
+
+				File file = new File(colorMapFilePath);
+
+				if(file.exists()){
+
+					ColorMap rawColorMap = SLDColorMapParser.parseRawColorMapEntries(file);
+					
+					//check if to use an interpolated color map which maps to every raster value a color
+					if(rawColorMap.getRange() < Constants.COLORMAP_ENTRY_THRESHOLD){
+						
+						mColorMap = SLDColorMapParser.applyInterpolation(rawColorMap);
+					}else{
+						mColorMap = rawColorMap;
+					}
+
+				}
+			}
+		}
+	}
 
     public GDALBand(org.gdal.gdal.Band band) {
         this.band = band;
@@ -58,4 +95,9 @@ public class GDALBand implements Band{
 		return this.band;
 	}
 
+	@Override
+	public ColorMap colorMap() {
+		
+		return mColorMap;
+	}
 }

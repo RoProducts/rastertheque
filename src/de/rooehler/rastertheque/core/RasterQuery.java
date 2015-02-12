@@ -35,6 +35,7 @@ public class RasterQuery {
     
     
     
+    
     public RasterQuery(Envelope bounds, CoordinateReferenceSystem crs,	List<Band> bands, Envelope size, DataType datatype) {
 		this.bounds = bounds;
 		this.crs = crs;

@@ -8,7 +8,7 @@ import com.vividsolutions.jts.geom.Envelope;
 
 public interface Dataset extends Disposable {
 	
-	Driver<?> getDriver();
+	Driver getDriver();
 	
 	String getName();
 	

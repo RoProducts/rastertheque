@@ -1,8 +1,10 @@
 package de.rooehler.rastertheque.processing.resampling;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Map;
 
 import android.util.Log;
 
@@ -11,16 +13,31 @@ import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
-import de.rooehler.rastertheque.processing.ProgressListener;
-import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
+import de.rooehler.rastertheque.processing.RasterOp;
+import de.rooehler.rastertheque.processing.RasterOps;
+import de.rooehler.rastertheque.util.Hints;
+import de.rooehler.rastertheque.util.Hints.Key;
+import de.rooehler.rastertheque.util.ProgressListener;
 
-public class MResampler implements Resampler {
+public class MResampler implements RasterOp {
 
 	@Override
-	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method, ProgressListener listener) {
+	public void execute(Raster raster,Map<Key,Serializable> params, Hints hints, ProgressListener listener) {
 
 
+		Envelope dstDimension = null;
+		if(params != null && params.containsKey(Hints.KEY_SIZE)){
+			dstDimension = (Envelope) params.get(Hints.KEY_SIZE);
+		}else{
+			throw new IllegalArgumentException("no target dimension provided, cannot continue");
+		}
+		
+		ResampleMethod method = ResampleMethod.BILINEAR;
+		if(params != null && params.containsKey(Hints.KEY_INTERPOLATION)){
+			method = (ResampleMethod) params.get(Hints.KEY_INTERPOLATION);
+		}
+		
 		if(Double.compare(raster.getDimension().getWidth(),  dstDimension.getWidth()) == 0 &&
 		   Double.compare(raster.getDimension().getHeight(), dstDimension.getHeight()) == 0){
 			return;
@@ -886,5 +903,14 @@ public class MResampler implements Resampler {
 			w = a*r*r*r - 5*a*r*r + 8*a*r - 4*a;
 		return w;
 	}
+	
+	
+	@Override
+	public String getOperationName() {
+		
+		return RasterOps.RESIZE;
+		
+	}
+	
 }
 

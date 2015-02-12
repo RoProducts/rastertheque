@@ -1,6 +1,7 @@
 package de.rooehler.rastertheque.processing.rendering;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Map;
@@ -15,26 +16,21 @@ import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.core.util.ByteBufferReaderUtil;
-import de.rooehler.rastertheque.processing.ProgressListener;
-import de.rooehler.rastertheque.processing.Renderer;
-import de.rooehler.rastertheque.processing.RenderingHints;
-import de.rooehler.rastertheque.processing.RenderingHints.Key;
+import de.rooehler.rastertheque.processing.RasterOp;
+import de.rooehler.rastertheque.processing.RasterOps;
+import de.rooehler.rastertheque.util.Hints;
+import de.rooehler.rastertheque.util.Hints.Key;
+import de.rooehler.rastertheque.util.ProgressListener;
 
-public class OpenCVRenderer implements Renderer{
+public class OpenCVAmplitudeRescaler implements RasterOp, Serializable{
+
+	private static final long serialVersionUID = 1L;
 
 	@Override
-	public int[] render(Raster raster, 
-			Map <Key,Object> params,
-			RenderingHints hints,
-			ProgressListener listener) {
+	public void execute(Raster raster, Map<Key, Serializable> params,Hints hints, ProgressListener listener) {
 		
-		Object rendering = null;
-		if(hints != null && hints.containsKey(RenderingHints.KEY_SYMBOLIZATION)){
-			
-			rendering = params.get(RenderingHints.KEY_SYMBOLIZATION);
-		}
 		
-		//TODO apply rendering object
+		//TODO apply hints, params
 		
 		final Mat srcMat = matAccordingToDatatype(
 				raster.getBands().get(0).datatype(),
@@ -51,7 +47,7 @@ public class OpenCVRenderer implements Renderer{
 			 
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 
-    	Log.d(OpenCVRenderer.class.getSimpleName(), "rawdata min "+result.minVal +" max "+result.maxVal);
+    	Log.d(OpenCVAmplitudeRescaler.class.getSimpleName(), "rawdata min "+result.minVal +" max "+result.maxVal);
 
 
     	for (int i = 0; i < pixelAmount; i++) {
@@ -62,7 +58,11 @@ public class OpenCVRenderer implements Renderer{
 
         }
 
-        return pixels;
+		ByteBuffer buffer = ByteBuffer.allocate(pixels.length * 4);
+		
+		buffer.asIntBuffer().put(pixels);
+		
+		raster.setData(buffer);
 	}
 	
 	/**
@@ -181,6 +181,12 @@ public class OpenCVRenderer implements Renderer{
 			
 		}
 		throw new IllegalArgumentException("Invalid datatype");
+	}
+	
+	@Override
+	public String getOperationName() {
+		
+		return RasterOps.AMPLITUDE_RESCALING;
 	}
 
 }

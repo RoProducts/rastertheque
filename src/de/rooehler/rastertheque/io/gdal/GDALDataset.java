@@ -1,5 +1,6 @@
 package de.rooehler.rastertheque.io.gdal;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -23,8 +24,11 @@ import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.processing.rendering.ColorMap;
+import de.rooehler.rastertheque.processing.rendering.MColorMap;
+import de.rooehler.rastertheque.processing.rendering.SLDColorMapParser;
 import de.rooehler.rastertheque.proj.Proj;
+import de.rooehler.rastertheque.util.Constants;
 
 public class GDALDataset implements RasterDataset{
 	
@@ -42,7 +46,7 @@ public class GDALDataset implements RasterDataset{
 	
 	List<Band> mBands;
 	
-    public GDALDataset(final ResampleMethod method,final String pFilePath, Dataset dataset, GDALDriver driver) {
+    public GDALDataset(final String pFilePath, Dataset dataset, GDALDriver driver) {
 
         this.mSource = pFilePath;
         this.dataset = dataset;
@@ -92,8 +96,12 @@ public class GDALDataset implements RasterDataset{
 					readBands);
 		}
 		
+		GDALBand.applyColorMap(mSource);
+		
 		return new Raster(src , getCRS(), dstDim, query.getBands(), buffer, getMetadata());
+
 	}
+
 
 	/**
 	 * returns the bands of this dataset
@@ -208,6 +216,7 @@ public class GDALDataset implements RasterDataset{
      */
 	@Override
 	public void close(){
+		
 		if (dataset != null) {
 			dataset.delete();
 			dataset = null;
@@ -215,6 +224,8 @@ public class GDALDataset implements RasterDataset{
 			mBounds = null;
 			mCRS = null;
 		}
+		
+		GDALBand.clearColorMap();
 	}
 	
 	/**
@@ -267,7 +278,7 @@ public class GDALDataset implements RasterDataset{
 	 * returns the Driver which is used to access this dataset
 	 */
 	@Override
-	public Driver<GDALDataset> getDriver() {
+	public Driver getDriver() {
 		
 		return mDriver;
 	}

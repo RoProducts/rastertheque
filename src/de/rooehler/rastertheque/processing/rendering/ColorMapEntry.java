@@ -8,7 +8,7 @@ public class ColorMapEntry{
 	private double quantity;
 	private String label;
 	
-	public ColorMapEntry(final int pColor,  final double pQuantity,final double pOpacity, final String pLabel){
+	public ColorMapEntry(final int pColor, final double pQuantity, final double pOpacity, final String pLabel){
 		
 		this.color = pColor;
 		this.opacity = pOpacity;

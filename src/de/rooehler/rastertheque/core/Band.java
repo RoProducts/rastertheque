@@ -1,5 +1,7 @@
 package de.rooehler.rastertheque.core;
 
+import de.rooehler.rastertheque.processing.rendering.ColorMap;
+
 
 /**
  * A band or component of a raster dataset.
@@ -28,6 +30,12 @@ public interface Band {
      * @return
      */
     Color color();
+    
+    /**
+     * Returns the colorMap for this band if available
+     * @return
+     */
+    ColorMap colorMap();
     
     /**
      * The nodata value of the band.

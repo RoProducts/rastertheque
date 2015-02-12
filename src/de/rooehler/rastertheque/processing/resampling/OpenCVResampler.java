@@ -2,8 +2,10 @@ package de.rooehler.rastertheque.processing.resampling;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Map;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvType;
@@ -20,12 +22,17 @@ import com.vividsolutions.jts.geom.Envelope;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesResampler;
-import de.rooehler.rastertheque.processing.ProgressListener;
-import de.rooehler.rastertheque.processing.Resampler;
-import de.rooehler.rastertheque.processing.Resampler.ResampleMethod;
+import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
+import de.rooehler.rastertheque.processing.RasterOp;
+import de.rooehler.rastertheque.processing.RasterOps;
+import de.rooehler.rastertheque.util.Hints;
+import de.rooehler.rastertheque.util.Hints.Key;
+import de.rooehler.rastertheque.util.ProgressListener;
 
-public class OpenCVResampler implements Resampler {
+public class OpenCVResampler implements RasterOp, Serializable {
 	
+	private static final long serialVersionUID = -5251254282161549821L;
+
 	static {
 		if (!OpenCVLoader.initDebug()) {
 			// Handle initialization error
@@ -35,8 +42,20 @@ public class OpenCVResampler implements Resampler {
 	}
 
 	@Override
-	public void resample(Raster raster,Envelope dstDimension, ResampleMethod method, ProgressListener listener) {
+	public void execute(Raster raster,Map<Key,Serializable> params,Hints hints, ProgressListener listener) {
 	
+		Envelope dstDimension = null;
+		if(params != null && params.containsKey(Hints.KEY_SIZE)){
+			dstDimension = (Envelope) params.get(Hints.KEY_SIZE);
+		}else{
+			throw new IllegalArgumentException("no target dimension provided, cannot continue");
+		}
+		
+		ResampleMethod method = ResampleMethod.BILINEAR;
+		if(params != null && params.containsKey(Hints.KEY_INTERPOLATION)){
+			method = (ResampleMethod) params.get(Hints.KEY_INTERPOLATION);
+		}
+		
 		final int srcWidth = (int) raster.getDimension().getWidth();
 		final int srcHeight = (int) raster.getDimension().getHeight();
 		
@@ -60,7 +79,7 @@ public class OpenCVResampler implements Resampler {
 			i = Imgproc.INTER_CUBIC;
 			break;
 		}	
-		long now = System.currentTimeMillis();
+//		long now = System.currentTimeMillis();
 		
 		final Mat srcMat = matAccordingToDatatype(
 					raster.getBands().get(0).datatype(),
@@ -68,12 +87,12 @@ public class OpenCVResampler implements Resampler {
 					(int) raster.getBoundingBox().getWidth(),
 					(int) raster.getBoundingBox().getHeight());
 
-		Log.d(OpenCVResampler.class.getSimpleName(), "creating mat took : "+(System.currentTimeMillis() - now));
+//		Log.d(OpenCVResampler.class.getSimpleName(), "creating mat took : "+(System.currentTimeMillis() - now));
 
 		Mat dstMat = new Mat();
 		
 		Imgproc.resize(srcMat, dstMat, new Size(dstWidth, dstHeight), 0, 0, i);
-		Log.d(OpenCVResampler.class.getSimpleName(), "resizing  took : "+(System.currentTimeMillis() - now));
+//		Log.d(OpenCVResampler.class.getSimpleName(), "resizing  took : "+(System.currentTimeMillis() - now));
 		
 		final int bufferSize = dstWidth * dstHeight * raster.getBands().size() * raster.getBands().get(0).datatype().size();
 		
@@ -83,10 +102,16 @@ public class OpenCVResampler implements Resampler {
 				dstMat,
 				raster.getBands().get(0).datatype(),
 				bufferSize));
-		Log.d(OpenCVResampler.class.getSimpleName(), "reconverting to bytes took : "+(System.currentTimeMillis() - now));
+//		Log.d(OpenCVResampler.class.getSimpleName(), "reconverting to bytes took : "+(System.currentTimeMillis() - now));
 		
 	}
 	
+	@Override
+	public String getOperationName() {
+		
+		return RasterOps.RESIZE;
+	}
+
 	
 	/**
 	 * converts the bytes from a raster into an OpenCV Mat 
@@ -204,9 +229,7 @@ public class OpenCVResampler implements Resampler {
 
 		ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 		buffer.order(ByteOrder.nativeOrder());
-		final int height = (int) mat.size().height;
-		final int width = (int) mat.size().width;
-		
+			
 		switch(type){
 		case BYTE:
 			mat.get(0, 0, buffer.array());

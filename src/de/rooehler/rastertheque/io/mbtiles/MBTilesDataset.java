@@ -172,7 +172,7 @@ public class MBTilesDataset implements Dataset {
 	}
 
 	@Override
-	public Driver<?> getDriver() {
+	public Driver getDriver() {
 		
 		return new MBTilesDriver();
 	}
