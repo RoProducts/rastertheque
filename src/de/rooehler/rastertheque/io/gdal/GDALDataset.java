@@ -96,7 +96,7 @@ public class GDALDataset implements RasterDataset{
 					readBands);
 		}
 		
-		GDALBand.applyColorMap(mSource);
+		GDALBand.applySLDColorMap(mSource);
 		
 		return new Raster(src , getCRS(), dstDim, query.getBands(), buffer, getMetadata());
 

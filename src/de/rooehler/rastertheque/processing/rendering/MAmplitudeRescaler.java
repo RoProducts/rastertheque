@@ -20,7 +20,8 @@ import de.rooehler.rastertheque.util.ProgressListener;
 
 public class MAmplitudeRescaler implements RasterOp, Serializable {
 
-	private static final long serialVersionUID = 1L;
+
+	private static final long serialVersionUID = 2138351083682731966L;
 
 	@Override
 	public String getOperationName() {
@@ -172,5 +173,23 @@ public class MAmplitudeRescaler implements RasterOp, Serializable {
 	public Priority getPriority() {
 	
 		return Priority.NORMAL;
+	}
+	
+	@Override
+	public Hints getDefaultHints() {
+
+		return null;
+	}
+	
+	@Override
+	public Map<Key, Serializable> getDefaultParams() {
+		
+		return null;
+	}
+	
+	@Override
+	public boolean validateParameters(Map<Key, Serializable> params) {
+
+		return true;
 	}
 }

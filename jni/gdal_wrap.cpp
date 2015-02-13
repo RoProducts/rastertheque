@@ -364,7 +364,7 @@ static CPLErr DatasetRasterIO( GDALDatasetH hDS, GDALRWFlag eRWFlag,
               "Buffer is too small");
       return CE_Failure;
   }
-  return  GDALDatasetRasterIO( hDS, eRWFlag, xoff, yoff, xsize, ysize,
+  return  GDALDatasetRasterIO( hDS, GF_Read, xoff, yoff, xsize, ysize,
                                 regularArray, buf_xsize, buf_ysize,
                                 buf_type, band_list, pband_list, nPixelSpace, nLineSpace, nBandSpace );
 
@@ -15214,8 +15214,8 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ColorTable_1GetCount(JNIEnv *
 }
 
 
-SWIGEXPORT jobject JNICALL Java_org_gdal_gdal_gdalJNI_ColorTable_1GetColorEntry(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
-  jobject jresult = 0 ;
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ColorTable_1GetColorEntry(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jint jresult = 0 ;
   GDALColorTableShadow *arg1 = (GDALColorTableShadow *) 0 ;
   int arg2 ;
   GDALColorEntry *result = 0 ;
@@ -15228,16 +15228,14 @@ SWIGEXPORT jobject JNICALL Java_org_gdal_gdal_gdalJNI_ColorTable_1GetColorEntry(
   result = (GDALColorEntry *)GDALColorTableShadow_GetColorEntry(arg1,arg2);
   {
     /* %typemap(out) (GDALColorEntry *) */
-    const jclass Color = jenv->FindClass("java/awt/Color");
-    const jmethodID ccon = jenv->GetMethodID(Color, "<init>",
-      "(IIII)V");
-    jresult = jenv->NewObject(Color, ccon, result->c1, result->c2, result->c3, result->c4);
+    /* Android Color is int = (alpha << 24) | (red << 16) | (green << 8) | blue */
+    jresult = (result->c4 << 24) | (result->c1 << 16) | (result->c2 << 8) | result->c3;
   }
   return jresult;
 }
 
 
-SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_ColorTable_1SetColorEntry(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jobject jarg3) {
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_ColorTable_1SetColorEntry(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jint jarg3) {
   GDALColorTableShadow *arg1 = (GDALColorTableShadow *) 0 ;
   int arg2 ;
   GDALColorEntry *arg3 = (GDALColorEntry *) 0 ;
@@ -15250,34 +15248,17 @@ SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_ColorTable_1SetColorEntry(JNI
   arg2 = (int)jarg2; 
   {
     /* %typemap(in) (GDALColorEntry *) (GDALColorEntry tmp3) */
-    arg3 = NULL;
-    if (jarg3 == NULL)
-    {
-      SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer.");
-      return ;
-    }
-    float *colorptr = 0;
-    const jclass Color = jenv->FindClass("java/awt/Color");
-    const jmethodID colors = jenv->GetMethodID(Color, "getRGBComponents",
-      "([F)[F");
-    
-    jfloatArray colorArr = jenv->NewFloatArray(4);
-    colorArr = (jfloatArray)jenv->CallObjectMethod(jarg3, colors, colorArr); 
-    
-    colorptr = (float *)jenv->GetFloatArrayElements(colorArr, 0);
-    tmp3.c1 = (short)(colorptr[0] * 255);
-    tmp3.c2 = (short)(colorptr[1] * 255);
-    tmp3.c3 = (short)(colorptr[2] * 255);
-    tmp3.c4 = (short)(colorptr[3] * 255);
-    /*printf( "  %d, %d, %d, %d\n",
-                        tmp3.c1, tmp3.c2, tmp3.c3, tmp3.c4 );*/
+    tmp3.c4 = (jarg3 >> 24) & 0xff;
+    tmp3.c1 = (jarg3 >> 16) & 0xff;
+    tmp3.c2 = (jarg3 >> 8) & 0xff;
+    tmp3.c3 = (jarg3 >> 0) & 0xff;
     arg3 = &tmp3;
   }
   GDALColorTableShadow_SetColorEntry(arg1,arg2,(GDALColorEntry const *)arg3);
 }
 
 
-SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_ColorTable_1CreateColorRamp(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jobject jarg3, jint jarg4, jobject jarg5) {
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_ColorTable_1CreateColorRamp(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jint jarg3, jint jarg4, jint jarg5) {
   GDALColorTableShadow *arg1 = (GDALColorTableShadow *) 0 ;
   int arg2 ;
   GDALColorEntry *arg3 = (GDALColorEntry *) 0 ;
@@ -15293,53 +15274,19 @@ SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_ColorTable_1CreateColorRamp(J
   arg2 = (int)jarg2; 
   {
     /* %typemap(in) (GDALColorEntry *) (GDALColorEntry tmp3) */
-    arg3 = NULL;
-    if (jarg3 == NULL)
-    {
-      SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer.");
-      return ;
-    }
-    float *colorptr = 0;
-    const jclass Color = jenv->FindClass("java/awt/Color");
-    const jmethodID colors = jenv->GetMethodID(Color, "getRGBComponents",
-      "([F)[F");
-    
-    jfloatArray colorArr = jenv->NewFloatArray(4);
-    colorArr = (jfloatArray)jenv->CallObjectMethod(jarg3, colors, colorArr); 
-    
-    colorptr = (float *)jenv->GetFloatArrayElements(colorArr, 0);
-    tmp3.c1 = (short)(colorptr[0] * 255);
-    tmp3.c2 = (short)(colorptr[1] * 255);
-    tmp3.c3 = (short)(colorptr[2] * 255);
-    tmp3.c4 = (short)(colorptr[3] * 255);
-    /*printf( "  %d, %d, %d, %d\n",
-                        tmp3.c1, tmp3.c2, tmp3.c3, tmp3.c4 );*/
+    tmp3.c4 = (jarg3 >> 24) & 0xff;
+    tmp3.c1 = (jarg3 >> 16) & 0xff;
+    tmp3.c2 = (jarg3 >> 8) & 0xff;
+    tmp3.c3 = (jarg3 >> 0) & 0xff;
     arg3 = &tmp3;
   }
   arg4 = (int)jarg4; 
   {
     /* %typemap(in) (GDALColorEntry *) (GDALColorEntry tmp5) */
-    arg5 = NULL;
-    if (jarg5 == NULL)
-    {
-      SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer.");
-      return ;
-    }
-    float *colorptr = 0;
-    const jclass Color = jenv->FindClass("java/awt/Color");
-    const jmethodID colors = jenv->GetMethodID(Color, "getRGBComponents",
-      "([F)[F");
-    
-    jfloatArray colorArr = jenv->NewFloatArray(4);
-    colorArr = (jfloatArray)jenv->CallObjectMethod(jarg5, colors, colorArr); 
-    
-    colorptr = (float *)jenv->GetFloatArrayElements(colorArr, 0);
-    tmp5.c1 = (short)(colorptr[0] * 255);
-    tmp5.c2 = (short)(colorptr[1] * 255);
-    tmp5.c3 = (short)(colorptr[2] * 255);
-    tmp5.c4 = (short)(colorptr[3] * 255);
-    /*printf( "  %d, %d, %d, %d\n",
-                        tmp5.c1, tmp5.c2, tmp5.c3, tmp5.c4 );*/
+    tmp5.c4 = (jarg5 >> 24) & 0xff;
+    tmp5.c1 = (jarg5 >> 16) & 0xff;
+    tmp5.c2 = (jarg5 >> 8) & 0xff;
+    tmp5.c3 = (jarg5 >> 0) & 0xff;
     arg5 = &tmp5;
   }
   GDALColorTableShadow_CreateColorRamp(arg1,arg2,(GDALColorEntry const *)arg3,arg4,(GDALColorEntry const *)arg5);

@@ -2,6 +2,7 @@ package de.rooehler.mapboxrenderer.renderer;
 
 import java.io.File;
 import java.io.Serializable;
+import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.List;
 
@@ -26,10 +27,12 @@ import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
+import de.rooehler.rastertheque.core.util.ByteBufferReader;
+import de.rooehler.rastertheque.core.util.ByteBufferReaderUtil;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.processing.rendering.MColorMap;
-import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.Resampler;
 import de.rooehler.rastertheque.util.Formulae;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
@@ -215,7 +218,7 @@ public class GDALTileLayer extends TileLayer {
              		targetDim,
              		datatype,
              		!useGDALAsResampler(targetXSize ,availableX),
-             		targetXSize , targetYSize);
+             		targetXSize / (double) availableX, targetYSize / (double) availableY);
            	
            	return createBoundsTile(downloader, aTile, pixels, coveredXOrigin,coveredYOrigin, targetXSize, targetYSize, ts, now);
 
@@ -231,7 +234,7 @@ public class GDALTileLayer extends TileLayer {
         		targetDim,
         		datatype,
         		!useGDALAsResampler( ts , readAmountX),
-        		ts , ts);
+        		ts / (double) readAmountX , ts / (double) readAmountY);
 
         Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
         bitmap.setPixels(pixels, 0, ts, 0, 0, ts, ts);
@@ -257,7 +260,7 @@ public class GDALTileLayer extends TileLayer {
      * @param targetHeight height of the target tile
      * @return array of pixels of size targetWidth * targetHeight
      */
-	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
+	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final double scaleX, final double scaleY){
 		
 		final RasterQuery query = new RasterQuery(
 				bounds,
@@ -276,29 +279,66 @@ public class GDALTileLayer extends TileLayer {
 				
 			HashMap<Key,Serializable> resampleParams = new HashMap<>();
 
-			resampleParams.put(Hints.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
-			
-			resampleParams.put(Hints.KEY_RESAMPLER, new OpenCVResampler());
+			resampleParams.put(Resampler.KEY_SIZE, new Double[]{scaleX, scaleY});
 
 			RasterOps.execute(raster, RasterOps.RESIZE, resampleParams, null, null);
 
 		}
 		
-		HashMap<Key,Serializable> renderParams = new HashMap<>();
-		
-		renderParams.put(Hints.KEY_COLORMAP, new MColorMap());
-		renderParams.put(Hints.KEY_RGB_BANDS, Boolean.valueOf(checkIfHasRGBBands()));	
-		
-		RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
-		
-        final int[] pixels  = new int[targetWidth * targetHeight];
-	    
-        raster.getData().asIntBuffer().get(pixels);
-		
-		return pixels;
+		if(checkIfHasRGBBands()){
+			//no rendering necessary
+			return renderRGB(raster);
+		}else{
+
+			HashMap<Key,Serializable> renderParams = new HashMap<>();
+
+			renderParams.put(Hints.KEY_COLORMAP, new MColorMap());	
+
+			RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
+
+			final int[] pixels  = new int[(int) (bounds.getWidth() * scaleX * bounds.getHeight() * scaleY)];
+
+			raster.getData().asIntBuffer().get(pixels);
+
+			return pixels;
+
+		}
 	}
 
 	
+	private int[] renderRGB(final Raster raster) {
+		
+		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
+		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
+		
+		int [] pixels = new int[pixelAmount];
+		
+		double[] pixelsR = new double[pixelAmount];
+		double[] pixelsG = new double[pixelAmount];
+		double[] pixelsB = new double[pixelAmount];
+           
+		for (int i = 0; i < pixelAmount; i++) {	
+			pixelsR[i] =  ByteBufferReaderUtil.getValue(reader, raster.getBands().get(0).datatype());
+		}
+		for (int j = 0; j < pixelAmount; j++) {	
+			pixelsG[j] =  ByteBufferReaderUtil.getValue(reader, raster.getBands().get(1).datatype());
+		}
+		for (int k = 0; k < pixelAmount; k++) {	
+			pixelsB[k] =  ByteBufferReaderUtil.getValue(reader, raster.getBands().get(2).datatype());
+		}
+		
+        for (int l = 0; l < pixelAmount; l++) {	
+        	
+        	double r = pixelsR[l];
+        	double g = pixelsG[l];
+        	double b = pixelsB[l];
+        	
+        	pixels[l] = 0xff000000 | ((((int) r) << 16) & 0xff0000) | ((((int) g) << 8) & 0xff00) | ((int) b);
+        }
+        
+		return pixels;
+	}
+
 	/**
 	 * returns a tile which partially contains raster data, the rest is filled with pixels according to the nodata value
 	 * @param downloader the downloader of this layer,

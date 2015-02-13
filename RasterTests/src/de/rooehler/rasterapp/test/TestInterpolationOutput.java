@@ -25,6 +25,7 @@ import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
 import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.Resampler;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 
@@ -32,6 +33,7 @@ import de.rooehler.rastertheque.util.Hints.Key;
 public class TestInterpolationOutput extends android.test.ActivityTestCase {
 	
 	
+	@SuppressWarnings("unchecked")
 	public void testInterpolationMethods(){
 
 		Dataset dataset = null;
@@ -53,13 +55,15 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 		final int os = 256;
 		final int ts = os * 4; 
 		
+		final Envelope srcEnv = new Envelope(rf, rf + os, rf, rf + os);
+		
 		final int targetSize = ts * ts;
 		
 		final RasterQuery query = new RasterQuery(
-	        		new Envelope(rf, os, rf, os),
+	        		srcEnv,
 	        		ds.getCRS(),
 	        		ds.getBands(),
-	        		new Envelope(rf, os, rf, os),
+	        		srcEnv,
 	        		ds.getBands().get(0).datatype());
 	        
 	    final Raster raster = ds.read(query);
@@ -74,7 +78,7 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 		
 		HashMap<Key,Serializable> resizeParams = new HashMap<>();
 
-		resizeParams.put(Hints.KEY_SIZE, new Envelope(0, ts, 0, ts));
+		resizeParams.put(Resampler.KEY_SIZE, new Double[]{ts / srcEnv.getWidth(), ts / srcEnv.getHeight()});
 			
 		boolean write = false;
 
@@ -100,7 +104,7 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 					
 					//return to initial state
 					
-					raster.setDimension(new Envelope(rf, os, rf, os));
+					raster.setDimension(srcEnv);
 					raster.setData(ByteBuffer.wrap(origBytes));
 				}
 		}
@@ -156,7 +160,7 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 		Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
 		bitmap.setPixels(pixels, 0, ts, 0, 0, ts, ts);	
 
-		saveImage(bitmap,"lena_resampled");
+		saveImage(bitmap,"interpolation_test");
 	}
 	
 	private void saveImage(Bitmap finalBitmap, final String name) {

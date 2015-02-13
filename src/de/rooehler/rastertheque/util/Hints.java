@@ -32,13 +32,8 @@ public class Hints implements Map<Object,Object>, Cloneable{
 	
 	private static final int INT_KEY_COLORMAP = 1003;
 	
-	private static final int INT_KEY_AMPLITUDE_RESCALING = 1004;
-	
-	private static final int INT_KEY_RGB_BANDS = 1005;	
-	
-	private static final int INT_KEY_SIZE = 1006;	
-	
-	private static final int INT_KEY_RESAMPLER = 1007;	
+	private static final int INT_KEY_AMPLITUDE_RESCALING = 1004;	
+
 	
 
 	
@@ -59,34 +54,6 @@ public class Hints implements Map<Object,Object>, Cloneable{
 		public boolean isCompatibleValue(Object val) {
 			return val instanceof Driver;
 		}
-	};
-	
-	
-	public static final Key KEY_RGB_BANDS = new Hints.Key(INT_KEY_RGB_BANDS){
-		
-		@Override
-		public boolean isCompatibleValue(Object val) {
-			return val != null && val instanceof Boolean;
-		}
-		
-	};
-	
-	public static final Key KEY_SIZE = new Hints.Key(INT_KEY_SIZE){
-		
-		@Override
-		public boolean isCompatibleValue(Object val) {
-			return val != null && val instanceof Envelope;
-		}
-		
-	};
-	
-	public static final Key KEY_RESAMPLER = new Hints.Key(INT_KEY_RESAMPLER){
-		
-		@Override
-		public boolean isCompatibleValue(Object val) {
-			return val instanceof RasterOp && ((RasterOp) val).getOperationName().equals(RasterOps.RESIZE);
-		}
-		
 	};
 	
 	public static final Key KEY_COLORMAP = new Hints.Key(INT_KEY_COLORMAP){

@@ -20,6 +20,12 @@ public interface RasterOp {
 		HIGHEST
 	}
 	
+	Hints getDefaultHints();
+	
+	Map<Key,Serializable> getDefaultParams();
+	
+	boolean validateParameters(Map<Key,Serializable> params);
+	
 	Priority getPriority();
 	
 	String getOperationName();

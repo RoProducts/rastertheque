@@ -24,7 +24,8 @@ import de.rooehler.rastertheque.util.ProgressListener;
 
 public class OpenCVAmplitudeRescaler implements RasterOp, Serializable{
 
-	private static final long serialVersionUID = 1L;
+
+	private static final long serialVersionUID = -5961287990881266046L;
 
 	@Override
 	public void execute(Raster raster, Map<Key, Serializable> params,Hints hints, ProgressListener listener) {
@@ -193,6 +194,24 @@ public class OpenCVAmplitudeRescaler implements RasterOp, Serializable{
 	public Priority getPriority() {
 	
 		return Priority.HIGH;
+	}
+	
+	@Override
+	public Hints getDefaultHints() {
+
+		return null;
+	}
+	
+	@Override
+	public Map<Key, Serializable> getDefaultParams() {
+		
+		return null;
+	}
+	
+	@Override
+	public boolean validateParameters(Map<Key, Serializable> params) {
+
+		return true;
 	}
 
 }

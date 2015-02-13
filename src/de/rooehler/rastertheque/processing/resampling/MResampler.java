@@ -15,39 +15,41 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.processing.RasterOp;
-import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
 
-public class MResampler implements RasterOp {
+public class MResampler extends Resampler implements RasterOp, Serializable  {
+
+	
+	private static final long serialVersionUID = -5891230160742468189L;
+
+
 
 	@Override
 	public void execute(Raster raster,Map<Key,Serializable> params, Hints hints, ProgressListener listener) {
 
-
-		Envelope dstDimension = null;
-		if(params != null && params.containsKey(Hints.KEY_SIZE)){
-			dstDimension = (Envelope) params.get(Hints.KEY_SIZE);
+		double scaleX = 0;
+		double scaleY = 0;
+		if(params != null && params.containsKey(KEY_SIZE)){
+			Double[] factors = (Double[]) params.get(KEY_SIZE);
+			scaleX = factors[0];
+			scaleY = factors[1];
 		}else{
-			throw new IllegalArgumentException("no target dimension provided, cannot continue");
+			throw new IllegalArgumentException("no scale factors provided, cannot continue");
 		}
 		
 		ResampleMethod method = ResampleMethod.BILINEAR;
-		if(params != null && params.containsKey(Hints.KEY_INTERPOLATION)){
-			method = (ResampleMethod) params.get(Hints.KEY_INTERPOLATION);
+		if(hints != null && hints.containsKey(Hints.KEY_INTERPOLATION)){
+			method = (ResampleMethod) hints.get(Hints.KEY_INTERPOLATION);
 		}
+
 		
-		if(Double.compare(raster.getDimension().getWidth(),  dstDimension.getWidth()) == 0 &&
-		   Double.compare(raster.getDimension().getHeight(), dstDimension.getHeight()) == 0){
-			return;
-		}
-
-		final int srcWidth =  (int) raster.getDimension().getWidth();
+		final int srcWidth = (int) raster.getDimension().getWidth();
 		final int srcHeight = (int) raster.getDimension().getHeight();
-
-		final int dstWidth =  (int) dstDimension.getWidth();
-		final int dstHeight = (int) dstDimension.getHeight();
+		
+		final int dstWidth = (int) (srcWidth * scaleX);
+		final int dstHeight = (int) (srcHeight * scaleY);
 
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 
@@ -147,32 +149,8 @@ public class MResampler implements RasterOp {
 										final int u = x0 - 1 + _i;
 										final int _index = v * srcWidth + u;
 										
-										if( v < 0){
-											if(u >= 0){
-												reader.seekToOffset(u * dataSize);
-												bicubic_byte = reader.readByte();
-											}else{
-												reader.seekToOffset(0 * dataSize);
-												bicubic_byte = reader.readByte();
-											}
-										}else if(u < 0){
-											reader.seekToOffset(v * srcWidth * dataSize);
-											bicubic_byte = reader.readByte();
-										}else if(v >= srcWidth){
-											if(u < srcWidth){
-												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
-												bicubic_byte = reader.readByte();							
-											}else{
-												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
-												bicubic_byte = reader.readByte();													
-											}
-										}else if(u >= srcWidth){
-											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
-											bicubic_byte = reader.readByte();	
-										}else{
-											reader.seekToOffset(_index * dataSize);
-											bicubic_byte = reader.readByte();
-										}
+										seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
+										bicubic_byte = reader.readByte();
 
 									    p = p + bicubic_byte * cubic(x - u, a);
 									}
@@ -259,32 +237,8 @@ public class MResampler implements RasterOp {
 										final int u = x0 - 1 + _i;
 										final int _index = v * srcWidth + u;
 										
-										if( v < 0){
-											if(u >= 0){
-												reader.seekToOffset(u * dataSize);
-												bicubic_char = reader.readChar();
-											}else{
-												reader.seekToOffset(0 * dataSize);
-												bicubic_char = reader.readChar();
-											}
-										}else if(u < 0){
-											reader.seekToOffset(v * srcWidth * dataSize);
-											bicubic_char = reader.readChar();
-										}else if(v >= srcWidth){
-											if(u < srcWidth){
-												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
-												bicubic_char = reader.readChar();							
-											}else{
-												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
-												bicubic_char = reader.readChar();													
-											}
-										}else if(u >= srcWidth){
-											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
-											bicubic_char = reader.readChar();	
-										}else{
-											reader.seekToOffset(_index * dataSize);
-											bicubic_char = reader.readChar();
-										}
+										seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
+										bicubic_char = reader.readChar();
 
 									    p = p + bicubic_char * cubic(x - u, a);
 									}
@@ -371,32 +325,8 @@ public class MResampler implements RasterOp {
 										final int u = x0 - 1 + _i;
 										final int _index = v * srcWidth + u;
 										
-										if( v < 0){
-											if(u >= 0){
-												reader.seekToOffset(u * dataSize);
-												bicubic_double = reader.readDouble();
-											}else{
-												reader.seekToOffset(0 * dataSize);
-												bicubic_double = reader.readDouble();
-											}
-										}else if(u < 0){
-											reader.seekToOffset(v * srcWidth * dataSize);
-											bicubic_double = reader.readDouble();
-										}else if(v >= srcWidth){
-											if(u < srcWidth){
-												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
-												bicubic_double = reader.readDouble();							
-											}else{
-												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
-												bicubic_double = reader.readDouble();													
-											}
-										}else if(u >= srcWidth){
-											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
-											bicubic_double = reader.readDouble();	
-										}else{
-											reader.seekToOffset(_index * dataSize);
-											bicubic_double = reader.readDouble();
-										}
+										seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
+										bicubic_double = reader.readDouble();
 
 									    p = p + bicubic_double * cubic(x - u, a);
 									}
@@ -484,32 +414,8 @@ public class MResampler implements RasterOp {
 										final int u = x0 - 1 + _i;
 										final int _index = v * srcWidth + u;
 										
-										if( v < 0){
-											if(u >= 0){
-												reader.seekToOffset(u * dataSize);
-												bicubic_float = reader.readFloat();
-											}else{
-												reader.seekToOffset(0 * dataSize);
-												bicubic_float = reader.readFloat();
-											}
-										}else if(u < 0){
-											reader.seekToOffset(v * srcWidth * dataSize);
-											bicubic_float = reader.readFloat();
-										}else if(v >= srcWidth){
-											if(u < srcWidth){
-												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
-												bicubic_float = reader.readFloat();							
-											}else{
-												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
-												bicubic_float = reader.readFloat();													
-											}
-										}else if(u >= srcWidth){
-											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
-											bicubic_float = reader.readFloat();	
-										}else{
-											reader.seekToOffset(_index * dataSize);
-											bicubic_float = reader.readFloat();
-										}
+										seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
+										bicubic_float = reader.readFloat();
 
 									    p = p + bicubic_float * cubic(x - u, a);
 									}
@@ -595,32 +501,8 @@ public class MResampler implements RasterOp {
 										final int u = x0 - 1 + _i;
 										final int _index = v * srcWidth + u;
 										
-										if( v < 0){
-											if(u >= 0){
-												reader.seekToOffset(u * dataSize);
-												bicubic_int = reader.readInt();
-											}else{
-												reader.seekToOffset(0 * dataSize);
-												bicubic_int = reader.readInt();
-											}
-										}else if(u < 0){
-											reader.seekToOffset(v * srcWidth * dataSize);
-											bicubic_int = reader.readInt();
-										}else if(v >= srcWidth){
-											if(u < srcWidth){
-												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
-												bicubic_int = reader.readInt();							
-											}else{
-												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
-												bicubic_int = reader.readInt();													
-											}
-										}else if(u >= srcWidth){
-											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
-											bicubic_int = reader.readInt();	
-										}else{
-											reader.seekToOffset(_index * dataSize);
-											bicubic_int = reader.readInt();
-										}
+										seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
+										bicubic_int = reader.readInt();
 
 									    p = p + bicubic_int * cubic(x - u, a);
 									}
@@ -706,32 +588,8 @@ public class MResampler implements RasterOp {
 										final int u = x0 - 1 + _i;
 										final int _index = v * srcWidth + u;
 										
-										if( v < 0){
-											if(u >= 0){
-												reader.seekToOffset(u * dataSize);
-												bicubic_long = reader.readLong();
-											}else{
-												reader.seekToOffset(0 * dataSize);
-												bicubic_long = reader.readLong();
-											}
-										}else if(u < 0){
-											reader.seekToOffset(v * srcWidth * dataSize);
-											bicubic_long = reader.readLong();
-										}else if(v >= srcWidth){
-											if(u < srcWidth){
-												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
-												bicubic_long = reader.readLong();							
-											}else{
-												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
-												bicubic_long = reader.readLong();													
-											}
-										}else if(u >= srcWidth){
-											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
-											bicubic_long = reader.readLong();	
-										}else{
-											reader.seekToOffset(_index * dataSize);
-											bicubic_long = reader.readLong();
-										}
+										seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
+										bicubic_long = reader.readLong();
 
 									    p = p + bicubic_long * cubic(x - u, a);
 									}
@@ -817,32 +675,8 @@ public class MResampler implements RasterOp {
 										final int u = x0 - 1 + _i;
 										final int _index = v * srcWidth + u;
 										
-										if( v < 0){
-											if(u >= 0){
-												reader.seekToOffset(u * dataSize);
-												bicubic_short = reader.readShort();
-											}else{
-												reader.seekToOffset(0 * dataSize);
-												bicubic_short = reader.readShort();
-											}
-										}else if(u < 0){
-											reader.seekToOffset(v * srcWidth * dataSize);
-											bicubic_short = reader.readShort();
-										}else if(v >= srcWidth){
-											if(u < srcWidth){
-												reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);
-												bicubic_short = reader.readShort();							
-											}else{
-												reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
-												bicubic_short = reader.readShort();													
-											}
-										}else if(u >= srcWidth){
-											reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
-											bicubic_short = reader.readShort();	
-										}else{
-											reader.seekToOffset(_index * dataSize);
-											bicubic_short = reader.readShort();
-										}
+										seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
+										bicubic_short = reader.readShort();
 
 									    p = p + bicubic_short * cubic(x - u, a);
 									}
@@ -886,7 +720,7 @@ public class MResampler implements RasterOp {
 				}
 			}
 			
-			raster.setDimension(dstDimension);
+			raster.setDimension(new Envelope(0, dstWidth, 0, dstHeight));
 			
 			raster.setData(buffer);
 			
@@ -894,6 +728,31 @@ public class MResampler implements RasterOp {
 			Log.e(MResampler.class.getSimpleName(), "Error reading raster values",e);
 		}
 
+	}
+	private void seekTo(ByteBufferReader reader, int _index, int dataSize, int u, int v, int srcWidth, int srcHeight){
+		if( v < 0){
+			if(u >= 0){
+				reader.seekToOffset(u * dataSize);
+			}else{
+				reader.seekToOffset(0 * dataSize);
+			}
+		}else if(u < 0){
+			if(v >= srcWidth){
+				reader.seekToOffset((v - 1) * srcWidth * dataSize);
+			}else{												
+				reader.seekToOffset(v * srcWidth * dataSize);
+			}
+		}else if(v >= srcWidth){
+			if(u < srcWidth){
+				reader.seekToOffset((srcWidth - 1 * srcWidth + u) * dataSize);						
+			}else{
+				reader.seekToOffset((srcWidth - 1 * srcWidth + (srcWidth - 1)) * dataSize);
+			}												
+		}else if(u >= srcWidth){
+			reader.seekToOffset((v * srcWidth + (srcWidth - 1)) * dataSize);
+		}else{
+			reader.seekToOffset(_index * dataSize);
+		}
 	}
 	
 	private double cubic(double r, double a) {
@@ -907,12 +766,6 @@ public class MResampler implements RasterOp {
 	}
 	
 	
-	@Override
-	public String getOperationName() {
-		
-		return RasterOps.RESIZE;
-		
-	}
 	
 	@Override
 	public Priority getPriority() {

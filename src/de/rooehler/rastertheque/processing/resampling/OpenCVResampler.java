@@ -24,12 +24,11 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesResampler;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.processing.RasterOp;
-import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
 
-public class OpenCVResampler implements RasterOp, Serializable {
+public class OpenCVResampler extends Resampler implements RasterOp, Serializable {
 	
 	private static final long serialVersionUID = -5251254282161549821L;
 
@@ -44,28 +43,27 @@ public class OpenCVResampler implements RasterOp, Serializable {
 	@Override
 	public void execute(Raster raster,Map<Key,Serializable> params,Hints hints, ProgressListener listener) {
 	
-		Envelope dstDimension = null;
-		if(params != null && params.containsKey(Hints.KEY_SIZE)){
-			dstDimension = (Envelope) params.get(Hints.KEY_SIZE);
+		double scaleX = 0;
+		double scaleY = 0;
+		if(params != null && params.containsKey(KEY_SIZE)){
+			Double[] factors = (Double[]) params.get(KEY_SIZE);
+			scaleX = factors[0];
+			scaleY = factors[1];
 		}else{
-			throw new IllegalArgumentException("no target dimension provided, cannot continue");
+			throw new IllegalArgumentException("no scale factors provided, cannot continue");
 		}
 		
 		ResampleMethod method = ResampleMethod.BILINEAR;
-		if(params != null && params.containsKey(Hints.KEY_INTERPOLATION)){
-			method = (ResampleMethod) params.get(Hints.KEY_INTERPOLATION);
+		if(hints != null && hints.containsKey(Hints.KEY_INTERPOLATION)){
+			method = (ResampleMethod) hints.get(Hints.KEY_INTERPOLATION);
 		}
+
 		
 		final int srcWidth = (int) raster.getDimension().getWidth();
 		final int srcHeight = (int) raster.getDimension().getHeight();
 		
-		if(Double.compare(srcWidth,  dstDimension.getWidth()) == 0 &&
-		   Double.compare(srcHeight, dstDimension.getHeight()) == 0){
-			return;
-		}
-		
-		final int dstWidth = (int) dstDimension.getWidth();
-		final int dstHeight = (int) dstDimension.getHeight();
+		final int dstWidth = (int) (srcWidth * scaleX);
+		final int dstHeight = (int) (srcHeight * scaleY);
 		
 		int i = 0;
 		switch (method) {
@@ -93,19 +91,13 @@ public class OpenCVResampler implements RasterOp, Serializable {
 	
 		final int bufferSize = dstWidth * dstHeight * raster.getBands().size() * raster.getBands().get(0).datatype().size();
 		
-		raster.setDimension(dstDimension);
+		raster.setDimension(new Envelope(0, dstWidth, 0, dstHeight));
 		
 		raster.setData(bytesFromMat(
 				dstMat,
 				raster.getBands().get(0).datatype(),
 				bufferSize));
 
-	}
-	
-	@Override
-	public String getOperationName() {
-		
-		return RasterOps.RESIZE;
 	}
 	
 	@Override

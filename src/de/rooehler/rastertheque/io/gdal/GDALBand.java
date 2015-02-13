@@ -1,11 +1,15 @@
 package de.rooehler.rastertheque.io.gdal;
 
 import java.io.File;
+import java.util.ArrayList;
+
+import org.gdal.gdal.ColorTable;
 
 import de.rooehler.rastertheque.core.Band;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.NoData;
 import de.rooehler.rastertheque.processing.rendering.ColorMap;
+import de.rooehler.rastertheque.processing.rendering.ColorMapEntry;
 import de.rooehler.rastertheque.processing.rendering.SLDColorMapParser;
 import de.rooehler.rastertheque.util.Constants;
 
@@ -20,7 +24,7 @@ public class GDALBand implements Band{
 		mColorMap = null;
 	}
 	
-	public static void applyColorMap(final String filePath){
+	public static void applySLDColorMap(final String filePath){
 		
 		if(mColorMap == null ){
 			if(filePath != null){
@@ -44,6 +48,7 @@ public class GDALBand implements Band{
 			}
 		}
 	}
+
 
     public GDALBand(org.gdal.gdal.Band band) {
         this.band = band;
@@ -98,6 +103,24 @@ public class GDALBand implements Band{
 	@Override
 	public ColorMap colorMap() {
 		
+		if(mColorMap == null){
+			if(this.band.GetColorTable() != null){
+				mColorMap = convertGDALColorTable(this.band.GetColorTable());
+			}
+		}
 		return mColorMap;
+	}
+
+	private ColorMap convertGDALColorTable(ColorTable colorTable) {
+	
+		ArrayList<ColorMapEntry> entries = new ArrayList<>();
+		
+		for(int i = 0 ; i < colorTable.GetCount(); i++){
+			
+			int color = colorTable.GetColorEntry(i);
+			
+		}
+ 		
+		return null;
 	}
 }

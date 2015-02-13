@@ -4,6 +4,7 @@ package de.rooehler.mapsforgerenderer.rasterrenderer.gdal;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.List;
 
@@ -23,10 +24,13 @@ import de.rooehler.rastertheque.core.Band.Color;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
+import de.rooehler.rastertheque.core.util.ByteBufferReader;
+import de.rooehler.rastertheque.core.util.ByteBufferReaderUtil;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.processing.RasterOps;
-import de.rooehler.rastertheque.processing.rendering.MColorMap;
+import de.rooehler.rastertheque.processing.rendering.OpenCVAmplitudeRescaler;
 import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.processing.resampling.Resampler;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 /**
@@ -235,7 +239,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
              		targetDim,
              		datatype,
              		!useGDALAsResampler(gdalTargetXSize , availableX),
-             		gdalTargetXSize , gdalTargetYSize);
+             		gdalTargetXSize / (double) availableX, gdalTargetYSize / (double) availableY);
 
             	
             return createBoundsTile(bitmap, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
@@ -253,7 +257,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         		targetDim,
         		datatype,
         		!useGDALAsResampler(ts , readAmountX),
-        		ts , ts);
+        		ts / (double) readAmountX, ts / (double)readAmountY);
 
         bitmap.setPixels(pixels, ts);
 		
@@ -272,7 +276,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
      * @param targetHeight height of the target tile
      * @return array of pixels of size targetWidth * targetHeight
      */
-	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final int targetWidth, final int targetHeight){
+	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final double scaleX, final double scaleY){
 		
 		final RasterQuery query = new RasterQuery(
 				bounds,
@@ -287,27 +291,63 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 			
 			HashMap<Key,Serializable> resampleParams = new HashMap<>();
 
-			resampleParams.put(Hints.KEY_SIZE, new Envelope(0, targetWidth, 0, targetHeight));
-			
-			resampleParams.put(Hints.KEY_RESAMPLER, new OpenCVResampler());
+			resampleParams.put(Resampler.KEY_SIZE, new Double[]{scaleX,scaleY});
 
 			RasterOps.execute(raster, RasterOps.RESIZE, resampleParams, null, null);
 
 		}
+
+        if(checkIfHasRGBBands()){
+        	
+        	return renderRGB(raster);
+        	
+        }else{
+
+        	HashMap<Key,Serializable> renderParams = new HashMap<>();
+
+        	renderParams.put(Hints.KEY_AMPLITUDE_RESCALING, new OpenCVAmplitudeRescaler());
+
+        	RasterOps.execute(raster, RasterOps.AMPLITUDE_RESCALING, renderParams, null, null);
+
+        	final int[] pixels  = new int[(int) (bounds.getWidth() * scaleX * bounds.getHeight() * scaleY)];
+
+        	raster.getData().asIntBuffer().get(pixels);
+
+        	return pixels;
+        }
+	}
+	
+	private int[] renderRGB(final Raster raster) {
 		
-		HashMap<Key,Serializable> renderParams = new HashMap<>();
+		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
+		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
 		
-		renderParams.put(Hints.KEY_COLORMAP, new MColorMap());
-		renderParams.put(Hints.KEY_RGB_BANDS, Boolean.valueOf(checkIfHasRGBBands()));	
+		int [] pixels = new int[pixelAmount];
 		
-		RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
+		double[] pixelsR = new double[pixelAmount];
+		double[] pixelsG = new double[pixelAmount];
+		double[] pixelsB = new double[pixelAmount];
+           
+		for (int i = 0; i < pixelAmount; i++) {	
+			pixelsR[i] =  ByteBufferReaderUtil.getValue(reader, raster.getBands().get(0).datatype());
+		}
+		for (int j = 0; j < pixelAmount; j++) {	
+			pixelsG[j] =  ByteBufferReaderUtil.getValue(reader, raster.getBands().get(1).datatype());
+		}
+		for (int k = 0; k < pixelAmount; k++) {	
+			pixelsB[k] =  ByteBufferReaderUtil.getValue(reader, raster.getBands().get(2).datatype());
+		}
 		
-        final int[] pixels  = new int[targetWidth * targetHeight];
-	    
-        raster.getData().asIntBuffer().get(pixels);
-		
-		return pixels;
+        for (int l = 0; l < pixelAmount; l++) {	
+        	
+        	double r = pixelsR[l];
+        	double g = pixelsG[l];
+        	double b = pixelsB[l];
+        	
+        	pixels[l] = 0xff000000 | ((((int) r) << 16) & 0xff0000) | ((((int) g) << 8) & 0xff00) | ((int) b);
+        }
         
+		return pixels;
 	}
 
 	/**

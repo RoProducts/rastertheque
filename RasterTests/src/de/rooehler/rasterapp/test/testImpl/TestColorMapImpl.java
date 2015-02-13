@@ -28,6 +28,22 @@ public class TestColorMapImpl implements RasterOp {
 		
 		return Priority.LOW;
 	}
+
+	@Override
+	public Hints getDefaultHints() {
+		return null;
+	}
+
+	@Override
+	public Map<Key, Serializable> getDefaultParams() {
+		return null;
+	}
+
+	@Override
+	public boolean validateParameters(Map<Key, Serializable> params) {
+		return true;
+	}
+	
 	
 
 }
