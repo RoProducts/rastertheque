@@ -66,7 +66,7 @@ public class GDALBand implements Band{
 		DataType datatype = DataType.BYTE;
 		
 		DataType dt = DataType.getDatatype(band);
-		if (dt.compareTo(datatype) > 0) {
+		if (dt != null && dt.compareTo(datatype) > 0) {
 			datatype = dt;
 		}
 		
@@ -119,8 +119,11 @@ public class GDALBand implements Band{
 			
 			int color = colorTable.GetColorEntry(i);
 			
+			entries.add(new ColorMapEntry(color, i, 1.0, null));
+			
 		}
+		
+		return new ColorMap(entries, 0, colorTable.GetCount() - 1, null, true);
  		
-		return null;
 	}
 }

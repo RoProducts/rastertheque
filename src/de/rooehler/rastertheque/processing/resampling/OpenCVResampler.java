@@ -57,8 +57,7 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 		if(hints != null && hints.containsKey(Hints.KEY_INTERPOLATION)){
 			method = (ResampleMethod) hints.get(Hints.KEY_INTERPOLATION);
 		}
-
-		
+	
 		final int srcWidth = (int) raster.getDimension().getWidth();
 		final int srcHeight = (int) raster.getDimension().getHeight();
 		
@@ -66,17 +65,29 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 		final int dstHeight = (int) (srcHeight * scaleY);
 		
 		int i = 0;
-		switch (method) {
-		case NEARESTNEIGHBOUR:
+		
+		if(raster.getBands().get(0).datatype() == DataType.INT){
+			//Due to a bug (?!) in OpenCV it is not possible to resize datatypes with depth of 4 bytes
+			//with other interpolation methods than INTER_NEAREST
+			//
+			//source: https://github.com/Itseez/opencv/blob/2.4.10.x-prep/modules/imgproc/src/imgwarp.cpp
+			//Line 2114 fails as the func for depth 4 is 0
+			//using inter nearest this can be avoided
+
 			i = Imgproc.INTER_NEAREST;
-			break;
-		case BILINEAR:
-			i = Imgproc.INTER_LINEAR;
-			break;
-		case BICUBIC:
-			i = Imgproc.INTER_CUBIC;
-			break;
-		}	
+		}else{
+			switch (method) {
+			case NEARESTNEIGHBOUR:
+				i = Imgproc.INTER_NEAREST;
+				break;
+			case BILINEAR:
+				i = Imgproc.INTER_LINEAR;
+				break;
+			case BICUBIC:
+				i = Imgproc.INTER_CUBIC;
+				break;
+			}	
+		}
 
 		final Mat srcMat = matAccordingToDatatype(
 					raster.getBands().get(0).datatype(),
@@ -132,15 +143,20 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 			
 		case CHAR:
 			
-			//Use short for chars
-			//TODO test			
-			Mat charMat = new Mat(height, width, CvType.CV_32SC1);
 			
-			final short[] chars = new short[height * width];
+			Mat charMat = new Mat(height, width, CvType.CV_16UC1);
+			
+			final char[] chars = new char[height * width];
 		    
-		    buffer.asShortBuffer().get(chars);
-
-		    charMat.put(0,0,chars);
+		    buffer.asCharBuffer().get(chars);
+		    
+		    for(int i = 0; i < height;i++){
+		    	for(int j = 0; j < width; j++){
+		    		
+		    		final char _char = chars[i * width + j];
+		    		charMat.put(i,j,_char);
+		    	}
+		    }
 			
 			return charMat;
 			
@@ -170,8 +186,8 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 			return floatMat;
 
 		case INT:
-			
-			Mat intMat = new Mat(height, width, CvType.CV_32SC1);
+					
+			Mat intMat = new Mat(height, width, CvType.CV_32SC(bandCount));
 			
 			final int[] ints = new int[height * width];
 		    
@@ -232,7 +248,6 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 			
 		case CHAR:
 			
-			//TODO test char
 			final short[] chars = new short[bufferSize / 2];
 			mat.get(0, 0, chars);
 			buffer.asShortBuffer().put(chars);
@@ -262,9 +277,7 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 			break;
 			
 		case LONG:
-			
-			//TODO test long
-			//there seems to be no long support in OpenCV
+			//wrap longs with double
 			final double[] longs = new double[bufferSize / 8];
 			mat.get(0, 0, longs);
 			buffer.asDoubleBuffer().put(longs);
