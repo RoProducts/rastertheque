@@ -6,7 +6,6 @@ import org.gdal.gdal.gdal;
 
 import android.util.Log;
 import de.rooehler.rastertheque.core.Driver;
-import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 
 public class GDALDriver implements Driver {
 	

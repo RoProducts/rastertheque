@@ -40,8 +40,11 @@ public class GDALBand implements Band{
 					if(rawColorMap.getRange() < Constants.COLORMAP_ENTRY_THRESHOLD){
 						
 						mColorMap = SLDColorMapParser.applyInterpolation(rawColorMap);
+						
 					}else{
+						
 						mColorMap = rawColorMap;
+						
 					}
 
 				}

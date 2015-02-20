@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 
+import android.graphics.Rect;
 import android.os.Environment;
 import android.util.Log;
 
@@ -16,6 +17,7 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
+import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDriver;
 import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.processing.rendering.MAmplitudeRescaler;
@@ -42,11 +44,13 @@ public class TestIO extends android.test.AndroidTestCase {
 		
 		assertNotNull(dataset.getCRS());
 		
-		final Envelope dim = dataset.getDimension();
+		final Rect dim = dataset.getDimension();
+		final int width  = dim.right - dim.left;
+		final int height = dim.bottom - dim.top;
 		
-		assertTrue(dim.getWidth() > 0);
+		assertTrue(width > 0);
 		
-		assertTrue(dim.getHeight() > 0);
+		assertTrue(height > 0);
 		
 		dataset.close();
 		
@@ -62,18 +66,20 @@ public class TestIO extends android.test.AndroidTestCase {
 		
 		GDALDataset dataset = driver.open(GRAY_50M_BYTE);
 		
-		final Envelope dim = dataset.getDimension();
-		final int height = (int) dim.getHeight();
-		final int width =  (int) dim.getWidth();
+		final Rect dim = dataset.getDimension();
+		final int width  = dim.right - dim.left;
+		final int height = dim.bottom - dim.top;
 		
 		final Envelope env = new Envelope(0, width / 10, 0, height / 10);
+		final Rect rect = new Rect(0, 0, width/ 10, height / 10);
 		     
-        final RasterQuery query = new RasterQuery(
+        final RasterQuery query = new GDALRasterQuery(
         		env,
         		dataset.getCRS(),
         		dataset.getBands(),
-        		new Envelope(0, env.getWidth(), 0, env.getHeight()),
-        		dataset.getBands().get(0).datatype());
+        		rect,
+        		dataset.getBands().get(0).datatype(),
+        		rect);
         
         final Raster raster = dataset.read(query);
         
@@ -87,8 +93,11 @@ public class TestIO extends android.test.AndroidTestCase {
         
         assertNotNull(pixels);
         
+        final int rasterWidth  = raster.getDimension().right - raster.getDimension().left;
+      	final int rasterHeight = raster.getDimension().bottom - raster.getDimension().top;
+        
         //check a pixel
-        final int pixel = pixels[((int)raster.getDimension().getWidth() * (int) raster.getDimension().getHeight()) / 2];
+        final int pixel = pixels[rasterWidth * rasterHeight / 2];
         
         final int red = (pixel >> 16) & 0xff;
         final int green = (pixel >> 8) & 0xff;

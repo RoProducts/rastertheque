@@ -23,8 +23,6 @@ public class ColorMap {
 	private double mMaxValue;
 	private boolean mapsColorsToValues;
 	
-	private int mCount;
-	
 	public ColorMap(ArrayList<ColorMapEntry> pEntries,final double pMin, final double pMax, final Pair<Double,Integer> pNoData, boolean hasInterpolatedColorMap){
 		
 		this.mEntries = pEntries;
@@ -82,8 +80,6 @@ public class ColorMap {
 
 			int min = 0;
 			int max = mEntries.size() - 1;
-			mCount = 0;
-
 
 			while(max >= min) {
 				int middle = (max + min) / 2;
@@ -106,7 +102,6 @@ public class ColorMap {
 						max = middle - 1;
 					}
 				}
-				mCount++;
 			}
 		}
 		return mEntries.get(0).getColor();

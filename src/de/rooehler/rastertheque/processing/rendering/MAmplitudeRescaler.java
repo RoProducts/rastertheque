@@ -18,10 +18,12 @@ import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
 
-public class MAmplitudeRescaler implements RasterOp, Serializable {
+public class MAmplitudeRescaler extends AmplitudeRescaler implements RasterOp, Serializable {
 
 
 	private static final long serialVersionUID = 2138351083682731966L;
+	
+
 
 	@Override
 	public String getOperationName() {
@@ -38,16 +40,26 @@ public class MAmplitudeRescaler implements RasterOp, Serializable {
 	@Override
 	public void execute(Raster raster, Map<Key, Serializable> params, Hints hints, ProgressListener listener) {
 		
-		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
+		double[] minMax = null;
+		if(params != null){
+			if(params.containsKey(KEY_MINMAX)){
+				 minMax = (double[]) params.get(KEY_MINMAX);									
+			}
+		}
+		
+		final int raster_width  = raster.getDimension().right - raster.getDimension().left;
+		final int raster_height = raster.getDimension().bottom - raster.getDimension().top;
+		
+		final int pixelAmount = raster_width * raster_height;
 		int[] pixels = new int[pixelAmount];
-	    double[] minMax = new double[2];
-			 
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 		
-	 	getMinMax(minMax, reader, pixelAmount, raster.getBands().get(0).datatype());
-	       
+		if(minMax == null){
+			minMax = new double[2];
+			getMinMax(minMax, reader, pixelAmount, raster.getBands().get(0).datatype());
+			reader.init();
+		}
     	Log.d(MAmplitudeRescaler.class.getSimpleName(), "rawdata min "+minMax[0] +" max "+minMax[1]);
-    	reader.init();
 
     	for (int i = 0; i < pixelAmount; i++) {
         	
@@ -175,21 +187,4 @@ public class MAmplitudeRescaler implements RasterOp, Serializable {
 		return Priority.NORMAL;
 	}
 	
-	@Override
-	public Hints getDefaultHints() {
-
-		return null;
-	}
-	
-	@Override
-	public Map<Key, Serializable> getDefaultParams() {
-		
-		return null;
-	}
-	
-	@Override
-	public boolean validateParameters(Map<Key, Serializable> params) {
-
-		return true;
-	}
 }

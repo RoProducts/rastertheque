@@ -2,7 +2,9 @@ package de.rooehler.rastertheque.core;
 
 import java.util.List;
 
-import org.osgeo.proj4j.CoordinateReferenceSystem;
+import org.gdal.osr.SpatialReference;
+
+import android.graphics.Rect;
 
 import com.vividsolutions.jts.geom.Envelope;
 
@@ -16,7 +18,7 @@ public class RasterQuery {
     /**
      * projection of query.
      */
-    CoordinateReferenceSystem crs;
+    SpatialReference crs;
 
     /**
      * band selection
@@ -26,32 +28,30 @@ public class RasterQuery {
     /**
      * Target size for the raster.
      */
-    Envelope size;
+    Rect dimension;
 
     /**
      * Data type that band values should be packed into.
      */
-    DataType datatype;
+    DataType datatype; 
     
     
-    
-    
-    public RasterQuery(Envelope bounds, CoordinateReferenceSystem crs,	List<Band> bands, Envelope size, DataType datatype) {
-		this.bounds = bounds;
-		this.crs = crs;
-		this.bands = bands;
-		this.size = size;
-		this.datatype = datatype;
+    public RasterQuery(
+    		final Envelope pBounds,
+    		final SpatialReference pCrs,
+    		final List<Band> pBands,
+    		final Rect pDimension,
+    		final DataType pDatatype) {
+		this.bounds = pBounds;
+		this.crs = pCrs;
+		this.bands = pBands;
+		this.dimension = pDimension;
+		this.datatype = pDatatype;
 	}
 
 	/**
-     * Sets the bands to read from the raster dataset.
-     * <p>
-     * Specifying <tt>null</tt> or an empty array means all bands.
-     * </p>
+     * Sets the bands to read from the raster dataset
      * @param bands Band indexes (0 based).
-     *
-     * @return This object.
      */
     public void setBands(List<Band> bands) {
         this.bands = bands;
@@ -59,21 +59,20 @@ public class RasterQuery {
 
 
     /**
-     * The bands to read from the raster dataset.
+     * The bands to read from the raster dataset
      */
     public List<Band> getBands() {
         return bands;
     }
 
     /**
-     * Sets the bounds constraint of the query.
+     * Sets the bounding box of the query in model coordinates
      * <p>
      * The bounds should be interpreted in terms of {@link #crs()}. If no crs has been
      * set the bounds should be interpreted in terms of the native crs of the data being
      * queried.
      * </p>
-     * @param bounds The query bounds, specifying <tt>null</tt> means the bounds of the entire dataset.
-     * @return This object.
+     * @param bounds the query bounds
      */
     public RasterQuery setBounds(Envelope bounds) {
         this.bounds = bounds;
@@ -81,9 +80,7 @@ public class RasterQuery {
     }
 
     /**
-     * Bounds constraints on the query, may be <code>null</code> meaning no bounds constraint.
-     *
-     * @see #bounds(com.vividsolutions.jts.geom.Envelope)
+     * The bounding box of the query in model coordinates
      */
     public Envelope getBounds() {
         return bounds;
@@ -91,46 +88,40 @@ public class RasterQuery {
 
     /**
      * Sets the crs of the query.
-     * <p>
-     * Datasets handling queries must check this relative to the native crs to determine if
-     * re-projection must occur.
-     * </p>
      */
-    public void setCRS(CoordinateReferenceSystem crs) {
+    public void setCRS(SpatialReference crs) {
         this.crs = crs;
     }
 
     /**
-     * The query crs, may be <code>null</code> meaning same crs as the data being queried.
+     * The query crs
      *
      * @see #crs(org.osgeo.proj4j.CoordinateReferenceSystem)
      */
-    public CoordinateReferenceSystem getCRS() {
+    public SpatialReference getCRS() {
         return crs;
     }
 
     /**
-     * Sets the target size of the raster to be read.
+     * Sets the  dimension of the raster
      *
-     * @param size Raster dimensions.
+     * @param raster dimensions.
      */
-    public void setSize(Envelope size) {
-        this.size = size;
+    public void setDimension(Rect pDimension) {
+        this.dimension = pDimension;
     }
 
     /**
-     * Target size for the raster being read.
+     * Target dimension for the raster in raster coordinates
      */
-    public Envelope getSize() {
-        return size;
+    public Rect getDimension() {
+        return dimension;
     }
 
     /**
-     * Sets the type of the returned buffer from a raster query.
+     * Sets the data type of the raster
      *
-     * @param datatype The buffer type.
-     *
-     * @return This object.
+     * @param datatype the data type.
      */
     public void setDatatype(DataType datatype) {
         this.datatype = datatype;

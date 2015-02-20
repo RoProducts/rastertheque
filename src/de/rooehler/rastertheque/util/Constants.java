@@ -32,6 +32,7 @@ public class Constants {
 				
 	public static final String EPSG_4326 = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.01745329251994328,AUTHORITY[\"EPSG\",\"9122\"]],AUTHORITY[\"EPSG\",\"4326\"]]";
 	
+	public static final String EPSG_900913 = EPSG_3857;
 	
 	public static final int COLORMAP_ENTRY_THRESHOLD = 65536;
 }

@@ -2,19 +2,18 @@ package de.rooehler.rastertheque.io.mbtiles;
 
 import java.io.File;
 
-import org.osgeo.proj4j.CoordinateReferenceSystem;
-
-import com.vividsolutions.jts.geom.Envelope;
+import org.gdal.osr.SpatialReference;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.util.Log;
+
+import com.vividsolutions.jts.geom.Envelope;
+
 import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Driver;
-import de.rooehler.rastertheque.core.Raster;
-import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.proj.Proj;
+import de.rooehler.rastertheque.util.Constants;
 
 public class MBTilesDataset implements Dataset {
 	
@@ -72,9 +71,9 @@ public class MBTilesDataset implements Dataset {
 	}
 
 	@Override
-	public CoordinateReferenceSystem getCRS() {
+	public SpatialReference getCRS() {
 		
-		 return Proj.EPSG_900913;
+		 return new SpatialReference(Constants.EPSG_900913);
 	}
 
 	@Override

@@ -4,7 +4,9 @@ import java.nio.ByteBuffer;
 import java.util.Hashtable;
 import java.util.List;
 
-import org.osgeo.proj4j.CoordinateReferenceSystem;
+import org.gdal.osr.SpatialReference;
+
+import android.graphics.Rect;
 
 import com.vividsolutions.jts.geom.Envelope;
 
@@ -18,12 +20,12 @@ public class Raster {
     /**
      * The projection of the raster.
      */
-    CoordinateReferenceSystem crs;
+    SpatialReference crs;
 
     /**
      * The dimensions of the raster.
      */
-    Envelope dimension;
+    Rect dimension;
 
     /**
      * Bands contained in the raster.
@@ -47,7 +49,7 @@ public class Raster {
 
     
     
-    public Raster(Envelope pBounds, CoordinateReferenceSystem pCrs, Envelope pSize, List<Band> pBands, ByteBuffer pData, Hashtable<?, ?> pMetaData) {
+    public Raster(Envelope pBounds, SpatialReference pCrs, Rect pSize, List<Band> pBands, ByteBuffer pData, Hashtable<?, ?> pMetaData) {
     	
     	this.bounds = pBounds;
     	this.crs = pCrs;
@@ -74,28 +76,28 @@ public class Raster {
     /**
      * The world projection of the raster.
      */
-    public CoordinateReferenceSystem getCRS() {
+    public SpatialReference getCRS() {
         return crs;
     }
 
     /**
      * Sets the world projection of the raster.
      */
-    public void setCRS(CoordinateReferenceSystem pCrs) {
+    public void setCRS(SpatialReference pCrs) {
         this.crs = pCrs;
     }
 
     /**
      * The dimensions of the raster.
      */
-    public Envelope getDimension() {
+    public Rect getDimension() {
         return dimension;
     }
 
     /**
      * Sets the dimensions of the raster.
      */
-    public void setDimension(Envelope pSize) {
+    public void setDimension(Rect pSize) {
         this.dimension = pSize;
     }
 

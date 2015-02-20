@@ -2,7 +2,7 @@ package de.rooehler.rastertheque.core;
 
 import java.util.List;
 
-import com.vividsolutions.jts.geom.Envelope;
+import android.graphics.Rect;
 
 
 public interface RasterDataset extends Dataset{
@@ -11,7 +11,7 @@ public interface RasterDataset extends Dataset{
 	 * describes the Dimension of this dataset
 	 * @return
 	 */
-	Envelope getDimension();
+	Rect getDimension();
 	
 	/**
 	 * the bands of this dataset

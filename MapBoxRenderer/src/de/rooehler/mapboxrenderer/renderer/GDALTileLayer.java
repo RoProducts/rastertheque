@@ -11,6 +11,7 @@ import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Point;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
 
@@ -30,6 +31,7 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.core.util.ByteBufferReaderUtil;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
+import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
 import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.processing.rendering.MColorMap;
 import de.rooehler.rastertheque.processing.resampling.Resampler;
@@ -56,6 +58,10 @@ public class GDALTileLayer extends TileLayer {
 	private int mTileSize;
 	
 	private static final int NO_DATA_COLOR = 0xff000000;
+	
+	private static long mStart = -1;
+	private static long mTileCount = 0;
+	
 	/**
 	 * A TileLayer which provides Tiles of a corresponding Raster file
 	 * 
@@ -85,10 +91,14 @@ public class GDALTileLayer extends TileLayer {
 
 		final LatLng sw = new LatLng(bb.getMinY(),bb.getMinX()); 
 		final LatLng ne = new LatLng(bb.getMaxY(),bb.getMaxX()); 
+		
+		final Rect dim = mRasterDataset.getDimension();
+		final int width  = dim.right - dim.left;
+		final int height  = dim.bottom - dim.top;
 
 		//meters per pixel of this raster --> distance min-max / length min-max
 		double res_in_Meters = Formulae.distanceBetweenInMeters(bb.getMinY(),bb.getMinX(), bb.getMaxY(),bb.getMaxX()) /
-				Math.hypot(mRasterDataset.getDimension().getHeight(),mRasterDataset.getDimension().getWidth());
+				Math.hypot(height,width);
 		
 		int startZoomLevel = 0;
 		while(Formulae.getResolutionInMetersPerPixelForZoomLevel(startZoomLevel) > res_in_Meters){
@@ -108,6 +118,7 @@ public class GDALTileLayer extends TileLayer {
 		mBoundingBox = new BoundingBox(ne, sw);
 		mCenter = mBoundingBox.getCenter();
 
+		mStart = System.currentTimeMillis();
     }
 
     /**
@@ -122,9 +133,9 @@ public class GDALTileLayer extends TileLayer {
     	}
     	final int zoom = aTile.getZ();
 
-		final Envelope dim = mRasterDataset.getDimension();
-		final int h =  (int) dim.getHeight();
-		final int w =  (int) dim.getWidth();
+    	final Rect dim = mRasterDataset.getDimension();
+		final int w  = dim.right - dim.left;
+		final int h = dim.bottom - dim.top;
 		
 		final DataType datatype = mRasterDataset.getBands().get(0).datatype();
 		
@@ -134,6 +145,11 @@ public class GDALTileLayer extends TileLayer {
     	final Point t  = Projection.tileXYToPixelXY(aTile.getX(), aTile.getY(), null);
     	final Point t2 = Projection.tileXYToPixelXY(aTile.getX() + 1, aTile.getY() + 1 , null);
     	
+    	final LatLng uL = Projection.pixelXYToLatLong(t.x, t.y, aTile.getZ());
+    	final LatLng lR = Projection.pixelXYToLatLong(t2.x, t2.y, aTile.getZ());
+    	
+    	final Envelope bounds = new Envelope(uL.getLongitude(),lR.getLongitude(),lR.getLatitude(),uL.getLatitude());
+    			
     	final PointF northWest = Projection.latLongToPixelXY(mBoundingBox.getLatNorth(), mBoundingBox.getLonWest(), zoom, null);
     	final PointF southEast = Projection.latLongToPixelXY(mBoundingBox.getLatSouth(), mBoundingBox.getLonEast(), zoom, null);
     	
@@ -150,8 +166,8 @@ public class GDALTileLayer extends TileLayer {
     	double readFromY2 =  h * yRatio2;
 
     	//4. TODO improve calculate the amount to read
-    	int zoomedTSX = (int) (readFromX2 - readFromX);  
-    	int zoomedTSY = (int) (readFromY2 - readFromY);  
+    	int zoomedTSX = (int) Math.round(readFromX2 - readFromX);  
+    	int zoomedTSY = (int) Math.round(readFromY2 - readFromY);  
     	final float scaleFactor = (float) ((zoomedTSX + zoomedTSY) / 2) / ts;
 
     	int readAmountX = zoomedTSX;
@@ -159,10 +175,6 @@ public class GDALTileLayer extends TileLayer {
     	
     	if(zoomedTSX < 0 || zoomedTSY < 0){
     		return returnNoDataTile(downloader, aTile, ts, now);
-    	}else{
-    		Log.e(TAG, "wanted "+ts +" reading x : "+zoomedTSX +" y : "+ zoomedTSY);
-//    		Log.i(TAG, "ts : " + ts + " zoomedTS is : " + zoomedTS +" zoom "+ zoom+ " scaleFactor : "+scaleFactor);
-    		
     	}
 
 //        Log.d(TAG, String.format("tile %d %d zoom %d read from %d %d amount %d %d",aTile.getX(), aTile.getY(),aTile.getZ(), aTile.getZ(),readFromX,readFromY,readAmountX,readAmountY));   
@@ -210,11 +222,12 @@ public class GDALTileLayer extends TileLayer {
         	}
 //        	Log.e(TAG, "reading of ("+availableX+","+availableY +") from "+readFromX+","+readFromY+" target {"+gdalTargetXSize+","+gdalTargetYSize+"}, covered: X"+coveredXOrigin+", Y "+coveredYOrigin);
 
-        	final Envelope targetDim = useGDALAsResampler(targetXSize ,availableX) ?
-        			new Envelope(0, targetXSize, 0, targetYSize) : new Envelope(0, availableX, 0, availableY);
+        	final Rect targetDim = useGDALAsResampler(targetXSize ,availableX) ?
+        			new Rect(0, 0, targetXSize, targetYSize) : new Rect(0, 0, availableX, availableY);
         	
         	final int pixels[] = executeQuery(
-           			new Envelope(readFromX, readFromX + availableX, readFromY, readFromY + availableY),
+        			bounds,
+           			new Rect((int)readFromX,(int) readFromY,(int) readFromX + availableX,(int) readFromY + availableY),
              		targetDim,
              		datatype,
              		!useGDALAsResampler(targetXSize ,availableX),
@@ -224,13 +237,14 @@ public class GDALTileLayer extends TileLayer {
 
 
         }else{ //this rectangle is fully covered by the file
-        	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
+//        	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
         }  
-        final Envelope targetDim = useGDALAsResampler(ts , readAmountX) ?
-        		new Envelope(0, ts, 0, ts) : new Envelope(0, readAmountX, 0, readAmountY);
+        final Rect targetDim = useGDALAsResampler(ts , readAmountX) ?
+        		new Rect(0,0, ts, ts) : new Rect(0, 0, readAmountX, readAmountY);
       
         final int pixels[] = executeQuery(
-        		new Envelope(readFromX, readFromX + readAmountX, readFromY, readFromY + readAmountY),
+        		bounds,
+        		new Rect((int)readFromX,(int) readFromY,(int) readFromX + readAmountX,(int) readFromY + readAmountY),
         		targetDim,
         		datatype,
         		!useGDALAsResampler( ts , readAmountX),
@@ -239,7 +253,9 @@ public class GDALTileLayer extends TileLayer {
         Bitmap bitmap = Bitmap.createBitmap(ts, ts, Config.ARGB_8888);
         bitmap.setPixels(pixels, 0, ts, 0, 0, ts, ts);
         
-
+        mTileCount++;
+        Log.d(TAG, "tile done "+ (System.currentTimeMillis() - mStart ) / 1000f + " since start for "+mTileCount+ " tiles");
+        
 //        Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 
         CacheableBitmapDrawable result = downloader.getCache().putTileBitmap(aTile, bitmap);
@@ -260,14 +276,15 @@ public class GDALTileLayer extends TileLayer {
      * @param targetHeight height of the target tile
      * @return array of pixels of size targetWidth * targetHeight
      */
-	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final double scaleX, final double scaleY){
+	public int[] executeQuery(final Envelope bounds, final Rect readDim, final Rect targetDim, final DataType datatype, boolean resample, final double scaleX, final double scaleY){
 		
-		final RasterQuery query = new RasterQuery(
+		final RasterQuery query = new GDALRasterQuery(
 				bounds,
 				mRasterDataset.getCRS(),
 				mRasterDataset.getBands(), 
 				readDim,
-				datatype);
+				datatype,
+				targetDim);
 
 		Raster raster = null;
 		
@@ -293,10 +310,15 @@ public class GDALTileLayer extends TileLayer {
 			HashMap<Key,Serializable> renderParams = new HashMap<>();
 
 			renderParams.put(Hints.KEY_COLORMAP, new MColorMap());	
+//			renderParams.put(Hints.KEY_AMPLITUDE_RESCALING, new OpenCVAmplitudeRescaler());	
 
 			RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
+//			RasterOps.execute(raster, RasterOps.AMPLITUDE_RESCALING, renderParams, null, null);
 
-			final int[] pixels  = new int[(int) (bounds.getWidth() * scaleX * bounds.getHeight() * scaleY)];
+			final int width  = raster.getDimension().right - raster.getDimension().left;
+    		final int height = raster.getDimension().bottom - raster.getDimension().top;
+
+        	final int[] pixels  = new int[width * height];
 
 			raster.getData().asIntBuffer().get(pixels);
 
@@ -309,7 +331,10 @@ public class GDALTileLayer extends TileLayer {
 	private int[] renderRGB(final Raster raster) {
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
-		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
+		
+		final int width  = raster.getDimension().right - raster.getDimension().left;
+		final int height = raster.getDimension().bottom - raster.getDimension().top;
+		final int pixelAmount = width * height;
 		
 		int [] pixels = new int[pixelAmount];
 		

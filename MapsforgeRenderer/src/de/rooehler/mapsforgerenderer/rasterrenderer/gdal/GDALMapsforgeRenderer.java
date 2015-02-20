@@ -8,12 +8,14 @@ import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.List;
 
+import org.gdal.osr.SpatialReference;
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
+import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
-import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.util.Log;
 
 import com.vividsolutions.jts.geom.Envelope;
@@ -27,9 +29,9 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.core.util.ByteBufferReaderUtil;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
+import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
 import de.rooehler.rastertheque.processing.RasterOps;
-import de.rooehler.rastertheque.processing.rendering.OpenCVAmplitudeRescaler;
-import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
+import de.rooehler.rastertheque.processing.rendering.MColorMap;
 import de.rooehler.rastertheque.processing.resampling.Resampler;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
@@ -166,10 +168,13 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		
 		final int ts = job.tile.tileSize;
 		final byte zoom = job.tile.zoomLevel;
-		final Envelope dim = mRasterDataset.getDimension();
-		final int h = (int) dim.getHeight();
-		final int w = (int) dim.getWidth();
+		final Rect dim = mRasterDataset.getDimension();
+		final int w  = dim.right - dim.left;
+		final int h = dim.bottom - dim.top;
 		final DataType datatype = mRasterDataset.getBands().get(0).datatype();
+		       
+        BoundingBox bb = job.tile.getBoundingBox();
+        final Envelope bounds = new Envelope(bb.minLongitude,bb.maxLongitude,bb.minLatitude,bb.maxLatitude);	
 		
 		long now = System.currentTimeMillis();
 
@@ -182,14 +187,14 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         final int readAmountX = zoomedTS;
         final int readAmountY = zoomedTS;
         
-        long readFromX = job.tile.tileX * readAmountX;
-        long readFromY = job.tile.tileY * readAmountY;
+        int readFromX = job.tile.tileX * readAmountX;
+        int readFromY = job.tile.tileY * readAmountY;
         
         
 //        Log.d(TAG, String.format("tile %d %d zoom %d read from %d %d amount %d %d",job.tile.tileX,job.tile.tileY,job.tile.zoomLevel,readFromX,readFromY,readAmountX,readAmountY));   
         
         if(readFromX < 0 || readFromX + readAmountX > w ||  readFromY < 0 || readFromY + readAmountY > h){
-        	Log.e(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");
+//        	Log.e(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");
 
         	//if entirely out of bounds -> return white tile
         	if(readFromX + readAmountX <= 0 || readFromX  > w ||
@@ -231,11 +236,12 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         		}
         	}
 
-        	final Envelope targetDim = useGDALAsResampler(gdalTargetXSize , availableX) ?
-        			new Envelope(0 , gdalTargetXSize,0,  gdalTargetYSize) :	new Envelope(0, availableX, 0, availableY);
+        	final Rect targetDim = useGDALAsResampler(gdalTargetXSize , availableX) ?
+        			new Rect(0, 0, gdalTargetXSize, gdalTargetYSize) :	new Rect(0, 0, availableX, availableY);
         	
         	final int pixels[] = executeQuery(
-        			new Envelope(readFromX, readFromX + availableX, readFromY, readFromY + availableY),
+        			bounds,
+        			new Rect(readFromX, readFromY,readFromX + availableX, readFromY + availableY),
              		targetDim,
              		datatype,
              		!useGDALAsResampler(gdalTargetXSize , availableX),
@@ -245,15 +251,19 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
             return createBoundsTile(bitmap, pixels, coveredXOrigin,coveredYOrigin, gdalTargetXSize, gdalTargetYSize, ts, now);
             
 
-        }else{ //this rectangle is fully covered by the file
-        	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
-        } 
+        }
+//        else{ //this rectangle is fully covered by the file
+//        	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
+//        } 
         
-        final Envelope targetDim = useGDALAsResampler(ts , readAmountX) ? 
-        		new Envelope(0, ts, 0, ts) : new Envelope(0, readAmountX, 0, readAmountY);
+        final Rect targetDim = useGDALAsResampler(ts , readAmountX) ? 
+        		new Rect(0, 0, ts, ts) : new Rect(0, 0, readAmountX, readAmountY);
        
+	
+        		
         final int pixels[] = executeQuery(
-        		new Envelope(readFromX, readFromX + readAmountX, readFromY, readFromY + readAmountY),
+        		bounds,
+        		new Rect(readFromX, readFromY,readFromX + readAmountX,  readFromY + readAmountY),
         		targetDim,
         		datatype,
         		!useGDALAsResampler(ts , readAmountX),
@@ -261,7 +271,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 
         bitmap.setPixels(pixels, ts);
 		
-		Log.d(TAG, "tile  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
+		Log.d(TAG, "tile at zoom "+zoom+"  took "+((System.currentTimeMillis() - now) / 1000.0f)+ " s");
 
 		return bitmap;
 	}
@@ -276,14 +286,15 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
      * @param targetHeight height of the target tile
      * @return array of pixels of size targetWidth * targetHeight
      */
-	public int[] executeQuery(final Envelope bounds, final Envelope readDim, final DataType datatype, boolean resample, final double scaleX, final double scaleY){
+	public int[] executeQuery(final Envelope bounds, final Rect readDim,final Rect targetDim, final DataType datatype, boolean resample, final double scaleX, final double scaleY){
 		
-		final RasterQuery query = new RasterQuery(
+		final RasterQuery query = new GDALRasterQuery(
 				bounds,
 				mRasterDataset.getCRS(),
         		mRasterDataset.getBands(), 
         		readDim,
-        		datatype);
+        		datatype,
+        		targetDim);
         
         final Raster raster = mRasterDataset.read(query);
         
@@ -305,11 +316,16 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 
         	HashMap<Key,Serializable> renderParams = new HashMap<>();
 
-        	renderParams.put(Hints.KEY_AMPLITUDE_RESCALING, new OpenCVAmplitudeRescaler());
+        	renderParams.put(Hints.KEY_COLORMAP, new MColorMap());
+//        	renderParams.put(Hints.KEY_AMPLITUDE_RESCALING, new OpenCVAmplitudeRescaler());
 
-        	RasterOps.execute(raster, RasterOps.AMPLITUDE_RESCALING, renderParams, null, null);
+        	RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
+//        	RasterOps.execute(raster, RasterOps.AMPLITUDE_RESCALING, renderParams, null, null);
+        	
+        	final int width  = raster.getDimension().right - raster.getDimension().left;
+    		final int height = raster.getDimension().bottom - raster.getDimension().top;
 
-        	final int[] pixels  = new int[(int) (bounds.getWidth() * scaleX * bounds.getHeight() * scaleY)];
+        	final int[] pixels  = new int[width * height];
 
         	raster.getData().asIntBuffer().get(pixels);
 
@@ -320,7 +336,10 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	private int[] renderRGB(final Raster raster) {
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
-		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
+		
+		final int width  = raster.getDimension().right - raster.getDimension().left;
+		final int height = raster.getDimension().bottom - raster.getDimension().top;
+		final int pixelAmount = width * height;
 		
 		int [] pixels = new int[pixelAmount];
 		
@@ -449,7 +468,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		}
 	}
 	
-	public CoordinateReferenceSystem getCurrentCRS(){
+	public SpatialReference getCurrentCRS(){
 		
 		return mRasterDataset.getCRS();
 	}

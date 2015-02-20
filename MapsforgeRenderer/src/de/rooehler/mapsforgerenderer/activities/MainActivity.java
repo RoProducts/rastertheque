@@ -17,12 +17,12 @@ import org.mapsforge.map.reader.MapDatabase;
 import org.mapsforge.map.reader.header.FileOpenResult;
 import org.mapsforge.map.reader.header.MapFileInfo;
 import org.mapsforge.map.rendertheme.InternalRenderTheme;
-import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.content.res.Configuration;
+import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -38,7 +38,6 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
@@ -47,8 +46,6 @@ import de.rooehler.mapsforgerenderer.R;
 import de.rooehler.mapsforgerenderer.dialog.AlertFactory;
 import de.rooehler.mapsforgerenderer.dialog.FilePickerDialog;
 import de.rooehler.mapsforgerenderer.dialog.FilePickerDialog.FilePathPickCallback;
-import de.rooehler.mapsforgerenderer.dialog.SelectProjectionDialog;
-import de.rooehler.mapsforgerenderer.dialog.SelectProjectionDialog.IProjectionSelected;
 import de.rooehler.mapsforgerenderer.interfaces.IWorkStatus;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterLayer;
 import de.rooehler.mapsforgerenderer.rasterrenderer.gdal.GDALMapsforgeRenderer;
@@ -58,7 +55,6 @@ import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Drivers;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
-import de.rooehler.rastertheque.proj.Proj;
 
 
 public class MainActivity extends Activity implements IWorkStatus{
@@ -283,11 +279,11 @@ public class MainActivity extends Activity implements IWorkStatus{
 
 			if(gdalDataset != null){
 
-				if(gdalDataset.getCRS() == null){      	
-					AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
-					gdalDataset.close();
-					return;
-				}
+//				if(gdalDataset.getCRS() == null){      	
+//					AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+//					gdalDataset.close();
+//					return;
+//				}
 				if(gdalDataset.getBoundingBox() == null){
 					AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
 					gdalDataset.close();
@@ -313,9 +309,9 @@ public class MainActivity extends Activity implements IWorkStatus{
 			int width = displaymetrics.widthPixels;
 			byte startZoomLevel = gdalFileRenderer.calculateStartZoomLevel(tileSize,width);
 			
-			final Envelope dim = ((GDALDataset) ds).getDimension();
-			final int h = (int) dim.getHeight();
-			final int w = (int) dim.getWidth();
+			final Rect dim = ((GDALDataset) ds).getDimension();
+			final int w  = dim.right - dim.left;
+			final int h = dim.bottom - dim.top;
 			Log.v(TAG, "width : "+w + " height : "+ h);
 			
 			final MapPosition gdalmp =  new MapPosition(calculateStartPositionForRaster(w, h),startZoomLevel);
@@ -432,13 +428,7 @@ public class MainActivity extends Activity implements IWorkStatus{
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         // If the nav drawer is open, hide action items related to the content view
-//        boolean drawerOpen = mDrawerLayout.isDrawerOpen(mDrawerList);
-    	boolean isEditableMap = isEditableMap();
-    	
-    	menu.findItem(R.id.menu_transform).setVisible(isEditableMap);
-//    	menu.findItem(R.id.menu_colormap).setVisible(isEditableMap);
-//        menu.findItem(R.id.menu_save).setVisible(isEditableMap);
-        
+
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -449,99 +439,9 @@ public class MainActivity extends Activity implements IWorkStatus{
             return true;
         }
         
-        switch(item.getItemId()) {
-        
-        case R.id.menu_transform:
-        		if(isEditableMap()){
-        			final GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
-        			
-        			final CoordinateReferenceSystem currentCrs = renderer.getCurrentCRS();
-        			
-        			if(currentCrs != null){
-        				
-        				final String crs = Proj.toWKT(currentCrs, true);
-
-        				SelectProjectionDialog.showProjectionSelectionDialog(MainActivity.this,crs, new IProjectionSelected() {
-
-        					@Override
-        					public void selected(String proj) {
-
-        						Log.d(TAG, "Selected : "+proj);
-        						tileCache.destroy();
-        						renderer.setDesiredCRS(proj);
-        						mapView.getLayerManager().redrawLayers();
-        					}
-        				});
-        			}else{
-        				Toast.makeText(getBaseContext(), "Error retrieving the current crs, cannot transform!", Toast.LENGTH_SHORT).show();
-        			}
-        		}
-        	break;
-        case R.id.menu_colormap:
-//        		if(isEditableMap()){
-//        			GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
-//        			if(renderer.canSwitchColorMap()){
-//        				
-//        				renderer.toggleUseColorMap();
-//        				tileCache.destroy();
-//        				Toast.makeText(getBaseContext(), "Color Mode toggled",Toast.LENGTH_SHORT).show();
-//        			}else{
-//        				Toast.makeText(getBaseContext(), "Cannot toggle color mode for this raster",Toast.LENGTH_SHORT).show();        				
-//        			}
-//        			
-//        			mapView.getLayerManager().redrawLayers();
-//        		}
-        	break;
-//        case R.id.menu_save:
-//        	if(isEditableMap()){
-//        		
-//        		GDALMapsforgeRenderer renderer = ((GDALMapsforgeRenderer) ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer());
-//    			
-//        		final Callable<Dataset> c = renderer.getRaster().saveCurrentProjectionToFile("reproject.tif");
-//    			
-//    			pd = new ProgressDialog(this);
-//        		pd.setCancelable(false);
-//        		pd.setTitle(getString(R.string.app_name));
-//        		pd.setMessage("Saving");
-//        		pd.setIcon(R.drawable.ic_launcher);
-//        		pd.setCanceledOnTouchOutside(false);
-//        		pd.show();
-//    			
-//        		FutureTask<Dataset> future = new FutureTask<Dataset>(c);
-//        	 
-//        	    ExecutorService executor = Executors.newFixedThreadPool(1);
-//        	    executor.execute(future);
-//        	    
-//        	    while (true) {
-//                    try {
-//                        if(future.isDone() ){
-//                            Log.d(TAG, "done saving");
-//                            executor.shutdown();
-//                            break;
-//                        }
-//                         
-//                        if(!future.isDone()){
-//                        //wait indefinitely for future task to complete
-//                        	Log.d(TAG, "FutureTask "+future.get());
-//                        }
-//  
-//                    } catch (InterruptedException | ExecutionException e) {
-//                    	Log.e(TAG, "error");
-//                    }
-//                }
-//    			pd.dismiss();		
-//    					
-//        	}
-
-        }
         return super.onOptionsItemSelected(item);
     }
-    
-    boolean isEditableMap(){
-    	return mapView.getLayerManager().getLayers().size() > 0 &&
- 	   mapView.getLayerManager().getLayers().get(0) instanceof RasterLayer && 
- 	   ((RasterLayer) mapView.getLayerManager().getLayers().get(0)).getRasterRenderer() instanceof GDALMapsforgeRenderer;
-    }
+
 
     @Override
     public void isRendering() {

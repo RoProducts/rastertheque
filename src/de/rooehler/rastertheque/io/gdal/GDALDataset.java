@@ -1,6 +1,5 @@
 package de.rooehler.rastertheque.io.gdal;
 
-import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -12,8 +11,8 @@ import org.gdal.gdal.Dataset;
 import org.gdal.gdal.gdal;
 import org.gdal.osr.CoordinateTransformation;
 import org.gdal.osr.SpatialReference;
-import org.osgeo.proj4j.CoordinateReferenceSystem;
 
+import android.graphics.Rect;
 import android.util.Log;
 
 import com.vividsolutions.jts.geom.Envelope;
@@ -24,11 +23,6 @@ import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
-import de.rooehler.rastertheque.processing.rendering.ColorMap;
-import de.rooehler.rastertheque.processing.rendering.MColorMap;
-import de.rooehler.rastertheque.processing.rendering.SLDColorMapParser;
-import de.rooehler.rastertheque.proj.Proj;
-import de.rooehler.rastertheque.util.Constants;
 
 public class GDALDataset implements RasterDataset{
 	
@@ -38,11 +32,11 @@ public class GDALDataset implements RasterDataset{
 	
 	Envelope mBounds;
 	
-	Envelope mDimension;
+	Rect mDimension;
 
 	String mSource;
 	
-	CoordinateReferenceSystem mCRS;
+	SpatialReference mCRS;
 	
 	List<Band> mBands;
 	
@@ -65,21 +59,31 @@ public class GDALDataset implements RasterDataset{
 	@Override
 	public Raster read(RasterQuery query) {
 		
-		Envelope src = query.getBounds();
-		Envelope dstDim = query.getSize();
-				
-		final int bufferSize = ((int)dstDim.getWidth()) * ((int)dstDim.getHeight()) * query.getDataType().size() * query.getBands().size();
+		Rect src = query.getDimension(); 
+		Rect target = query.getDimension();
 		
-//		final ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
-		final ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+		if(query instanceof GDALRasterQuery){
+			if(((GDALRasterQuery)query).getTargetDimension() != null){
+				target = ((GDALRasterQuery)query).getTargetDimension();
+			}
+		}
+		final int readWidth = src.right - src.left;
+		final int readHeight = src.bottom - src.top;
+		final int targetWidth = target.right - target.left;
+		final int targetHeight = target.bottom - target.top;
+				
+		final int bufferSize = targetWidth * targetHeight * query.getDataType().size() * query.getBands().size();
+		
+		final ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
+//		final ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 		buffer.order(ByteOrder.nativeOrder()); 
 
 		if(query.getBands().size() == 1){
 
 			((GDALBand)query.getBands().get(0)).getBand().ReadRaster(
-					(int)src.getMinX(),(int)src.getMinY(), //src pos
-					(int)src.getWidth(),(int) src.getHeight(), //src dim
-					(int)dstDim.getWidth(),(int)dstDim.getHeight(), //dst dim
+					src.left,src.top, //src pos
+					readWidth, readHeight, //src dim
+					targetWidth,targetHeight, //dst dim
 					DataType.toGDAL(query.getBands().get(0).datatype()), // the type of the pixel values in the array. 
 					buffer.array());
 		}else{
@@ -88,9 +92,9 @@ public class GDALDataset implements RasterDataset{
 				readBands[i] = ((GDALBand)query.getBands().get(i)).getBand().GetBand();
 			}
 			dataset.ReadRaster(
-					(int)src.getMinX(),(int)src.getMinY(), //src pos
-					(int)src.getWidth(),(int) src.getHeight(), //src dim
-					(int)dstDim.getWidth(),(int)dstDim.getHeight(), //dst dim
+					src.left,src.top, //src pos
+					readWidth, readHeight, //src dim
+					targetWidth,targetHeight, //dst dim
 					DataType.toGDAL(query.getBands().get(0).datatype()), // the type of the pixel values in the array. 
 					buffer.array(), //buffer to write in
 					readBands);
@@ -98,7 +102,7 @@ public class GDALDataset implements RasterDataset{
 		
 		GDALBand.applySLDColorMap(mSource);
 		
-		return new Raster(src , getCRS(), dstDim, query.getBands(), buffer, getMetadata());
+		return new Raster(query.getBounds() , getCRS(), target, query.getBands(), buffer, getMetadata());
 
 	}
 
@@ -108,14 +112,19 @@ public class GDALDataset implements RasterDataset{
 	 */
 	@Override
 	public List<Band> getBands(){
-		int nbands = dataset.GetRasterCount();
-
-		List<Band> bands = new ArrayList<Band>(nbands);
-		for (int i = 1; i <= nbands; i++) {
-			bands.add(new GDALBand(dataset.GetRasterBand(i)));
+		
+		if(mBands == null){
+			
+			int nbands = dataset.GetRasterCount();
+			
+			mBands = new ArrayList<Band>(nbands);
+			for (int i = 1; i <= nbands; i++) {
+				mBands.add(new GDALBand(dataset.GetRasterBand(i)));
+			}
+			
 		}
+		return mBands;
 
-		return bands;
 	}
 
 	/**
@@ -220,10 +229,11 @@ public class GDALDataset implements RasterDataset{
 		if (dataset != null) {
 			dataset.delete();
 			dataset = null;
-			mDimension = null;
-			mBounds = null;
-			mCRS = null;
 		}
+		mDimension = null;
+		mBounds = null;
+		mCRS = null;
+		mBands = null;
 		
 		GDALBand.clearColorMap();
 	}
@@ -241,25 +251,26 @@ public class GDALDataset implements RasterDataset{
 	 * null otherwise
 	 */
 	@Override
-	public CoordinateReferenceSystem getCRS() {
+	public SpatialReference getCRS() {
 
 		if(mCRS == null){
 			
 			String proj = dataset.GetProjection();
 			if (proj != null) {
-				SpatialReference ref = new SpatialReference(proj);
-				try{
-					mCRS =  Proj.crs(ref.ExportToProj4());
-				}catch(RuntimeException e){
-					Log.w(GDALDataset.class.getSimpleName(), "Exception getting crs from projection");
-					return null;
-				}
+				mCRS = new SpatialReference(proj);
+//				try{
+//					mCRS =  Proj.crs(ref.ExportToProj4());
+//				}catch(RuntimeException e){
+//					Log.w(GDALDataset.class.getSimpleName(), "Exception getting crs from projection");
+//					return null;
+//				}
 				return mCRS;
 			}
 			return null;
-		}else{
-			return mCRS;
 		}
+		
+		return mCRS;
+		
 	}
 	/**
 	 * converts a CoordinateReferenceSystem to a well-known text formatted String
@@ -267,11 +278,18 @@ public class GDALDataset implements RasterDataset{
 	 * @param crs the crs to convert
 	 * @return the crs as wkt
 	 */
-	public String toWKT(CoordinateReferenceSystem crs) {
+	public String toWKT(SpatialReference crs) {
 		
-		SpatialReference ref = new SpatialReference();
-		ref.ImportFromProj4(Proj.toString(crs));
-		return ref.ExportToWkt();
+//		SpatialReference ref = new SpatialReference();
+//		ref.ImportFromProj4(Proj.toString(crs));
+		if(getCRS() != null){
+			
+			return getCRS().ExportToWkt();
+		}else{
+			
+			return null;
+			
+		}
 	}
 	
 	/**
@@ -302,11 +320,11 @@ public class GDALDataset implements RasterDataset{
 	 * returns the extent of this dataset
 	 */
 	@Override
-	public Envelope getDimension() {
+	public Rect getDimension() {
 
 		if(mDimension == null){
 
-			mDimension = new Envelope(0, dataset.GetRasterXSize(), 0, dataset.getRasterYSize());
+			mDimension = new Rect(0, 0, dataset.GetRasterXSize(), dataset.getRasterYSize());
 		}
 		
 		return mDimension;

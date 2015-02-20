@@ -6,10 +6,10 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Map;
 
+import android.graphics.Rect;
 import android.util.Log;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
@@ -44,9 +44,8 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 			method = (ResampleMethod) hints.get(Hints.KEY_INTERPOLATION);
 		}
 
-		
-		final int srcWidth = (int) raster.getDimension().getWidth();
-		final int srcHeight = (int) raster.getDimension().getHeight();
+		final int srcWidth  = raster.getDimension().right - raster.getDimension().left;
+		final int srcHeight = raster.getDimension().bottom - raster.getDimension().top;
 		
 		final int dstWidth = (int) (srcWidth * scaleX);
 		final int dstHeight = (int) (srcHeight * scaleY);
@@ -720,7 +719,7 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 				}
 			}
 			
-			raster.setDimension(new Envelope(0, dstWidth, 0, dstHeight));
+			raster.setDimension(new Rect(0, 0, dstWidth, dstHeight));
 			
 			raster.setData(buffer);
 			

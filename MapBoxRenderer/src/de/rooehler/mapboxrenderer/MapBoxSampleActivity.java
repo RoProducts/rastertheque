@@ -244,11 +244,11 @@ public class MapBoxSampleActivity extends Activity {
 
 		if(dataset != null){
 
-			if(dataset.getCRS() == null){      	
-				AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
-				dataset.close();
-				return;
-			}
+//			if(dataset.getCRS() == null){      	
+//				AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+//				dataset.close();
+//				return;
+//			}
 			if(dataset.getBoundingBox() == null){
 				AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
 				dataset.close();

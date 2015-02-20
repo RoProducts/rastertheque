@@ -3,6 +3,7 @@ package de.rooehler.rastertheque.processing.rendering;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.HashMap;
 import java.util.Map;
 
 import de.rooehler.rastertheque.core.Raster;
@@ -39,7 +40,10 @@ public class MColorMap implements RasterOp, Serializable{
 		final ColorMap map = raster.getBands().get(0).colorMap();
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
-		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
+		final int raster_width  = raster.getDimension().right - raster.getDimension().left;
+		final int raster_height = raster.getDimension().bottom - raster.getDimension().top;
+		
+		final int pixelAmount = raster_width * raster_height;
 		
         int[] pixels = new int[pixelAmount];
         
@@ -76,13 +80,13 @@ public class MColorMap implements RasterOp, Serializable{
 	@Override
 	public Hints getDefaultHints() {
 
-		return null;
+		return new Hints(new HashMap<Key,Serializable>());
 	}
 	
 	@Override
 	public Map<Key, Serializable> getDefaultParams() {
 		
-		return null;
+		return new HashMap<Key,Serializable>();
 	}
 	
 	@Override

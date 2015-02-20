@@ -17,12 +17,11 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.core.util.ByteBufferReaderUtil;
 import de.rooehler.rastertheque.processing.RasterOp;
-import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
 
-public class OpenCVAmplitudeRescaler implements RasterOp, Serializable{
+public class OpenCVAmplitudeRescaler extends AmplitudeRescaler implements RasterOp, Serializable{
 
 
 	private static final long serialVersionUID = -5961287990881266046L;
@@ -31,31 +30,41 @@ public class OpenCVAmplitudeRescaler implements RasterOp, Serializable{
 	public void execute(Raster raster, Map<Key, Serializable> params,Hints hints, ProgressListener listener) {
 		
 		
-		//TODO apply hints, params
+		double[] minMax = null;
+		if(params != null){
+			if(params.containsKey(KEY_MINMAX)){
+				 minMax = (double[]) params.get(KEY_MINMAX);									
+			}
+		}
 		
-		final Mat srcMat = matAccordingToDatatype(
-				raster.getBands().get(0).datatype(),
-				raster.getData(),
-				(int) raster.getBoundingBox().getWidth(),
-				(int) raster.getBoundingBox().getHeight());
+		final int raster_width  = raster.getDimension().right - raster.getDimension().left;
+		final int raster_height = raster.getDimension().bottom - raster.getDimension().top;
 		
-		MinMaxLocResult result = Core.minMaxLoc(srcMat);
+		final int pixelAmount = raster_width * raster_height;
 		
-		final int pixelAmount = (int) raster.getDimension().getWidth() *  (int) raster.getDimension().getHeight();
+		if(minMax == null){
+			final Mat srcMat = matAccordingToDatatype(
+					raster.getBands().get(0).datatype(),
+					raster.getData(),
+					raster_width,
+					raster_height);
+
+			MinMaxLocResult result = Core.minMaxLoc(srcMat);
+			minMax = new double[]{result.minVal, result.maxVal};
+		}
 		
 		int[] pixels = new int[pixelAmount];
-
-			 
+ 
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 
-    	Log.d(OpenCVAmplitudeRescaler.class.getSimpleName(), "rawdata min "+result.minVal +" max "+result.maxVal);
+    	Log.d(OpenCVAmplitudeRescaler.class.getSimpleName(), "rawdata min "+minMax[0] +" max "+minMax[1]);
 
 
     	for (int i = 0; i < pixelAmount; i++) {
         	
         	double d = ByteBufferReaderUtil.getValue(reader, raster.getBands().get(0).datatype());
 
-    		pixels[i] = pixelValueForGrayScale(d, result.minVal, result.maxVal);
+    		pixels[i] = pixelValueForGrayScale(d, minMax[0], minMax[1]);
 
         }
 
@@ -185,33 +194,11 @@ public class OpenCVAmplitudeRescaler implements RasterOp, Serializable{
 	}
 	
 	@Override
-	public String getOperationName() {
-		
-		return RasterOps.AMPLITUDE_RESCALING;
-	}
-	
-	@Override
 	public Priority getPriority() {
 	
 		return Priority.HIGH;
 	}
 	
-	@Override
-	public Hints getDefaultHints() {
 
-		return null;
-	}
-	
-	@Override
-	public Map<Key, Serializable> getDefaultParams() {
-		
-		return null;
-	}
-	
-	@Override
-	public boolean validateParameters(Map<Key, Serializable> params) {
-
-		return true;
-	}
 
 }

@@ -8,6 +8,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import android.graphics.Rect;
 import android.os.Environment;
 import android.util.Log;
 
@@ -18,6 +19,7 @@ import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
+import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.processing.resampling.JAIResampler;
@@ -65,13 +67,15 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		final int rs = 256;
 
 		final Envelope env = new Envelope(0, rs, 0, rs);
+		final Rect rect = new Rect(0, 0, rs, rs);
 
-		final RasterQuery query = new RasterQuery(
+		final RasterQuery query = new GDALRasterQuery(
 				env,
 				dataset.getCRS(),
 				dataset.getBands(),
-				env,
-				dataset.getBands().get(0).datatype());
+				rect,
+				dataset.getBands().get(0).datatype(),
+				rect);
 
 		final Envelope targetEnv = new Envelope(0, env.getWidth() * 4, 0, env.getHeight() * 4);
 
@@ -142,13 +146,15 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		final int rs = 256;
 
 		final Envelope env = new Envelope(0, rs, 0, rs);
+		final Rect rect = new Rect(0, 0, rs, rs);
 
-		final RasterQuery query = new RasterQuery(
+		final RasterQuery query = new GDALRasterQuery(
 				env,
 				dataset.getCRS(),
 				dataset.getBands(),
-				env,
-				dataset.getBands().get(0).datatype());
+				rect,
+				dataset.getBands().get(0).datatype(),
+				rect);
 
 		final Envelope targetEnv = new Envelope(0, env.getWidth() * 4, 0, env.getHeight() * 4);
 
@@ -219,13 +225,15 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		final int rs = 256;
 
 		final Envelope env = new Envelope(0, rs, 0, rs);
+		final Rect rect = new Rect(0, 0, rs, rs);
 
-		final RasterQuery query = new RasterQuery(
+		final RasterQuery query = new GDALRasterQuery(
 				env,
 				dataset.getCRS(),
 				dataset.getBands(),
-				env,
-				dataset.getBands().get(0).datatype());
+				rect,
+				dataset.getBands().get(0).datatype(),
+				rect);
 
 		final Envelope targetEnv = new Envelope(0, env.getWidth() * 4, 0, env.getHeight() * 4);
 
@@ -295,13 +303,15 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		final int rs = 256;
 
 		final Envelope env = new Envelope(0, rs, 0, rs);
+		final Rect rect = new Rect(0, 0, rs, rs);
 
-		final RasterQuery query = new RasterQuery(
+		final RasterQuery query = new GDALRasterQuery(
 				env,
 				dataset.getCRS(),
 				dataset.getBands(),
-				env,
-				dataset.getBands().get(0).datatype());
+				rect,
+				dataset.getBands().get(0).datatype(),
+				rect);
 
 		final Envelope targetEnv = new Envelope(0, env.getWidth() * 4, 0, env.getHeight() * 4);
 
@@ -371,13 +381,15 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		final int rs = 256;
 
 		final Envelope env = new Envelope(0, rs, 0, rs);
+		final Rect rect = new Rect(0, 0, rs, rs);
 
-		final RasterQuery query = new RasterQuery(
+		final RasterQuery query = new GDALRasterQuery(
 				env,
 				dataset.getCRS(),
 				dataset.getBands(),
-				env,
-				dataset.getBands().get(0).datatype());
+				rect,
+				dataset.getBands().get(0).datatype(),
+				rect);
 
 		final Envelope targetEnv = new Envelope(0, env.getWidth() * 4, 0, env.getHeight() * 4);
 
@@ -426,6 +438,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 						resampledFloats[k] = resampledReader.readFloat();
 					}
 
+					Log.d(RawResamplerTester.class.getSimpleName(), String.format("orig [first] %f resampled [first] %f", floats[0], resampledFloats[0]));
 					Log.d(RawResamplerTester.class.getSimpleName(), String.format("orig [last] %f resampled [last] %f", floats[floats.length - 1], resampledFloats[resampledFloats.length - 1]));
 
 					assertTrue(compareFloatsWithThreshold(floats[0], resampledFloats[0], threshold));
@@ -456,13 +469,15 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		final int rs = 256;
 
 		final Envelope env = new Envelope(0, rs, 0, rs);
+		final Rect rect = new Rect(0, 0, rs, rs);
 
-		final RasterQuery query = new RasterQuery(
+		final RasterQuery query = new GDALRasterQuery(
 				env,
 				dataset.getCRS(),
 				dataset.getBands(),
-				env,
-				dataset.getBands().get(0).datatype());
+				rect,
+				dataset.getBands().get(0).datatype(),
+				rect);
 
 		final Envelope targetEnv = new Envelope(0, env.getWidth() * 4, 0, env.getHeight() * 4);
 
@@ -536,13 +551,15 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 			final int rs = 256;
 			
 			final Envelope env = new Envelope(rs, rs + rs, rs , rs + rs);
+			final Rect rect = new Rect(0, 0, rs, rs);
 
-			final RasterQuery query = new RasterQuery(
+			final RasterQuery query = new GDALRasterQuery(
 					env,
 					dataset.getCRS(),
 					dataset.getBands(),
-					env,
-					dataset.getBands().get(0).datatype());
+					rect,
+					dataset.getBands().get(0).datatype(),
+					rect);
 
 			final Raster raster = dataset.read(query);
 
@@ -582,7 +599,7 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 						
 						//return to initial state
 						
-						raster.setDimension(new Envelope(rs, rs + rs, rs, rs + rs));
+						raster.setDimension(rect);
 						raster.setData(ByteBuffer.wrap(orig));
 					}
 			}

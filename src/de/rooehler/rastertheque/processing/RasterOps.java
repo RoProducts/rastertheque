@@ -19,10 +19,9 @@ public class RasterOps {
 
 
 	public final static String RESIZE = "RESIZE";
-
 	public final static String COLORMAP = "COLORMAP";
-
 	public final static String AMPLITUDE_RESCALING = "AMPLITUDE_RESCALING";
+	public final static String REPROJECT = "REPROJECT";
 
 	private static Map<String,List<RasterOp>> operations;
 

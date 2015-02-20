@@ -29,6 +29,13 @@ public abstract class Resampler implements RasterOp {
 
 	
 	@Override
+	public abstract Priority getPriority();
+
+	@Override
+	public abstract void execute(Raster raster, Map<Key, Serializable> params,
+			Hints hints, ProgressListener listener);
+	
+	@Override
 	public Hints getDefaultHints() {
 
 		return new Hints(Hints.KEY_INTERPOLATION, ResampleMethod.BILINEAR);
@@ -68,18 +75,12 @@ public abstract class Resampler implements RasterOp {
 		}
 		return false;
 	}
-
-	@Override
-	public abstract Priority getPriority();
-
+	
 	@Override
 	public  String getOperationName() {
 		
 		return RasterOps.RESIZE;
 	}
 
-	@Override
-	public abstract void execute(Raster raster, Map<Key, Serializable> params,
-			Hints hints, ProgressListener listener);
 
 }
