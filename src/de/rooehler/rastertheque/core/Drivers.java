@@ -6,7 +6,15 @@ import java.util.Iterator;
 
 import de.rooehler.rastertheque.core.util.CustomServiceLoader;
 import de.rooehler.rastertheque.util.Hints;
-
+/**
+ * Facade class to access the available Driver during runtime
+ * 
+ * They need to be defined within a configuration file called
+ * "de.rooehler.rastertheque.driver"
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class Drivers {
 
 	private final static String PATH_TO_DRIVERS = "org/rastertheque/io/driver/";

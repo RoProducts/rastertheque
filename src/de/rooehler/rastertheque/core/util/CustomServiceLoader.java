@@ -1,30 +1,5 @@
 package de.rooehler.rastertheque.core.util;
 
-/*
- * Copyright 2005-2006 Sun Microsystems, Inc.  All Rights Reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Sun designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Sun in the LICENSE file that accompanied this code.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Sun Microsystems, Inc., 4150 Network Circle, Santa Clara,
- * CA 95054 USA or visit www.sun.com if you need additional information or
- * have any questions.
- */
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,7 +15,18 @@ import java.util.NoSuchElementException;
 import java.util.ServiceConfigurationError;
 
 
-/**
+/************************************************************************
+ * This is a slight modification of the original ServiceLoader to apply with the 
+ * Android environment.
+ * 
+ * Under Android the hardcoded prefix path "META-INF/services/" is deliberately 
+ * excluded during the build process
+ * 
+ * hence this modification uses a dynamic parameter to look-up
+ * services during runtime
+ * 
+ * **********************************************************************
+ * 
  * A simple service-provider loading facility.
  *
  * <p> A <i>service</i> is a well-known set of interfaces and (usually

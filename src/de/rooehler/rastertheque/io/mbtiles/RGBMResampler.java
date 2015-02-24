@@ -6,17 +6,41 @@ import android.util.Log;
 import com.vividsolutions.jts.geom.Coordinate;
 
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
+/**
+ * RGBResampler is a legacy class which resample
+ * an array of rgb int pixels 
+ * according to an interpolation method
+ * 
+ * this is no real RasterOp operation, which works 
+ * independently of the data value and using a raster
+ * 
+ * but for MBTiles this class is just fine
+ * 
+ * @author Robert Oehler
+ *
+ */
+public class RGBMResampler {
 
-public class MResampler {
-	
-
+	/**
+	 * resample the srcPixelx from srcWidth/srcHeight to 
+	 * dstWidth/dstHeight within dstPixels
+	 * according to @param interpolation method method
+	 * 
+	 * @param srcPixels
+	 * @param srcWidth
+	 * @param srcHeight
+	 * @param dstPixels
+	 * @param dstWidth
+	 * @param dstHeight
+	 * @param method
+	 */
 	public void resample(int srcPixels[], int srcWidth, int srcHeight, int dstPixels[], int dstWidth, int dstHeight,final ResampleMethod method){
-		
+
 		if(srcWidth == dstWidth && srcHeight == dstHeight){
 			System.arraycopy(srcPixels, 0, dstPixels, 0, srcPixels.length);
 			return;
 		}
-		
+
 		switch (method) {
 		case NEARESTNEIGHBOUR:
 			resampleNN(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight);
@@ -28,9 +52,9 @@ public class MResampler {
 			resampleBicubic(srcPixels, srcWidth, srcHeight, dstPixels, dstWidth, dstHeight);
 			break;
 		}
-		
+
 	}
-	
+
 	/**
 	 * Bilinear interpolation http://en.wikipedia.org/wiki/Bilinear_interpolation
 	 * 
@@ -91,7 +115,7 @@ public class MResampler {
 			}
 		}
 	}
-	
+
 	/**
 	 * resamples an array of pixels using bicubic interpolation
 	 * 
@@ -110,7 +134,7 @@ public class MResampler {
 
 		for (int i = 0; i < dstHeight; i++) {
 			for (int j = 0; j < dstWidth; j++) {
-				
+
 				Coordinate c = new Coordinate(x_ratio * j,y_ratio * i);
 
 				dstPixels[offset++] = getInterpolatedPixel(srcPixels, srcWidth, c , 0);
@@ -132,7 +156,7 @@ public class MResampler {
 
 		final double x = coord.x;
 		final double y = coord.y;
-		
+
 		final int x0 = (int) Math.floor(x);	//use floor to handle negative coordinates too
 		final int y0 = (int) Math.floor(y);
 
@@ -140,7 +164,7 @@ public class MResampler {
 		for (int j = 0; j < 4; j++) {
 			final int v = y0 - 1 + j;
 			double  pR = 0, pG = 0, pB = 0;
-			
+
 			for (int i = 0; i < 4; i++) {
 				final int u = x0 - 1 + i;
 				final int index = v * srcWidth + u;
@@ -148,7 +172,7 @@ public class MResampler {
 				try{
 					pixel = pixels[index];
 				}catch(ArrayIndexOutOfBoundsException e){
-					
+
 					if( v < 0){
 						if(u >= 0){
 							pixel = pixels[u];
@@ -170,7 +194,7 @@ public class MResampler {
 					}
 				}
 
-			    pR = pR + ((pixel >> 16) & 0xff) * cubic(x - u, a);
+				pR = pR + ((pixel >> 16) & 0xff) * cubic(x - u, a);
 				pG = pG + ((pixel >> 8)  & 0xff) * cubic(x - u, a);
 				pB = pB + (pixel         & 0xff) * cubic(x - u, a);
 			}
@@ -182,9 +206,9 @@ public class MResampler {
 
 		return 0xff000000 | ((((int) qR) << 16) & 0xff0000) | ((((int) qG) << 8) & 0xff00)| ((int) qB);
 	}
-	
+
 	private double cubic(double r, double a) {
-		
+
 		if (r < 0) {
 			r = -r;
 		}
@@ -196,7 +220,7 @@ public class MResampler {
 		}
 		return w;
 	}
-	
+
 	private void resampleNN(int[] srcPixels, int srcWidth, int srcHeight, int[] dstPixels, int dstWidth, int dstHeight) {
 
 		int x, y, index;
@@ -207,7 +231,7 @@ public class MResampler {
 		for (int i = 0; i < dstHeight; i++) {
 			for (int j = 0; j < dstWidth; j++) {
 
-				
+
 				// src pix coords
 				x = (int) Math.rint(x_ratio * j);
 				y = (int) Math.rint(y_ratio * i);
@@ -216,10 +240,10 @@ public class MResampler {
 				index = y * srcWidth + x;
 
 				dstPixels[offset++] = srcPixels[index];
-				
+
 			}
 		}
-		
+
 	}
 
 }

@@ -23,7 +23,13 @@ import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
-
+/**
+ * A GDALDataset wraps a org.gdal.gdal.dataset
+ * and gives access to its properties and metadata
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class GDALDataset implements RasterDataset{
 	
 	GDALDriver mDriver;
@@ -40,7 +46,14 @@ public class GDALDataset implements RasterDataset{
 	
 	List<Band> mBands;
 	
-    public GDALDataset(final String pFilePath, Dataset dataset, GDALDriver driver) {
+	/**
+	 * default constructor using the path to the raster file,
+	 * the dataset opened by the driver and the driver itself
+	 * @param pFilePath the path to the file of this dataset
+	 * @param dataset the GDAL dataset
+	 * @param driver the driver this dataset was opened with
+	 */
+    public GDALDataset(final String pFilePath, org.gdal.gdal.Dataset dataset, GDALDriver driver) {
 
         this.mSource = pFilePath;
         this.dataset = dataset;
@@ -49,12 +62,20 @@ public class GDALDataset implements RasterDataset{
         getBoundingBox();
         
         getMetadata();
-    }	
+    }
+    /**
+     * convenience constructor mainly for tests and raster operations
+     * which may need to create a dataset from memory
+     * @param dataset the GDAL dataset 
+     */
+    public GDALDataset(org.gdal.gdal.Dataset dataset){
+    	this(null,dataset,null);
+    }
 	
 	/**
 	 * Perform a @param RasterQuery against the dataset to receive a raster
 	 * @param query the query to perform
-	 * @return Raster the raster read
+	 * @return Raster the raster which resulted from this query against the dataset
 	 */
 	@Override
 	public Raster read(RasterQuery query) {
@@ -128,7 +149,7 @@ public class GDALDataset implements RasterDataset{
 	}
 
 	/**
-	 * returns the bounds of this dataset
+	 * returns the bounds of this dataset in the coordinates of this crs
 	 */
 	@Override
 	public Envelope getBoundingBox(){
@@ -144,58 +165,68 @@ public class GDALDataset implements RasterDataset{
 			double	maxx = gt[0] + width*gt[1] + height*gt[2]; // from	http://gdal.org/gdal_datamodel.html
 			double	maxy = gt[3];
 
-
-			SpatialReference old_sr = new SpatialReference(dataset.GetProjectionRef());
-
-			SpatialReference new_sr = new SpatialReference();
-			new_sr.SetWellKnownGeogCS("WGS84");
-
-			CoordinateTransformation ct =  CoordinateTransformation.CreateCoordinateTransformation(old_sr, new_sr);
-
-			if (ct != null){
-
-				double[] minLatLong = ct.TransformPoint(minx, miny);
-
-				double[] maxLatLong = ct.TransformPoint(maxx, maxy);
-
-				mBounds = new Envelope(minLatLong[0], maxLatLong[0], minLatLong[1], maxLatLong[1]);
-
-				return mBounds;
-			}else{
-				
-
-				Log.e(GDALDataset.class.getSimpleName(), org.gdal.gdal.gdal.GetLastErrorMsg());	
-
-				return null;
-
-			}
+			mBounds = new Envelope(minx, maxx, miny, maxy);
+			
+			return mBounds;
+			
 		}else{
 			return mBounds;
 		}
 	}
+	/**
+	 * converts the envelope into a envelope in lat/lon coordinates
+	 * @param input the src envelope
+	 * @param src_Ref the "well-know text" describing the src projection
+	 * @return the envelope in geographic (lat-lon) coordinates
+	 */
+	public static Envelope convertToLatLon(Envelope input, String src_wkt){
+		
+		SpatialReference old_sr = new SpatialReference(src_wkt);
+
+		SpatialReference new_sr = new SpatialReference();
+		new_sr.SetWellKnownGeogCS("WGS84");
+
+		CoordinateTransformation ct =  CoordinateTransformation.CreateCoordinateTransformation(old_sr, new_sr);
+
+		if (ct != null){
+
+			double[] minLatLong = ct.TransformPoint(input.getMinX(), input.getMinY());
+
+			double[] maxLatLong = ct.TransformPoint(input.getMaxX(), input.getMaxY());
+
+			return new Envelope(minLatLong[0], maxLatLong[0], minLatLong[1], maxLatLong[1]);
+
+		}else{
+			
+			Log.e(GDALDataset.class.getSimpleName(), org.gdal.gdal.gdal.GetLastErrorMsg());	
+
+			return null;
+		}
+	}
 	
 	/**
-	 * applies a projection, defined in the @param wkt to the current dataset
+	 * applies a transformation to this dataset according 
+	 * to the projection defined in the @param wkt 
 	 * @param wkt a projection provided in wkt format see
 	 * http://www.geoapi.org/3.0/javadoc/org/opengis/referencing/doc-files/WKT.html
-	 * 
+	 * @return dataset in the projection of @param wkt
 	 */
-	public void applyProjection(final String wkt){
+	public GDALDataset transform(final String wkt){
 
 		SpatialReference dstRef = new SpatialReference(wkt);
 
 		Dataset vrt_ds = gdal.AutoCreateWarpedVRT(dataset,dataset.GetProjection(), dstRef.ExportToWkt());
 
-		dataset = vrt_ds;
-		
-		mCRS = null;
-		
-		getCRS();
+		return new GDALDataset(vrt_ds);
 
 	}
 	
 	/**
 	 * Saves the current dataset to disk using the provided fileName
+	 * 
+	 * The file is written to the directory of the source file of this raster dataset
+	 * 
+	 * TODO this is experimental and currently not used, test if you want to use it
 	 * 
 	 * As writing large files can take a lot of time, this operation is 
 	 * wrapped into a Callable object which will be returned when the operation has finished
@@ -258,12 +289,6 @@ public class GDALDataset implements RasterDataset{
 			String proj = dataset.GetProjection();
 			if (proj != null) {
 				mCRS = new SpatialReference(proj);
-//				try{
-//					mCRS =  Proj.crs(ref.ExportToProj4());
-//				}catch(RuntimeException e){
-//					Log.w(GDALDataset.class.getSimpleName(), "Exception getting crs from projection");
-//					return null;
-//				}
 				return mCRS;
 			}
 			return null;
@@ -280,15 +305,12 @@ public class GDALDataset implements RasterDataset{
 	 */
 	public String toWKT(SpatialReference crs) {
 		
-//		SpatialReference ref = new SpatialReference();
-//		ref.ImportFromProj4(Proj.toString(crs));
 		if(getCRS() != null){
 			
 			return getCRS().ExportToWkt();
 		}else{
 			
 			return null;
-			
 		}
 	}
 	
@@ -306,7 +328,7 @@ public class GDALDataset implements RasterDataset{
 	@Override
 	public String getName() {
 	
-		return mSource.substring(mSource.lastIndexOf("/") + 1);
+		return mSource != null ? mSource.substring(mSource.lastIndexOf("/") + 1) : null;
 	}
 	/**
 	 * returns a description of this dataset

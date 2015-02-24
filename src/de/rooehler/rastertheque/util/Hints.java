@@ -7,8 +7,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import com.vividsolutions.jts.geom.Envelope;
-
 import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.processing.Interpolation;
 import de.rooehler.rastertheque.processing.RasterOp;

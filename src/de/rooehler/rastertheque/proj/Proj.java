@@ -4,6 +4,7 @@ package de.rooehler.rastertheque.proj;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.gdal.osr.SpatialReference;
 import org.osgeo.proj4j.CRSFactory;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 import org.osgeo.proj4j.CoordinateTransform;
@@ -16,7 +17,19 @@ import android.util.Log;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
-
+/**
+ * A class which wraps JTS' CoordinateReferenceSystem
+ * 
+ * It is able to create CRS from epsg ints or proj parameter lists
+ * It provides a locally defined definition for EGSP 900913 
+ * which is not correctly contained in Proj4j
+ * 
+ * It features transformation methods for
+ * reprojecting Envelopes between different CRS
+ * 
+ * @author Robert Oehler
+ *
+ */
 @SuppressLint("DefaultLocale")
 public class Proj {
 
@@ -30,7 +43,11 @@ public class Proj {
 	public static final CoordinateReferenceSystem EPSG_900913 = Proj.crs(900913);
 
 
-
+	/**
+	 * creates a CRS from an EGSP identifier code
+	 * @param epsg
+	 * @return the crs or null
+	 */
 	public static CoordinateReferenceSystem crs(int epsg) {
 
 		final String _epsg = "EPSG:" + epsg;
@@ -41,20 +58,20 @@ public class Proj {
 
 		return csFactory.createFromName(_epsg);
 	}
-	
-    /**
-     * Creates a crs object from projection parameter definition.
-     * 
-     * @param projdef The projection / proj4 parameters.
-     * 
-     * @return The crs object.
-     */
-    public static CoordinateReferenceSystem crs(String... projdef) {
-        if (projdef != null && projdef.length == 1) {
-            return csFactory.createFromParameters(null, projdef[0]);
-        }
-        return csFactory.createFromParameters(null, projdef);
-    }
+
+	/**
+	 * Creates a crs object from projection parameter definition.
+	 * 
+	 * @param projdef The projection / proj4 parameters.
+	 * 
+	 * @return The crs object.
+	 */
+	public static CoordinateReferenceSystem crs(String... projdef) {
+		if (projdef != null && projdef.length == 1) {
+			return csFactory.createFromParameters(null, projdef[0]);
+		}
+		return csFactory.createFromParameters(null, projdef);
+	}
 
 	/**
 	 * Reprojects an envelope between two coordinate reference systems.
@@ -79,22 +96,27 @@ public class Proj {
 
 		Coordinate c1 = new Coordinate(e.getMinX(), e.getMinY());
 		Coordinate c2 = new Coordinate(e.getMaxX(), e.getMaxY());
-		
+
 		ProjCoordinate p1 = new ProjCoordinate(c1.x, c1.y);
 		ProjCoordinate p2 = new ProjCoordinate(c2.x, c2.y);
-		
+
 		tx.transform(p1, p1);
 		tx.transform(p2, p2);
-		
+
 		c1.x = p1.x;
 		c1.y = p1.y;
-		
+
 		c2.x = p2.x;
 		c2.y = p2.y;
 
 		return new Envelope(c1.x, c2.x, c1.y, c2.y);
 	}
-
+	/**
+	 * creates a CoordinateTransform object from two crs
+	 * @param from the source crs
+	 * @param to the target crs
+	 * @return the coordinateTransform object which can be used to transform geometries
+	 */
 	public static CoordinateTransform transform(CoordinateReferenceSystem from, CoordinateReferenceSystem to) {
 
 
@@ -104,9 +126,33 @@ public class Proj {
 		}
 		return tx;
 	}
+	/**
+	 * helper method to convert a proj parameter String to a wkt string
+	 * @param projString a String in proj parameter format
+	 * @return the projectiom as "well-known text" string
+	 */
+	public static String proj2wkt(final String projString){
+
+		SpatialReference srs = new SpatialReference();
+		srs.ImportFromProj4(projString);
+		return srs.ExportToWkt();
+	}
+	/**
+	 * helper method to convert a wkt string to a proj parameter String
+	 * @param wkt a "well-known text" describing a projection
+	 * @return the projection as proj parameter string
+	 */
+	public static String[] wkt2proj(final String wkt){
+
+		SpatialReference srs = new SpatialReference();
+		srs.ImportFromWkt(wkt);
+		String out[] = new String[10];
+		srs.ExportToProj4(out);
+		return out;
+	}
 
 	private static CoordinateReferenceSystem createFromExtra(String auth, String code) {
-		
+
 		Proj4FileReader r = new Proj4FileReader();
 		InputStream in = Proj.class.getResourceAsStream("other.extra");
 

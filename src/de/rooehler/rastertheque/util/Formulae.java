@@ -27,6 +27,11 @@ public class Formulae {
 		return Constants.EARTH_RADIUS * c;  
 	} 
 
+	/**
+	 * returns the resolution in meters at a certain zoom level
+	 * @param zoomLevel the zoomlevel
+	 * @return the amount of meters one pixel covers at this zoom level
+	 */
 	public static double getResolutionInMetersPerPixelForZoomLevel(int zoomLevel){
 		
 		if(zoomLevel < 0){

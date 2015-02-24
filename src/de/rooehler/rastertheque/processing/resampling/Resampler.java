@@ -4,27 +4,33 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.vividsolutions.jts.geom.Envelope;
-
 import de.rooehler.rastertheque.core.Raster;
+import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.processing.RasterOps;
-import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
-
+/**
+ * A super class for all resampling operations
+ * @author Robert Oehler
+ *
+ */
 public abstract class Resampler implements RasterOp {
 
 	private static final int INT_KEY_SIZE = 1006;	
 	
+	/**
+	 * The key for the mandatory SIZE parameter of a resample operation
+	 * it awaits a Double[] object containing delta_x and delta_y
+	 * to apply in the resampling operation
+	 */
 	public static final Key KEY_SIZE = new Hints.Key(INT_KEY_SIZE){
 		
 		@Override
 		public boolean isCompatibleValue(Object val) {
-			return val != null && val instanceof Envelope;
+			return val != null && val instanceof Double[];
 		}
-		
 	};
 
 	
@@ -35,12 +41,22 @@ public abstract class Resampler implements RasterOp {
 	public abstract void execute(Raster raster, Map<Key, Serializable> params,
 			Hints hints, ProgressListener listener);
 	
+	/**
+	 * the default interpolation method for a resampling operation is
+	 * ResampleMethod.BILINEAR
+	 * 
+	 * to use another interpolation method provide hints containing them
+	 */
 	@Override
 	public Hints getDefaultHints() {
 
 		return new Hints(Hints.KEY_INTERPOLATION, ResampleMethod.BILINEAR);
 	}
 	
+	/**
+	 * returns the default params for a resample operation
+	 * double[]{1.0,1.0}
+	 */
 	@Override
 	public Map<Key, Serializable> getDefaultParams() {
 	
@@ -49,7 +65,14 @@ public abstract class Resampler implements RasterOp {
 		
 		return params;
 	}
-	
+	/**
+	 * a resampling operation must provide the resampling factors to apply
+	 * in the format double[]{dx,dy}
+	 * 
+	 * if the provided params contain such an array and the values are valid
+	 * (not NAN) true is returned
+	 * otherwise false 
+	 */
 	@Override
 	public boolean validateParameters(Map<Key, Serializable> params) {
 	

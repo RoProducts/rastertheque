@@ -54,8 +54,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	
 	private boolean isWorking = true;
 	
-	private GDALDataset mRasterDataset;
-	
+	private GDALDataset mRasterDataset;	
 
 
 	public GDALMapsforgeRenderer(GraphicFactory graphicFactory, final GDALDataset pRaster) {
@@ -473,17 +472,6 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		return mRasterDataset.getCRS();
 	}
 	
-	public void setDesiredCRS(final String wkt){
-		
-		try{
-			
-			mRasterDataset.applyProjection(wkt);
-			
-		}catch(Exception e){
-			Log.e(TAG, "Error setting desired CRS to : \n"+wkt);
-		}
-	}
-
 	 /**
      * checks if the resampling should be done inherently by GDAL or by the provided Resampler
      * 

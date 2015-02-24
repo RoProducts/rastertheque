@@ -1,5 +1,10 @@
 package de.rooehler.rastertheque.core;
-
+/**
+ * NoData models the NoData element of a raster
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class NoData {
 
 	/**

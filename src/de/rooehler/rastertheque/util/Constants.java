@@ -5,7 +5,7 @@ public class Constants {
 	
 	public static final int EARTH_RADIUS = 6378137;
 	
-	public static final int DEGREE_IN_METERS_AT_EQUATOR = 111195;
+	//public static final int DEGREE_IN_METERS_AT_EQUATOR = 111195;
 	
 	public static final String EPSG_3857 = "PROJCS[\"WGS 84 / Pseudo-Mercator\","+
 			  "GEOGCS[\"WGS 84\","+

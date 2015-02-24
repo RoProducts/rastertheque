@@ -14,13 +14,29 @@ import org.w3c.dom.NodeList;
 import android.graphics.Color;
 import android.util.Log;
 import android.util.Pair;
-
+/**
+ * class to parse a SLD file to a colormap object
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class SLDColorMapParser {
 
 	private final static String TAG = SLDColorMapParser.class.getSimpleName();
 
+	/**
+	 * parses a sld file to a colormap object
+	 * @param file the sld colormap file
+	 * @return a colormap containing the color values in ascending order like in the file
+	 */
 	public static ColorMap parseRawColorMapEntries(final File file){
-
+		
+		String name = file.getName();
+		int lastIndexOf = name.lastIndexOf(".");
+		if (lastIndexOf == -1 || (!name.substring(lastIndexOf + 1).equals("sld"))) {
+		      Log.e(TAG, "provided file is not a sld file");
+		      return null;
+		}
 
 		ArrayList<ColorMapEntry> colors = new ArrayList<ColorMapEntry>();
 
@@ -37,7 +53,6 @@ public class SLDColorMapParser {
 			doc.getDocumentElement().normalize();
 
 			NodeList nList = doc.getElementsByTagName("ColorMapEntry");
-			//TODO parse independent from namespace ?!
 			if(nList.getLength() == 0){
 				nList = doc.getElementsByTagName("sld:ColorMapEntry");
 			}
@@ -88,67 +103,69 @@ public class SLDColorMapParser {
 
 		return new ColorMap(colors, min, max, noData, false);
 	}
-
+	/**
+	 * interpolates the colormap values to map each raster value
+	 * to a color
+	 * @param map the original colormap
+	 * @return a colormap containing a color for each raster value
+	 */
 	public static ColorMap applyInterpolation(final ColorMap map){
 
 		ArrayList<ColorMapEntry> newColors = new ArrayList<ColorMapEntry>();
-		try {
+		
+		//takes two values, hence starts with n+1
+		for (int i = 1; i < map.size(); i++) {
 
+			ColorMapEntry lowerEntry = map.getEntries().get(i - 1); 
 
-			for (int i = 1; i < map.size(); i++) {
+			ColorMapEntry higherEntry = map.getEntries().get(i); 
 
-				ColorMapEntry lowerEntry = map.getEntries().get(i - 1); 
+			int lowerColor = lowerEntry.getColor();
+			int higherColor = higherEntry.getColor();
 
-				ColorMapEntry higherEntry = map.getEntries().get(i); 
+			double lowerValue = lowerEntry.getValue();
+			double higherValue = higherEntry.getValue();
 
-				int lowerColor = lowerEntry.getColor();
-				int higherColor = higherEntry.getColor();
+			final int lR = (lowerColor >> 16) & 0x000000FF;
+			final int lG = (lowerColor >> 8 ) & 0x000000FF;
+			final int lB = (lowerColor)       & 0x000000FF;
 
-				double lowerValue = lowerEntry.getQuantity();
-				double higherValue = higherEntry.getQuantity();
+			final int hR = (higherColor >> 16) & 0x000000FF;
+			final int hG = (higherColor >> 8 ) & 0x000000FF;
+			final int hB = (higherColor)       & 0x000000FF;
 
-				final int lR = (lowerColor >> 16) & 0x000000FF;
-				final int lG = (lowerColor >> 8 ) & 0x000000FF;
-				final int lB = (lowerColor)       & 0x000000FF;
+			final int rMin = Math.min(hR, lR);
+			final int gMin = Math.min(lG, hG);
+			final int bMin = Math.min(lB, hB);
 
-				final int hR = (higherColor >> 16) & 0x000000FF;
-				final int hG = (higherColor >> 8 ) & 0x000000FF;
-				final int hB = (higherColor)       & 0x000000FF;
+			final int rMax = Math.max(hR, lR);
+			final int gMax = Math.max(lG, hG);
+			final int bMax = Math.max(lB, hB);
 
-				final int rMin = Math.min(hR, lR);
-				final int gMin = Math.min(lG, hG);
-				final int bMin = Math.min(lB, hB);
+			//can be negative
+			final int slope = Math.abs(( int ) (higherValue - lowerValue)) - 1;
 
-				final int rMax = Math.max(hR, lR);
-				final int gMax = Math.max(lG, hG);
-				final int bMax = Math.max(lB, hB);
+			final float redSlope =   (float) (rMax - rMin) / slope;
+			final float greenSlope = (float) (gMax - gMin) / slope;
+			final float blueSlope =  (float) (bMax - bMin) / slope;
 
-				//can be negative
-				final int slope = Math.abs(( int ) (higherValue - lowerValue)) - 1;
+			newColors.add(new ColorMapEntry(lowerColor, lowerValue, lowerEntry.getOpacity(), lowerEntry.getLabel()));	
+			
+			//calculates and sets color for the values between lower and higer value
+			for(int j = 1; j < slope; j++){
+				//TODO apply opacity
+				int newColor =  0xff000000 |
+						((((int) (rMax - (j * redSlope))) << 16) & 0xff0000) |
+						((((int) (gMax - (j * greenSlope))) << 8) & 0xff00) |
+						((int)   (bMax - (j * blueSlope)));
 
-				final float redSlope =   (float) (rMax - rMin) / slope;
-				final float greenSlope = (float) (gMax - gMin) / slope;
-				final float blueSlope =  (float) (bMax - bMin) / slope;
+				newColors.add(new ColorMapEntry(newColor, lowerValue + j, lowerEntry.getOpacity(), lowerEntry.getLabel()));	
 
-				newColors.add(new ColorMapEntry(lowerColor, lowerValue, lowerEntry.getOpacity(), lowerEntry.getLabel()));	
+			}
+			newColors.add(new ColorMapEntry(higherColor, higherValue, higherEntry.getOpacity(), higherEntry.getLabel()));
 
-				for(int j = 1; j < slope; j++){
-					//TODO apply opacity
-					int newColor =  0xff000000 |
-							((((int) (rMax - (j * redSlope))) << 16) & 0xff0000) |
-							((((int) (gMax - (j * greenSlope))) << 8) & 0xff00) |
-							((int)   (bMax - (j * blueSlope)));
+		}	
 
-					newColors.add(new ColorMapEntry(newColor, lowerValue + j, lowerEntry.getOpacity(), lowerEntry.getLabel()));	
-
-				}
-				newColors.add(new ColorMapEntry(higherColor, higherValue, higherEntry.getOpacity(), higherEntry.getLabel()));
-
-			}	
-
-		} catch (Exception e) {
-			Log.e(TAG,"error parsing", e);
-		}
 
 		return new ColorMap(newColors,map.getMinValue(),map.getMaxValue(),map.getNoData(), true);
 	}

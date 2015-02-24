@@ -9,7 +9,15 @@ import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.util.GeometryEditor.CoordinateOperation;
 
 import de.rooehler.rastertheque.proj.Proj;
-
+/**
+ * ReferencedEnvelope wraps an envelope and a crs
+ * 
+ * it provides the possibility to transform an envelope
+ * to a target crs applying an expansion of the envelope
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class ReferencedEnvelope {
 	
 	Envelope envelope;
@@ -167,4 +175,11 @@ public class ReferencedEnvelope {
 
         }
     }
+    
+    public Envelope getEnvelope() {
+		return envelope;
+	}
+    public CoordinateReferenceSystem getCrs() {
+		return crs;
+	}
 }

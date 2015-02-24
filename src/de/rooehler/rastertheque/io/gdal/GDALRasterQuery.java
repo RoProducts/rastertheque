@@ -12,6 +12,22 @@ import de.rooehler.rastertheque.core.Band;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.RasterQuery;
 
+/**
+ * A GDALRasterQuery extends a RasterQuery adding a
+ * targetDimension with which it is possible
+ * to let GDAL resample the query automatically
+ * 
+ * this is especially interesting when a very large raster
+ * should be read and shrinked significantly
+ * 
+ * instead of allocating [large raster * large raster]
+ * which may lead to an OutOfMemoryError easily
+ * GDAL will resample the query and it is not necessary to 
+ * allocate the read size but only the target size
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class GDALRasterQuery extends RasterQuery {
 	
     /**

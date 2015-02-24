@@ -12,7 +12,12 @@ import de.rooehler.rastertheque.processing.rendering.ColorMap;
 import de.rooehler.rastertheque.processing.rendering.ColorMapEntry;
 import de.rooehler.rastertheque.processing.rendering.SLDColorMapParser;
 import de.rooehler.rastertheque.util.Constants;
-
+/**
+ * wraps a org.gdal.gdal.Band
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class GDALBand implements Band{
 	
 	org.gdal.gdal.Band band;
@@ -24,6 +29,18 @@ public class GDALBand implements Band{
 		mColorMap = null;
 	}
 	
+	/**
+	 * applies a colormap to this band
+	 * 
+	 * if the according raster file is accompanied by a sld file of the same name
+	 * 
+	 * it is parsed and the resulting colormap use for this band
+	 * if the raster range is below Constants.COLORMAP_ENTRY_THRESHOLD
+	 * 
+	 * the colormap is additionally interpolated to provide a color for every raster value
+	 * 
+	 * @param filePath
+	 */
 	public static void applySLDColorMap(final String filePath){
 		
 		if(mColorMap == null ){
@@ -86,6 +103,11 @@ public class GDALBand implements Band{
                 ci == org.gdal.gdalconst.gdalconstConstants.GCI_BlueBand ? Color.BLUE : Color.GRAY;
      }
 
+	 /**
+	  * returns the nodata for this band if available,
+	  * 
+	  * NoData.None otherwise
+	  */
 	@Override
 	public NoData nodata() {
 		
@@ -103,6 +125,15 @@ public class GDALBand implements Band{
 		return this.band;
 	}
 
+	/**
+	 * gets the colormap of this band
+	 * 
+	 * if there is no sld file parsed
+	 * the band is checked for a color table provided by GDAL
+	 * if available, it is parsed and returned
+	 * 
+	 * otherwise this band has no colormap and null is returned
+	 */
 	@Override
 	public ColorMap colorMap() {
 		
@@ -114,6 +145,11 @@ public class GDALBand implements Band{
 		return mColorMap;
 	}
 
+	/**
+	 * converts the GDAL ColorTable to a ColorMap
+	 * @param colorTable
+	 * @return the colroMap
+	 */
 	private ColorMap convertGDALColorTable(ColorTable colorTable) {
 	
 		ArrayList<ColorMapEntry> entries = new ArrayList<>();

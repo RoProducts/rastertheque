@@ -87,7 +87,7 @@ public class GDALTileLayer extends TileLayer {
     	
 		this.mTileSize = getTileSizePixels();
     	
-		final Envelope bb = mRasterDataset.getBoundingBox();
+		final Envelope bb = GDALDataset.convertToLatLon(mRasterDataset.getBoundingBox(),mRasterDataset.getCRS().ExportToWkt());
 
 		final LatLng sw = new LatLng(bb.getMinY(),bb.getMinX()); 
 		final LatLng ne = new LatLng(bb.getMaxY(),bb.getMaxX()); 

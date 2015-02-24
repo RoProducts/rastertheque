@@ -10,7 +10,13 @@ import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
-
+/**
+ * Superclass for AmplitudeRescalers which map raster values to
+ * grey scale pixel values
+ * 
+ * @author Robert Oehler
+ *
+ */
 public abstract class AmplitudeRescaler implements RasterOp{
 
 	private static final int INT_KEY_MINMAX = 1006;	
@@ -31,18 +37,30 @@ public abstract class AmplitudeRescaler implements RasterOp{
 	public abstract void execute(Raster raster, Map<Key, Serializable> params,
 			Hints hints, ProgressListener listener);
 	
+	
+	/**
+	 * there are no default hints for this operation
+	 */
 	@Override
 	public Hints getDefaultHints() {
 
 		return new Hints(new HashMap<Key,Serializable>());
 	}
 	
+	/**
+	 * there are no default parameters
+	 */
 	@Override
 	public Map<Key, Serializable> getDefaultParams() {
 		
 		return new HashMap<Key,Serializable>();
 	}
 	
+	/**
+	 * Amplitude Rescalers need to determine the range {min,max} of a raster
+	 * if this parameter is provided, the step is skipped and the provided
+	 * range is applied
+	 */
 	@Override
 	public boolean validateParameters(Map<Key, Serializable> params) {
 

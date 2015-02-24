@@ -28,7 +28,8 @@ public class TestIO extends android.test.AndroidTestCase {
 	public final static String GRAY_50M_BYTE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/GRAY_50M_SR_OB.tif";
 	public final static String DEM_FLOAT = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/dem.tif";
 	public final static String RGB_BANDS_BYTE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/land_shallow_topo_21600.tif";
-	
+
+	public final static String C4107a1_INT_CM = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/c41078a1_int_cm.tif";
 	/**
 	 * tests opening of the file
 	 */

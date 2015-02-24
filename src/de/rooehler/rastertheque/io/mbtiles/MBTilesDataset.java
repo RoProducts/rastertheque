@@ -14,7 +14,13 @@ import com.vividsolutions.jts.geom.Envelope;
 import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.util.Constants;
-
+/**
+ * A MbTilesDataset wraps the access to a MBTiles
+ * database
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class MBTilesDataset implements Dataset {
 	
 	private final static String TAG = MBTilesDataset.class.getSimpleName();
@@ -70,6 +76,9 @@ public class MBTilesDataset implements Dataset {
 		return new int[] { (int) tx, (int) ((Math.pow(2, zoom) - 1) - ty) };
 	}
 
+	/**
+	 * MBTiles are always in Google Mercator
+	 */
 	@Override
 	public SpatialReference getCRS() {
 		
@@ -139,7 +148,12 @@ public class MBTilesDataset implements Dataset {
 			return null;
 		}
 	}
-	
+	/**
+	 * accesses the databases metadata
+	 * to retrieve min and max zoom of this 
+	 * mbtiles dataset
+	 * @return an array in the form int[]{min,max}
+	 */
 	public int[] getMinMaxZoom(){
 		
 		

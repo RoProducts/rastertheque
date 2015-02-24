@@ -48,12 +48,6 @@ public class ByteBufferReader {
 
 	private byte[] buffer;
 	protected long filePosition;
-	
-	/**
-	 * The offset in bytes of the start of the buffer, from the start of the
-	 * eraf.
-	 */
-//	protected long bufferStart;
 
 	/**
 	 * The offset in bytes of the end of the data in the buffer, from the start
@@ -84,7 +78,6 @@ public class ByteBufferReader {
 	
 	public void init(){
 		// Initialise the buffer
-//		bufferStart = 0;
 		dataEnd =  this.buffer.length;
 		dataSize = 0;
 		filePosition = 0;

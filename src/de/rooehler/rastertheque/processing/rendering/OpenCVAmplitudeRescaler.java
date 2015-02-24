@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 import java.util.Map;
 
 import org.opencv.core.Core;
@@ -11,6 +12,7 @@ import org.opencv.core.Core.MinMaxLocResult;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 
+import android.os.Build;
 import android.util.Log;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
@@ -25,6 +27,8 @@ public class OpenCVAmplitudeRescaler extends AmplitudeRescaler implements Raster
 
 
 	private static final long serialVersionUID = -5961287990881266046L;
+	
+	private final static String TAG = OpenCVAmplitudeRescaler.class.getSimpleName();
 
 	@Override
 	public void execute(Raster raster, Map<Key, Serializable> params,Hints hints, ProgressListener listener) {
@@ -101,28 +105,68 @@ public class OpenCVAmplitudeRescaler extends AmplitudeRescaler implements Raster
 	 * @return the Mat object containing the data in the given format
 	 * @throws IOException
 	 */
+    // ////////////////////////////////////////////////////////////////////
+    //
+    // due to a bug in Android 5 (Lollipop) the native memory is aligned within 7 bytes 
+	// and causes problems reading it direct in a certain format like as...Buffer()
+	//
+	// as workaround the buffer is read one by one
+	//
+	// TODO check this issue in future
+    //
+	// https://code.google.com/p/android/issues/detail?id=80064
+	//
+	// the workaround needs to be edited/removed for every datatype
+	//
+    // ////////////////////////////////////////////////////////////////////
 	public Mat matAccordingToDatatype(DataType type, final ByteBuffer buffer, final int width, final int height) {
 		
 		//dataypes -> http://answers.opencv.org/question/5/how-to-get-and-modify-the-pixel-of-mat-in-java/
+		final int size = height * width;
 		
 		switch(type){
 		case BYTE:
 			
 			Mat byteMat = new Mat(height, width, CvType.CV_8S);
-			byteMat.put(0, 0, buffer.array());
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+				
+				byteMat.put(0, 0, Arrays.copyOfRange(buffer.array(),0, width * height));
+			}else{
+
+				byteMat.put(0, 0, buffer.array());
+
+			}
 			return byteMat;
 			
 		case CHAR:
+				
+			Mat charMat = new Mat(height, width, CvType.CV_16UC1);
 			
-			//Use short for chars
-			//TODO test			
-			Mat charMat = new Mat(height, width, CvType.CV_32SC1);
+			final char[] chars = new char[size];
 			
-			final short[] chars = new short[height * width];
-		    
-		    buffer.asShortBuffer().get(chars);
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
 
-		    charMat.put(0,0,chars);
+				ByteBufferReader reader = new ByteBufferReader(buffer.array(), ByteOrder.nativeOrder());
+				for(int i = 0; i < size; i++){
+					try {
+						chars[i] = reader.readChar();
+					} catch (IOException e) {
+						Log.e(TAG, "error reading char");
+					}
+				}
+
+			}else{
+				
+				buffer.asCharBuffer().get(chars);
+				
+			}
+		    for(int i = 0; i < height;i++){
+		    	for(int j = 0; j < width; j++){
+		    		
+		    		final char _char = chars[i * width + j];
+		    		charMat.put(i,j,_char);
+		    	}
+		    }
 			
 			return charMat;
 			
@@ -131,10 +175,25 @@ public class OpenCVAmplitudeRescaler extends AmplitudeRescaler implements Raster
 			
 			Mat doubleMat = new Mat(height, width, CvType.CV_64FC1);
 			
-			final double[] doubles = new double[height * width];
+			final double[] doubles = new double[size];
 		    
-		    buffer.asDoubleBuffer().get(doubles);
-
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+				
+				ByteBufferReader reader = new ByteBufferReader(buffer.array(), ByteOrder.nativeOrder());
+				for(int i = 0; i < size; i++){
+					try {
+						doubles[i] = reader.readDouble();
+					} catch (IOException e) {
+						Log.e(TAG, "error reading double");
+					}
+				}
+				
+			}else{
+				
+				buffer.asDoubleBuffer().get(doubles);
+				
+			}
+			
 		    doubleMat.put(0,0,doubles);
 			
 			return doubleMat;
@@ -143,11 +202,26 @@ public class OpenCVAmplitudeRescaler extends AmplitudeRescaler implements Raster
 			
 			Mat floatMat = new Mat(height, width, CvType.CV_32FC1);
 						
-			final float[] dst = new float[height * width];
-			
-		    buffer.asFloatBuffer().get(dst);
+			final float[] dst = new float[size];
 
-		    floatMat.put(0,0,dst);
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+				
+				ByteBufferReader reader = new ByteBufferReader(buffer.array(), ByteOrder.nativeOrder());
+				for(int i = 0; i < size; i++){
+					try {
+						dst[i] = reader.readFloat();
+					} catch (IOException e) {
+						Log.e(TAG, "error reading float");
+					}
+				}
+				
+			}else{
+
+				buffer.asFloatBuffer().get(dst);
+			}
+
+			
+			floatMat.put(0,0,dst);
 		    
 			return floatMat;
 
@@ -155,24 +229,47 @@ public class OpenCVAmplitudeRescaler extends AmplitudeRescaler implements Raster
 			
 			Mat intMat = new Mat(height, width, CvType.CV_32SC1);
 			
-			final int[] ints = new int[height * width];
-		    
-		    buffer.asIntBuffer().get(ints);
+			final int[] ints = new int[size];
 
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+
+				ByteBufferReader reader = new ByteBufferReader(buffer.array(), ByteOrder.nativeOrder());
+				for(int i = 0; i < size; i++){
+					try {
+						ints[i] = reader.readInt();
+					} catch (IOException e) {
+						Log.e(TAG, "error reading int");
+					}
+				}
+
+			}else{
+				buffer.asIntBuffer().get(ints);
+			}
 		    intMat.put(0,0,ints);
 			
 			return intMat;
 			
 		case LONG:
 			
-			//use double for long as Mat does not have an appropriate data type
-			//TODO test
+			//use double for long as Mat does not have an appropriate data type			
 			Mat longMat = new Mat(height, width, CvType.CV_64FC1);
 			
-			final double[] longs = new double[height * width];
-		    
-		    buffer.asDoubleBuffer().get(longs);
-
+			final double[] longs = new double[size];
+			
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+				
+				ByteBufferReader reader = new ByteBufferReader(buffer.array(), ByteOrder.nativeOrder());
+				for(int i = 0; i < size; i++){
+					try {
+						longs[i] = reader.readLong();
+					} catch (IOException e) {
+						Log.e(TAG, "error reading long");
+					}
+				}
+				
+			}else{
+				buffer.asDoubleBuffer().get(longs);
+			}
 		    longMat.put(0,0,longs);
 			
 			return longMat;
@@ -181,10 +278,22 @@ public class OpenCVAmplitudeRescaler extends AmplitudeRescaler implements Raster
 			
 			Mat shortMat = new Mat(height, width, CvType.CV_16SC1);
 			
-			final short[] shorts = new short[height * width];
-		    
-		    buffer.asShortBuffer().get(shorts);
+			final short[] shorts = new short[size];
+			
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
 
+				ByteBufferReader reader = new ByteBufferReader(buffer.array(), ByteOrder.nativeOrder());
+				for(int i = 0; i < size; i++){
+					try {
+						shorts[i] = reader.readShort();
+					} catch (IOException e) {
+						Log.e(TAG, "error reading short");
+					}
+				}
+
+			}else{
+				buffer.asShortBuffer().get(shorts);
+			}
 		    shortMat.put(0,0,shorts);
 			
 			return shortMat;

@@ -23,15 +23,10 @@ public class MAmplitudeRescaler extends AmplitudeRescaler implements RasterOp, S
 
 	private static final long serialVersionUID = 2138351083682731966L;
 	
-
-
-	@Override
-	public String getOperationName() {
-
-		return RasterOps.AMPLITUDE_RESCALING;
-	}
 	/**
-	 * generates an array of colored gray-scale pixels for a buffer of raster pixels
+	 * generates an array of colored gray-scale
+	 *  pixels for a buffer of raster pixels
+	 *  
 	 * @param pBuffer the buffer to read from
 	 * @param pixelAmount amount of raster pixels
 	 * @param dataType the dataType of the raster pixels
@@ -179,6 +174,12 @@ public class MAmplitudeRescaler extends AmplitudeRescaler implements RasterOp, S
 		}
 		result[0] = min;
 		result[1] = max;
+	}
+	
+	@Override
+	public String getOperationName() {
+
+		return RasterOps.AMPLITUDE_RESCALING;
 	}
 
 	@Override

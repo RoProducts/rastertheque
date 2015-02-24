@@ -279,11 +279,11 @@ public class MainActivity extends Activity implements IWorkStatus{
 
 			if(gdalDataset != null){
 
-//				if(gdalDataset.getCRS() == null){      	
-//					AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
-//					gdalDataset.close();
-//					return;
-//				}
+				if(gdalDataset.getCRS() == null){      	
+					AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+					gdalDataset.close();
+					return;
+				}
 				if(gdalDataset.getBoundingBox() == null){
 					AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
 					gdalDataset.close();

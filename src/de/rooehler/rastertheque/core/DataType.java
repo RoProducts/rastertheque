@@ -3,7 +3,10 @@ package de.rooehler.rastertheque.core;
 import org.gdal.gdal.Band;
 
 /**
- * Numeric data type enumeration.
+ * data type wrapper for all primitive Java data types
+ *  
+ * @author Robert Oehler
+ *
  */
 public enum DataType {
 

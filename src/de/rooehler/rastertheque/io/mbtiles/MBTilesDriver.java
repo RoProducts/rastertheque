@@ -5,7 +5,12 @@ import java.io.IOException;
 import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Driver;
-
+/**
+ * class which models the access to a MbTiles file
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class MBTilesDriver implements Driver  {
 	
 
@@ -27,7 +32,8 @@ public class MBTilesDriver implements Driver  {
 		try{
 			
 			final MBTilesDataset dataset = new MBTilesDataset(path);
-			
+			@SuppressWarnings("unused")
+			//try to access the envelope without raising an exception
 			final Envelope en = dataset.getBoundingBox();
 			
 			dataset.close();

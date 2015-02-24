@@ -1,6 +1,5 @@
 package de.rooehler.rastertheque.processing.resampling;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -12,23 +11,31 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
-import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 
 import android.graphics.Rect;
 import android.os.Build;
-import android.os.Environment;
 import android.util.Log;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
-import de.rooehler.rastertheque.io.mbtiles.MBTilesResampler;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
-
+/**
+ * Resampler which makes use of the OpenCV library
+ * to resample raster in native code as implemented
+ * by OpenCV
+ * 
+ * To achieve this functionality, raster objects need to be
+ * converted to OpenCV's Mat object and vice-versa after 
+ * the operation was executed
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class OpenCVResampler extends Resampler implements RasterOp, Serializable {
 	
 	private static final long serialVersionUID = -5251254282161549821L;
@@ -37,9 +44,7 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 
 	static {
 		if (!OpenCVLoader.initDebug()) {
-			// Handle initialization error
-
-			Log.e(MBTilesResampler.class.getSimpleName(), "error initialising OpenCV");
+			Log.e(OpenCVResampler.class.getSimpleName(), "error initialising OpenCV");
 		} 
 	}
 
@@ -48,6 +53,7 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 	
 		double scaleX = 0;
 		double scaleY = 0;
+		//assure scale factors
 		if(params != null && params.containsKey(KEY_SIZE)){
 			Double[] factors = (Double[]) params.get(KEY_SIZE);
 			scaleX = factors[0];
@@ -55,20 +61,21 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 		}else{
 			throw new IllegalArgumentException("no scale factors provided, cannot continue");
 		}
-		
+		//default interpolation
 		ResampleMethod method = ResampleMethod.BILINEAR;
+		//if hints contain another interpolation method, use it
 		if(hints != null && hints.containsKey(Hints.KEY_INTERPOLATION)){
 			method = (ResampleMethod) hints.get(Hints.KEY_INTERPOLATION);
 		}
-	
+		//define src dimension
 		final int srcWidth  = raster.getDimension().right - raster.getDimension().left;
 		final int srcHeight = raster.getDimension().bottom - raster.getDimension().top;
-				
+		//define target dimension
 		final int dstWidth = (int) (srcWidth * scaleX);
 		final int dstHeight = (int) (srcHeight * scaleY);
 		
-		int i = 0;
-		
+		//select the interpolation method
+		int i = 0;		
 		if(raster.getBands().get(0).datatype() == DataType.INT){
 			//Due to a bug (?!) in OpenCV it is not possible to resize datatypes with depth of 4 bytes
 			//with other interpolation methods than INTER_NEAREST
@@ -91,7 +98,7 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 				break;
 			}	
 		}
-
+		//convert raster to srcMat
 		final Mat srcMat = matAccordingToDatatype(
 					raster.getBands().get(0).datatype(),
 					raster.getData(),
@@ -100,13 +107,13 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 					raster.getBands().size());
 
 		Mat dstMat = new Mat();
-		
+		//resize operation, resulting in the dstMat object
 		Imgproc.resize(srcMat, dstMat, new Size(dstWidth, dstHeight), 0, 0, i);
 	
 		final int newBufferSize = dstWidth * dstHeight * raster.getBands().size() * raster.getBands().get(0).datatype().size();
 		
 		raster.setDimension(new Rect(0, 0, dstWidth, dstHeight));
-		
+		//convert dstMat back to a bytebuffer and set it as the rasters data
 		raster.setData(bytesFromMat(
 				dstMat,
 				raster.getBands().get(0).datatype(),
@@ -129,8 +136,22 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 	 * @param width the width of the raster
 	 * @param height the height of the raster
 	 * @return the Mat object containing the data in the given format
-	 * @throws IOException
+	 * @throws IOException if an error occured reading from the ByteBufferedReader which is used for some data type
 	 */
+    // ////////////////////////////////////////////////////////////////////
+    //
+    // due to a bug in Android 5 (Lollipop) the native memory is aligned within 7 bytes 
+	// and causes problems reading it direct in a certain format like as...Buffer()
+	//
+	// as workaround the buffer is read one by one
+	//
+	// TODO check this issue in future
+    //
+	// https://code.google.com/p/android/issues/detail?id=80064
+	//
+	// the workaround needs to be edited/removed for every datatype
+	//
+    // ////////////////////////////////////////////////////////////////////
 	public Mat matAccordingToDatatype(DataType type, final ByteBuffer buffer, final int width, final int height, final int bandCount) {
 		
 		//dataypes -> http://answers.opencv.org/question/5/how-to-get-and-modify-the-pixel-of-mat-in-java/
@@ -157,7 +178,7 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 			Mat charMat = new Mat(height, width, CvType.CV_16UC1);
 			
 			final char[] chars = new char[size];
-			
+						
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
 
 				ByteBufferReader reader = new ByteBufferReader(buffer.array(), ByteOrder.nativeOrder());
@@ -266,7 +287,6 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 		case LONG:
 			
 			//use double for long as Mat does not have an appropriate data type
-			//TODO test
 			Mat longMat = new Mat(height, width, CvType.CV_64FC1);
 			
 			final double[] longs = new double[size];
@@ -317,7 +337,7 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 		throw new IllegalArgumentException("Invalid datatype");
 	}
 	/**
-	 * converts a Mat (with likely the result of some operation) 
+	 * converts a Mat (with likely the result of the resample operation) 
 	 * into a ByteBuffer according to the datatype
 	 * @param mat the Mat to convert
 	 * @param type the datatype of the data
@@ -326,7 +346,8 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 	 */
 	public ByteBuffer bytesFromMat(Mat mat, DataType type, int bufferSize){
 
-		//TODO use earlier buffer, do not allocate a new one
+		//TODO when the direct bytebuffer issed is resolved,
+		//use the earlier buffer here, do not allocate a new one
 
 		ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 		buffer.order(ByteOrder.nativeOrder());
@@ -386,28 +407,4 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 		
 		return buffer;
 	}
-	
-
-
-	
-	@SuppressWarnings("unused")
-	private static void testDirectRead(){
-		
-		String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-		File file = new File(root + "/rastertheque/HN+24_900913.tif");    
-		File writefile = new File(root + "/rastertheque/dem_openCV.tif");    
-
-		Mat m = Highgui.imread(file.getAbsolutePath());
-
-		int depth = m.depth();
-		int channels = m.channels();
-
-		Mat dst = new Mat();
-
-		Imgproc.resize(m, dst, new Size(),2,2, Imgproc.INTER_LINEAR);
-
-		Highgui.imwrite(writefile.getAbsolutePath(), dst);
-	    
-	}
-
 }

@@ -9,9 +9,13 @@ import android.util.Pair;
 /**
  * class which defines ranges of values and maps colors to them
  * The nodata value is handled separately
- * It uses internally an array where every (pixel) value that is covered must be a member of the mEntries list
- * To be able to handle negative values, a min Value is set by which the query is reduced when getting the value
- * which will result e.g. for a range {-100,100} with minValue - 100 in the index -100 - -100 --> 0
+ * It uses internally an array where every (pixel) value
+ * that is covered must be a member of the mEntries list
+ * To be able to handle negative values, a min Value is
+ * set by which the query is reduced when getting the value
+ * which will result e.g. for a range {-100,100} 
+ * with minValue - 100 in the index -100 - -100 --> 0
+ * 
  * @author Robert Oehler
  *
  */
@@ -90,15 +94,15 @@ public class ColorMap {
 					return mEntries.get(mEntries.size() - 1).getColor();				            	   
 				}else{
 
-					if(mEntries.get(middle - 1).getQuantity() <= val && 
-							mEntries.get(middle ).getQuantity() >= val) {
+					if(mEntries.get(middle - 1).getValue() <= val && 
+							mEntries.get(middle ).getValue() >= val) {
 						return mEntries.get(middle - 1).getColor();
-					}else if(mEntries.get(middle).getQuantity() <= val && 
-							mEntries.get(middle + 1).getQuantity() >= val){
+					}else if(mEntries.get(middle).getValue() <= val && 
+							mEntries.get(middle + 1).getValue() >= val){
 						return mEntries.get(middle).getColor();
-					}else  if(mEntries.get(middle).getQuantity() <= val) {
+					}else  if(mEntries.get(middle).getValue() <= val) {
 						min = middle + 1;
-					}else  if(mEntries.get(middle).getQuantity() >= val) {
+					}else  if(mEntries.get(middle).getValue() >= val) {
 						max = middle - 1;
 					}
 				}

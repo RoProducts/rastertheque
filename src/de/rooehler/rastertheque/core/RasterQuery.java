@@ -7,7 +7,13 @@ import org.gdal.osr.SpatialReference;
 import android.graphics.Rect;
 
 import com.vividsolutions.jts.geom.Envelope;
-
+/**
+ * A RasterQuery specifies what to read from a 
+ * raster dataset
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class RasterQuery {
 	
     /**
@@ -103,16 +109,16 @@ public class RasterQuery {
     }
 
     /**
-     * Sets the  dimension of the raster
+     * Sets the dimension of the raster
      *
-     * @param raster dimensions.
+     * @param raster dimension
      */
     public void setDimension(Rect pDimension) {
         this.dimension = pDimension;
     }
 
     /**
-     * Target dimension for the raster in raster coordinates
+     * the dimension of the raster in raster coordinates
      */
     public Rect getDimension() {
         return dimension;

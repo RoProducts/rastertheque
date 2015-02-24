@@ -21,9 +21,13 @@ public class MColorMap implements RasterOp, Serializable{
 	private static final long serialVersionUID = 1184127428068286145L;
 
 	/**
-	 * generates an array of colored pixels for a buffer of raster pixels according to a priorly loaded ColorMap
-	 * if the colorMap is not created priorly by either setting it or by placing a .sld file of the same name as the
-	 * raster file in the same directory like the raster file an exception is thrown
+	 * generates an array of colored pixels for a buffer of 
+	 * raster pixels according to a priorly loaded ColorMap
+	 * if the colorMap is not created priorly by either setting 
+	 * it or by placing a .sld file of the same name as the
+	 * raster file in the same directory like the raster 
+	 * file an exception is thrown
+	 * 
 	 * @param pBuffer the buffer to read from
 	 * @param pixelAmount amount of raster pixels
 	 * @param dataType the dataType of the raster pixels

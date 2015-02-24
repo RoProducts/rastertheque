@@ -7,14 +7,18 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import android.util.Log;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.CustomServiceLoader;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
 
-@SuppressWarnings("unchecked")
+/**
+ * Facade class for RasterOp operations
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class RasterOps {
 
 
@@ -30,15 +34,23 @@ public class RasterOps {
 	}
 
 	/**
-	 * executes a RasterOp
+	 * executes a RasterOp, defined by its @param operation name
+	 * according to @param params, with optional hints and progreslistener listener
 	 * 
-	 * @param raster
-	 * @param operation
-	 * @param params
-	 * @param hints
-	 * @param listener
+	 * this method retrieves all implementations of @class RasterOp which are available
+	 * during runtime within the classpath
+	 * 
+	 * they are inspected for the desired operation
+	 * if there are implementations found, the one with the highest priority is selected
+	 * and executed
+	 * 
+	 * @param raster the raster to manipulate
+	 * @param operation the operation to exexute
+	 * @param params a map of parameters - can be null depending on the operation
+	 * @param hints a map of hints - can be null
+	 * @param listener  progress listener - can be null
 	 */
-	public static void execute(Raster raster, final String operation, final HashMap<Key,Serializable> params, Hints hints, ProgressListener listener){
+	public static void execute(Raster raster, String operation, HashMap<Key,Serializable> params,  Hints hints, ProgressListener listener){
 
 
 		RasterOp selectedOp = null;

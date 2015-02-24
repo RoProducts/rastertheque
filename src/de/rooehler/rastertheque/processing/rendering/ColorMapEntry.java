@@ -1,18 +1,24 @@
 package de.rooehler.rastertheque.processing.rendering;
 
+/**
+ * A ColormapEntry contains color, value, opacity and optionally a label
+ * for a color which is associated to a raster value
+ * 
+ * @author Robert Oehler
+ */
 public class ColorMapEntry{
 	
 	
 	private int color;
 	private double opacity;
-	private double quantity;
+	private double value;
 	private String label;
 	
-	public ColorMapEntry(final int pColor, final double pQuantity, final double pOpacity, final String pLabel){
+	public ColorMapEntry(final int pColor, final double pValue, final double pOpacity, final String pLabel){
 		
 		this.color = pColor;
 		this.opacity = pOpacity;
-		this.quantity = pQuantity;
+		this.value = pValue;
 		this.label = pLabel;
 	}
 
@@ -40,12 +46,12 @@ public class ColorMapEntry{
 		this.opacity = opacity;
 	}
 
-	public double getQuantity() {
-		return quantity;
+	public double getValue() {
+		return value;
 	}
 
-	public void setQuantity(double quantity) {
-		this.quantity = quantity;
+	public void setValue(double value) {
+		this.value = value;
 	}
 	
 }
