@@ -1,11 +1,11 @@
 RasterTheque
 ============
 
-This is an Android application which provides tools to render raster images.
+This is an Android library which provides tools to render raster images.
 
-It uses as rendering framework the <a href=https://code.google.com/p/mapsforge/>Mapsforge library</a>.
+It makes use of OpenCV to provide raster operations executed in native code.
 
-Make sure to have the latest Mapsforge 0.5.0 installed in your Maven repository.
+There exist two sample applications, one using the Mapsforge framework, the other the Mapbox framework.
 
 To build Rastertheque, clone the project and build using Maven 
 
