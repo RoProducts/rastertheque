@@ -6,11 +6,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>de.rooehler.rastertheque</groupId>
-  <artifactId>rastersampleapplication</artifactId>
+  <artifactId>mapsforge_sample</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <packaging>apk</packaging>
 
-  <name>Rastertheque</name>
+  <name>MapsforgeSample</name>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -42,7 +42,6 @@
     <groupId>de.rooehler.rastertheque</groupId>
     <artifactId>rastertheque</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <type>apklib</type>
   </dependency>
 
     <dependency>
@@ -68,9 +67,8 @@
       <artifactId>mapsforge-map-reader</artifactId>
       <version>0.5.0-rt-0.1</version>
     </dependency>
-
-
   </dependencies>
+
   <build>
     <sourceDirectory>src</sourceDirectory>
     <finalName>${project.artifactId}</finalName>

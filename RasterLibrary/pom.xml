@@ -11,11 +11,7 @@
   <packaging>apklib</packaging>
 
   <name>Rastertheque</name>
-  
-   <modules>
-   <module>OpenCvLibrary</module>
-   </modules>
-   
+     
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -40,6 +36,12 @@
     <dependency>
       <groupId>de.rooehler.raster_jai</groupId>
       <artifactId>raster_jai</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.opencv</groupId>
+      <artifactId>opencvlibrary</artifactId>
       <version>1.0.0-SNAPSHOT</version>
     </dependency>
 

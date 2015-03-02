@@ -6,14 +6,19 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>de.rooehler.rastertheque</groupId>
-  <artifactId>rastertheque</artifactId>
+  <artifactId>raster</artifactId>
   <version>1.0.0-SNAPSHOT</version>
-  <packaging>apklib</packaging>
+  <packaging>pom</packaging>
 
-  <name>Rastertheque</name>
+  <name>Raster</name>
   
    <modules>
-   <module>OpenCvLibrary</module>
+    <module>Raster_JAI</module>
+    <module>OpenCvLibrary</module>
+    <module>RasterLibrary</module>
+    <module>MapBoxRenderer</module>
+    <module>MapsforgeRenderer</module>
+    <!-- TODO tests -->
    </modules>
    
   <properties>
@@ -31,24 +36,7 @@
 
   <dependencies>
 
-    <dependency>
-      <groupId>com.vividsolutions</groupId>
-      <artifactId>jts</artifactId>
-      <version>1.13</version>
-    </dependency>
-
-    <dependency>
-      <groupId>de.rooehler.raster_jai</groupId>
-      <artifactId>raster_jai</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.osgeo</groupId>
-      <artifactId>proj4j</artifactId>
-      <version>0.1.0</version>
-      <classifier>jeo</classifier>
-    </dependency>
+   
 
     <dependency>
       <groupId>android</groupId>
@@ -61,12 +49,6 @@
       <groupId>android.support</groupId>
       <artifactId>compatibility-v4</artifactId>
       <version>19.1.0</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.gdal</groupId>
-      <artifactId>gdal</artifactId>
-      <version>1.11.0</version>
     </dependency>
 
 
