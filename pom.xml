@@ -19,7 +19,7 @@
     <module>MapboxLibrary</module>
     <module>MapBoxRenderer</module>
     <module>MapsforgeRenderer</module>
-    <!-- TODO tests -->
+    <module>RasterTests</module>
    </modules>
    
   <properties>
