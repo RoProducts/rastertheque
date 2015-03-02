@@ -42,8 +42,8 @@ public class MAmplitudeRescaler extends AmplitudeRescaler implements RasterOp, S
 			}
 		}
 		
-		final int raster_width  = raster.getDimension().right - raster.getDimension().left;
-		final int raster_height = raster.getDimension().bottom - raster.getDimension().top;
+		final int raster_width  = raster.getDimension().width();
+		final int raster_height = raster.getDimension().height();
 		
 		final int pixelAmount = raster_width * raster_height;
 		int[] pixels = new int[pixelAmount];

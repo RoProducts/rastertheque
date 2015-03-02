@@ -42,8 +42,8 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		final GDALDataset dataset = driver.open(TestIO.GRAY_50M_BYTE);
 		
 		final Rect dim = dataset.getDimension();
-		final int width  = dim.right - dim.left;
-		final int height = dim.bottom - dim.top;
+		final int width  = dim.width();
+		final int height = dim.height();
 		
 		final int tileSize = Math.min(width, height) / 20;
 		
@@ -216,8 +216,8 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         Log.d(TestProcessing.class.getSimpleName(), "manual resampling took "+ (System.currentTimeMillis() - manualNow)+" ms");
           
-        final int newWidth  = manualRaster.getDimension().right - manualRaster.getDimension().left;
-		final int newHeight = manualRaster.getDimension().bottom - manualRaster.getDimension().top;
+        final int newWidth  = manualRaster.getDimension().width();
+		final int newHeight = manualRaster.getDimension().height();
         
         return newHeight * newWidth;
 	}

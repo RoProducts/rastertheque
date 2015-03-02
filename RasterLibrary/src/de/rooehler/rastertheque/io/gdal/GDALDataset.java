@@ -88,10 +88,10 @@ public class GDALDataset implements RasterDataset{
 				target = ((GDALRasterQuery)query).getTargetDimension();
 			}
 		}
-		final int readWidth = src.right - src.left;
-		final int readHeight = src.bottom - src.top;
-		final int targetWidth = target.right - target.left;
-		final int targetHeight = target.bottom - target.top;
+		final int readWidth = src.width();
+		final int readHeight = src.height();
+		final int targetWidth = target.width();
+		final int targetHeight = target.height();
 				
 		final int bufferSize = targetWidth * targetHeight * query.getDataType().size() * query.getBands().size();
 		

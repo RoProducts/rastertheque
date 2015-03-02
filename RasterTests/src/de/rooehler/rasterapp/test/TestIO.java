@@ -46,8 +46,8 @@ public class TestIO extends android.test.AndroidTestCase {
 		assertNotNull(dataset.getCRS());
 		
 		final Rect dim = dataset.getDimension();
-		final int width  = dim.right - dim.left;
-		final int height = dim.bottom - dim.top;
+		final int width  = dim.width();
+		final int height = dim.height();
 		
 		assertTrue(width > 0);
 		
@@ -68,8 +68,8 @@ public class TestIO extends android.test.AndroidTestCase {
 		GDALDataset dataset = driver.open(GRAY_50M_BYTE);
 		
 		final Rect dim = dataset.getDimension();
-		final int width  = dim.right - dim.left;
-		final int height = dim.bottom - dim.top;
+		final int width  = dim.width();
+		final int height = dim.height();
 		
 		final Envelope env = new Envelope(0, width / 10, 0, height / 10);
 		final Rect rect = new Rect(0, 0, width/ 10, height / 10);

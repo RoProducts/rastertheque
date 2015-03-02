@@ -93,8 +93,8 @@ public class GDALTileLayer extends TileLayer {
 		final LatLng ne = new LatLng(bb.getMaxY(),bb.getMaxX()); 
 		
 		final Rect dim = mRasterDataset.getDimension();
-		final int width  = dim.right - dim.left;
-		final int height  = dim.bottom - dim.top;
+		final int width  = dim.width();
+		final int height  = dim.height();
 
 		//meters per pixel of this raster --> distance min-max / length min-max
 		double res_in_Meters = Formulae.distanceBetweenInMeters(bb.getMinY(),bb.getMinX(), bb.getMaxY(),bb.getMaxX()) /
@@ -128,14 +128,14 @@ public class GDALTileLayer extends TileLayer {
     public Drawable getDrawableFromTile(final MapTileDownloader downloader, final MapTile aTile, boolean hdpi) {
 
     	int ts = mTileSize;
-    	if(aTile .getTileRect() != null){
-    		ts = aTile.getTileRect().right - aTile.getTileRect().left;  	
+    	if(aTile.getTileRect() != null){
+    		ts = aTile.getTileRect().width();  	
     	}
     	final int zoom = aTile.getZ();
 
     	final Rect dim = mRasterDataset.getDimension();
-		final int w  = dim.right - dim.left;
-		final int h = dim.bottom - dim.top;
+		final int w  = dim.width();
+		final int h = dim.height();
 		
 		final DataType datatype = mRasterDataset.getBands().get(0).datatype();
 		
@@ -315,8 +315,8 @@ public class GDALTileLayer extends TileLayer {
 			RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
 //			RasterOps.execute(raster, RasterOps.AMPLITUDE_RESCALING, renderParams, null, null);
 
-			final int width  = raster.getDimension().right - raster.getDimension().left;
-    		final int height = raster.getDimension().bottom - raster.getDimension().top;
+			final int width  = raster.getDimension().width();
+    		final int height = raster.getDimension().height();
 
         	final int[] pixels  = new int[width * height];
 
@@ -332,8 +332,8 @@ public class GDALTileLayer extends TileLayer {
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 		
-		final int width  = raster.getDimension().right - raster.getDimension().left;
-		final int height = raster.getDimension().bottom - raster.getDimension().top;
+		final int width  = raster.getDimension().width();
+		final int height = raster.getDimension().height();
 		final int pixelAmount = width * height;
 		
 		int [] pixels = new int[pixelAmount];

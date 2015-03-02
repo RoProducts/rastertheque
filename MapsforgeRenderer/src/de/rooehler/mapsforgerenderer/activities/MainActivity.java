@@ -310,8 +310,8 @@ public class MainActivity extends Activity implements IWorkStatus{
 			byte startZoomLevel = gdalFileRenderer.calculateStartZoomLevel(tileSize,width);
 			
 			final Rect dim = ((GDALDataset) ds).getDimension();
-			final int w  = dim.right - dim.left;
-			final int h = dim.bottom - dim.top;
+			final int w  = dim.width();
+			final int h = dim.height();
 			Log.v(TAG, "width : "+w + " height : "+ h);
 			
 			final MapPosition gdalmp =  new MapPosition(calculateStartPositionForRaster(w, h),startZoomLevel);

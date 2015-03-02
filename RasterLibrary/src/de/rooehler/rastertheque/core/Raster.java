@@ -165,5 +165,21 @@ public class Raster {
     	
     	this.metadata = pMetadata;
     }
+    
+    public double[] getGeoTransform(){
+    	
+    	if(this.bounds == null || this.dimension == null){
+    		return null;
+    	}
+    	
+    	return new double[]{
+    			this.bounds.getMinX(), /* top left x */
+    			this.bounds.getWidth() / this.dimension.width(), /* w-e pixel resolution */
+				0,  /* 0 */
+				this.bounds.getMaxY() , /* top left y */
+				0, /* 0 */
+				- (this.bounds.getHeight() / this.dimension.height()) /* n-s pixel resolution (negative value) */
+    	};
+    }
 
 }

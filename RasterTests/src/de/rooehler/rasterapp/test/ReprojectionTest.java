@@ -40,7 +40,7 @@ public class ReprojectionTest extends android.test.ActivityTestCase {
 		
 		final int rs = 10;
 		
-		final int ts =  (int) (dim.right / rs);
+		final int ts =  (int) (dim.width() / rs);
 
 		final Rect readSize = new Rect(dim.left,dim.top,dim.left + ts,dim.top + ts);
 		
@@ -85,7 +85,7 @@ public class ReprojectionTest extends android.test.ActivityTestCase {
 		
 		assertNotNull(bitmap);
 
-		TestUtil.saveImage(bitmap,"ReprojectOp_gdal_3857");
+		TestUtil.saveImage(bitmap,"ReprojectOp_m_3857");
 	}
 	
 	

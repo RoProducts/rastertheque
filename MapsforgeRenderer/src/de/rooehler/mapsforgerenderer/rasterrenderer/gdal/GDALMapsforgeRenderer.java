@@ -168,8 +168,8 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		final int ts = job.tile.tileSize;
 		final byte zoom = job.tile.zoomLevel;
 		final Rect dim = mRasterDataset.getDimension();
-		final int w  = dim.right - dim.left;
-		final int h = dim.bottom - dim.top;
+		final int w  = dim.width();
+		final int h = dim.height();
 		final DataType datatype = mRasterDataset.getBands().get(0).datatype();
 		       
         BoundingBox bb = job.tile.getBoundingBox();
@@ -321,8 +321,8 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         	RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
 //        	RasterOps.execute(raster, RasterOps.AMPLITUDE_RESCALING, renderParams, null, null);
         	
-        	final int width  = raster.getDimension().right - raster.getDimension().left;
-    		final int height = raster.getDimension().bottom - raster.getDimension().top;
+        	final int width  = raster.getDimension().width();
+    		final int height = raster.getDimension().height();
 
         	final int[] pixels  = new int[width * height];
 
@@ -336,8 +336,8 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 		
-		final int width  = raster.getDimension().right - raster.getDimension().left;
-		final int height = raster.getDimension().bottom - raster.getDimension().top;
+		final int width  = raster.getDimension().width();
+		final int height = raster.getDimension().height();
 		final int pixelAmount = width * height;
 		
 		int [] pixels = new int[pixelAmount];

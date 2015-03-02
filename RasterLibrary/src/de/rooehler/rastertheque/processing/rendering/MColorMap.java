@@ -44,8 +44,8 @@ public class MColorMap implements RasterOp, Serializable{
 		final ColorMap map = raster.getBands().get(0).colorMap();
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
-		final int raster_width  = raster.getDimension().right - raster.getDimension().left;
-		final int raster_height = raster.getDimension().bottom - raster.getDimension().top;
+		final int raster_width  = raster.getDimension().width();
+		final int raster_height = raster.getDimension().height();
 		
 		final int pixelAmount = raster_width * raster_height;
 		
