@@ -16,6 +16,7 @@
     <module>Raster_JAI</module>
     <module>OpenCvLibrary</module>
     <module>RasterLibrary</module>
+    <module>MapboxLibrary</module>
     <module>MapBoxRenderer</module>
     <module>MapsforgeRenderer</module>
     <!-- TODO tests -->

@@ -28,9 +28,11 @@ proguard/
 *.class
 /target
 ./target
+/target/**
 .settings/
 RasterSampleApplication/target/
 libs/jts-1.13.jar
 libs/proj4j-0.1.0-jeo.jar
 
-MapsforgeRenderer/target/
+*/target/*
+*/target/**
