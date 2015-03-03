@@ -16,9 +16,11 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
+import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.processing.reprojecting.MReproject;
 import de.rooehler.rastertheque.util.Constants;
+import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 
 public class ReprojectionTest extends android.test.ActivityTestCase {
@@ -68,8 +70,10 @@ public class ReprojectionTest extends android.test.ActivityTestCase {
 		
 		params.put(MReproject.KEY_REPROJECT_TARGET_CRS, wkt);
 		
+		Hints hints = new Hints(Hints.KEY_INTERPOLATION, ResampleMethod.BICUBIC);
+		
 		long now = System.currentTimeMillis();
-		RasterOps.execute(raster, RasterOps.REPROJECT, params, null, null);
+		RasterOps.execute(raster, RasterOps.REPROJECT, params, hints, null);
 		Log.d(ReprojectionTest.class.getSimpleName(), "reprojecting took "+ (System.currentTimeMillis() - now));
 		
 		now = System.currentTimeMillis();
@@ -85,7 +89,7 @@ public class ReprojectionTest extends android.test.ActivityTestCase {
 		
 		assertNotNull(bitmap);
 
-		TestUtil.saveImage(bitmap,"ReprojectOp_m_3857");
+		TestUtil.saveImage(bitmap,"ReprojectOp_m_bic_3857");
 	}
 	
 	

@@ -11,9 +11,6 @@ import org.gdal.gdal.gdal;
 import org.gdal.gdalconst.gdalconst;
 import org.gdal.osr.SpatialReference;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
-import org.osgeo.proj4j.CoordinateTransform;
-import org.osgeo.proj4j.CoordinateTransformFactory;
-import org.osgeo.proj4j.ProjCoordinate;
 
 import android.graphics.Rect;
 import android.util.Log;
@@ -24,6 +21,7 @@ import de.rooehler.rastertheque.core.Band;
 import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterQuery;
+import de.rooehler.rastertheque.core.util.ReferencedEnvelope;
 import de.rooehler.rastertheque.io.gdal.GDALBand;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
@@ -117,18 +115,14 @@ public class GDALReproject extends Reproject implements RasterOp {
 			
 			if(success != gdalconst.CE_None){
 				Log.e(MReproject.class.getSimpleName(), "error writing raster");
+				return;
 			}
 		}
 		//data available, can warp
 		
-		CoordinateTransformFactory txFactory = new CoordinateTransformFactory();
-		CoordinateTransform tx = txFactory.createTransform(src_crs, dst_crs);
-		
-	    // Work out the boundaries of the new dataset in the target projection
-		ProjCoordinate ul = new ProjCoordinate(geotransform[0], geotransform[3]);
-		ProjCoordinate lr = new ProjCoordinate(geotransform[0] + geotransform[1]*src_raster_width,geotransform[3] + geotransform[5]*src_raster_height);
-		ProjCoordinate ul_warped = tx.transform(ul,ul);
-		ProjCoordinate lr_warped = tx.transform(lr, lr);
+		ReferencedEnvelope	src_refEnv = new ReferencedEnvelope(raster.getBoundingBox(), src_crs);
+
+		ReferencedEnvelope reprojected = src_refEnv.transform(dst_crs, 10);
 		
 		Dataset warped = driver.Create(
 				"",
@@ -138,25 +132,24 @@ public class GDALReproject extends Reproject implements RasterOp {
 				gdalDataType);
 		
 		double[] warped_geotransform = new double[]{
-				ul_warped.x,
-				(lr_warped.x - ul_warped.x) / src_raster_width, /* w-e pixel resolution */
+				reprojected.getEnvelope().getMinX(),
+				(reprojected.getEnvelope().getMaxX() - reprojected.getEnvelope().getMinX()) / src_raster_width, /* w-e pixel resolution */
 				geotransform[2],  /* 0 */
-				ul_warped.y , /* top left y */
+				reprojected.getEnvelope().getMaxY() , /* top left y */
 				geotransform[4], /* 0 */
-				- ((ul_warped.y - lr_warped.y) / src_raster_height) /* n-s pixel resolution (negative value) */
+				- ((reprojected.getEnvelope().getMaxY() - reprojected.getEnvelope().getMinY()) / src_raster_height) /* n-s pixel resolution (negative value) */
 		};
 		warped.SetGeoTransform(warped_geotransform);
 		warped.SetProjection(dst_proj.ExportToWkt());
 		
-		int success = gdal.ReprojectImage(ds, warped);
+		int success = gdal.ReprojectImage(ds, warped,src_proj.ExportToWkt(),dst_proj.ExportToWkt(),gdalconst.GRA_NearestNeighbour);
 		
 		if(success != gdalconst.CE_None){
 			Log.e(MReproject.class.getSimpleName(), "error reprojecting with gdal");
+			return;
 		}		
 
 		final GDALDataset warpedDS = new GDALDataset(warped);
-		
-		Envelope reprojected = new Envelope(ul.x, lr.x, lr.y, ul.y);
 		
 		int nbands = warped.GetRasterCount();
 		
@@ -167,7 +160,7 @@ public class GDALReproject extends Reproject implements RasterOp {
 		final Rect readDim = new Rect(0, 0, src_raster_width, src_raster_height);
 		
 		RasterQuery query = new GDALRasterQuery(
-				reprojected,
+				reprojected.getEnvelope(),
 				dst_proj,
 				bands,
 				readDim,
