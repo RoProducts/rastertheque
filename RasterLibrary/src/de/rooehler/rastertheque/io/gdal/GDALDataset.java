@@ -289,8 +289,13 @@ public class GDALDataset implements RasterDataset{
 		if(mCRS == null){
 			
 			String proj = dataset.GetProjection();
-			if (proj != null) {
-				mCRS = Proj.crs(proj);
+			if (proj != null && (!proj.equals(""))) {
+				try{
+					mCRS = Proj.crs(proj);
+				}catch(RuntimeException e){
+					Log.e(GDALDataset.class.getSimpleName(), "error parsing proj "+proj);
+					return null;
+				}
 			}else{				
 				return null;
 			}

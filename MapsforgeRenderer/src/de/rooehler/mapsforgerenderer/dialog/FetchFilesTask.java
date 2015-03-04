@@ -18,7 +18,7 @@ import android.provider.MediaStore;
 import android.util.Log;
 import de.rooehler.mapsforgerenderer.R;
 /**
- * Asynctask which crawls the file system / queries the android MediaStore database
+ * Asynctask which crawls the file system / queries the Android MediaStore database
  * to retrieve all files on the system with specified extensions @param mExtensions
  * 
  * @author Robert Oehler

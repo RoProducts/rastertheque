@@ -1,6 +1,18 @@
 package de.rooehler.mapsforgerenderer.util;
 
-
+/**
+ * defines categories of supported filetypes for the MapsforgeRenderer
+ * 
+ * note that is a legacy implementation :
+ * for the type RASTER this is an unnecessary constraint and 
+ * should not be used in other sample applications
+ * 
+ * the raster library is theoretically able to open "any" filetype and
+ * will respond to Drivers.open(filePath) either with a dataset or null
+ * 
+ * @author Robert Oehler
+ *
+ */
 public enum SupportedType {
 	
 	MAPSFORGE,

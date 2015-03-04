@@ -20,7 +20,7 @@ import android.widget.TextView;
 import de.rooehler.mapsforgerenderer.R;;
 
 /**
- * 		   class which shows a dialog letting the user select a certain file
+ * class which shows a dialog to let the user select a file
  * 
  * @author Robert Oehler 
  */
@@ -35,6 +35,14 @@ public class FilePickerDialog {
 	private String mMessage;
 	private FilePathPickCallback mFilePathPickCallback;
 	
+	/**
+	 * Constructor which accepts an array of file extension to filter
+	 * the results of the disk crawl
+	 * @param activity
+	 * @param message
+	 * @param extensions
+	 * @param filePickCallback
+	 */
 	public FilePickerDialog(final Activity activity,final String message,final String[] extensions, final FilePathPickCallback filePickCallback) {
 		
 		mActivity = activity;

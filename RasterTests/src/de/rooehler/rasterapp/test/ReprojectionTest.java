@@ -91,7 +91,7 @@ public class ReprojectionTest extends android.test.ActivityTestCase {
 		
 		assertNotNull(bitmap);
 
-		TestUtil.saveImage(bitmap,"ReprojectOp_gdal_3857");
+		TestUtil.saveImage(bitmap,"ReprojectOp_m_bic_3857");
 	}
 	
 	

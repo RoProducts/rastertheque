@@ -10,10 +10,17 @@ import de.rooehler.mapsforgerenderer.rasterrenderer.RasterRenderer;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
 import de.rooehler.rastertheque.io.mbtiles.RGBMResampler;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
-
+/**
+ * Legacy implementation of a renderer of MBTiles for Mapsforge
+ * 
+ * This implementation does not make use of the modern raster library API
+ * 
+ * and should be rewritten
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class MBTilesMapsforgeRenderer implements RasterRenderer{
-
-	private final static String TAG = MBTilesMapsforgeRenderer.class.getSimpleName();
 
 	private static final int MBTILES_SIZE = 256;
 	

@@ -40,7 +40,6 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.mapsforgerenderer.R;
 import de.rooehler.mapsforgerenderer.dialog.AlertFactory;
@@ -54,9 +53,22 @@ import de.rooehler.mapsforgerenderer.util.SupportedType;
 import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Drivers;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
+import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
+import de.rooehler.rastertheque.proj.Proj;
 
-
+/**
+ * Main and sole activity of the Mapsforge Sample Application
+ * 
+ * contains a listdrawer which enables the user to select a "filetype"
+ * file are divided into the categories "Mapsforge, MBTiles and Raster"
+ * 
+ * Mapsforge files ".map" are handled with the native TileLayer
+ * MBTiles and Raster with custom implementations
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class MainActivity extends Activity implements IWorkStatus{
 	
 	final static String TAG = MainActivity.class.getSimpleName();
@@ -88,8 +100,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 		setContentView(R.layout.main_layout);
 		
 		getActionBar().setBackgroundDrawable(new ColorDrawable(0xffffffff));
-		
-		
+				
 		mapView = (MapView) findViewById(R.id.mapView);
 		mTitle = mDrawerTitle = getTitle();
 		
@@ -244,7 +255,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 				mbtilesDataset = Drivers.open(filePath, null);
 			}catch(IOException e){
 				Log.e(TAG, "error opening file "+filePath);
-				AlertFactory.showErrorAlert(this, "Error", "There was an error opening the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
+				AlertFactory.showAlert(this, "Error", "There was an error opening the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
 				return;
 			}
 
@@ -273,19 +284,26 @@ public class MainActivity extends Activity implements IWorkStatus{
 				gdalDataset = Drivers.open(filePath, null);
 			}catch(IOException e){
 				Log.e(TAG, "error opening file "+filePath);
-				AlertFactory.showErrorAlert(this, "Error", "There was an error opening the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
+				AlertFactory.showAlert(this, "Error", "There was an error opening the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
 				return;
 			}
 
 			if(gdalDataset != null){
 
 				if(gdalDataset.getCRS() == null){      	
-					AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+					AlertFactory.showAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
 					gdalDataset.close();
 					return;
+				}else{
+					//if it is not 900913 transform to 900913
+					if(!gdalDataset.getCRS().equals(Proj.EPSG_900913)){
+						Log.i(TAG, "reprojecting to EPSG 900913");
+						org.gdal.gdal.Dataset reproj = ((GDALDataset)gdalDataset).transform(Proj.proj2wkt(Proj.EPSG_900913.getParameterString()));
+						gdalDataset = new GDALDataset(gdalDataset.getSource(), reproj, (GDALDriver)gdalDataset.getDriver());
+					}
 				}
 				if(gdalDataset.getBoundingBox() == null){
-					AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
+					AlertFactory.showAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
 					gdalDataset.close();
 					return;
 				}
@@ -297,12 +315,13 @@ public class MainActivity extends Activity implements IWorkStatus{
 				ds = gdalDataset;
 			}else{
 				Log.w(TAG, "cannot open file "+filePath);
-				AlertFactory.showErrorAlert(this, "No Driver", "No Driver could open the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
+				AlertFactory.showAlert(this, "No Driver", "No Driver could open the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
 				return;
 			}
 
 			GDALMapsforgeRenderer gdalFileRenderer = new GDALMapsforgeRenderer(AndroidGraphicFactory.INSTANCE,((GDALDataset) ds));
-			//TODO refactor the initial zoom calculation
+			
+			
 			final int tileSize = mapView.getModel().displayModel.getTileSize();
 			DisplayMetrics displaymetrics = new DisplayMetrics();
 			getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
@@ -314,6 +333,8 @@ public class MainActivity extends Activity implements IWorkStatus{
 			final int h = dim.height();
 			Log.v(TAG, "width : "+w + " height : "+ h);
 			
+			//this sample implementation follows the policy to show raster files in their complete extent
+			// i.e. --> the file is internally zoomed 
 			final MapPosition gdalmp =  new MapPosition(calculateStartPositionForRaster(w, h),startZoomLevel);
 			final MapViewPosition gdalmvp = mapView.getModel().mapViewPosition;		
 			gdalmvp.setMapPosition(gdalmp);

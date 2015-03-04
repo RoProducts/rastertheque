@@ -5,11 +5,23 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import de.rooehler.mapsforgerenderer.R;
-
+/**
+ * Factory for dialogs
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class AlertFactory {
 	
-	
-	public static void showErrorAlert(final Context context, final String title, final String message){
+	/**
+	 * shows a simple message containing title and message
+	 * has only one "ok" button
+	 * 
+	 * @param context the context to show in
+	 * @param title the title of the dialog to show
+	 * @param message the message of the dialog to show
+	 */
+	public static void showAlert(final Context context, final String title, final String message){
 		
 		final AlertDialog.Builder builder = new AlertDialog.Builder(context)
 		.setIcon(R.drawable.ic_launcher)

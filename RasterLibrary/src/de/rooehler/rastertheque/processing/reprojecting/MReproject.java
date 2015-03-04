@@ -26,10 +26,20 @@ import de.rooehler.rastertheque.proj.Proj;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
-
+/**
+ * Implementation of the Reproject operation 
+ * in a "manual" way, step by step
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class MReproject extends Reproject implements RasterOp {
 
-
+	/**
+	 * executes the operation on the @param raster according to the @params
+	 * using the optional @param hints
+	 * the  @listener reports the progress in terms of percent (1-99)
+	 */
 	@Override
 	public void execute(Raster raster, Map<Key, Serializable> params,Hints hints, ProgressListener listener) {
 
@@ -77,12 +87,12 @@ public class MReproject extends Reproject implements RasterOp {
 		final int srcWidth  = raster.getDimension().width();
 		final int srcHeight = raster.getDimension().height();
 
+		//source envelope
 		ReferencedEnvelope	src_refEnv = new ReferencedEnvelope(raster.getBoundingBox(), src_crs);
 
-		//densify 
+		//transform the src envelope to the target envelope using the target crs
+		//densify it with 10 additional points
 		ReferencedEnvelope reprojected = src_refEnv.transform(dst_crs, 10);
-
-		Log.d(MReproject.class.getSimpleName(), "reprojected "+reprojected.toString());
 
 		//target raster resolution "how much model units are between two raster points"
 		double dst_x_res = reprojected.getEnvelope().getWidth() / srcWidth;
@@ -110,7 +120,12 @@ public class MReproject extends Reproject implements RasterOp {
 		ProjCoordinate dst_model_pos = new ProjCoordinate(dst_upperLeft.x , dst_upperLeft.y);
 		Coordinate src_model_coord = new Coordinate();
 		
-		for(int i = 0; i < raster.getBands().size(); i++){
+		final int bandAmount = raster.getBands().size();
+		final float onePercent = bandAmount * srcHeight * srcWidth / 100f;
+		float current = onePercent;
+		int percent = 1;
+		
+		for(int i = 0; i < bandAmount; i++){
 			//determine the nodata for each band
 			noData = raster.getBands().get(i).nodata();
 			//if not available, use the datatypes min value
@@ -131,6 +146,15 @@ public class MReproject extends Reproject implements RasterOp {
 
 					src_model_coord.x = dst_model_pos.x;
 					src_model_coord.y = dst_model_pos.y;
+					
+					//progress
+					if(x * y * bandAmount > current){
+						if(listener != null){								
+							listener.onProgress(percent);
+						}
+						current += onePercent;
+						percent++;
+					}
 					
 					// if the source raster contains this position
 					if(raster.getBoundingBox().contains(src_model_coord)){
@@ -169,9 +193,6 @@ public class MReproject extends Reproject implements RasterOp {
 										float x_diff = (float) (src_raster_x - srcX);
 										float y_diff = (float) (src_raster_y - srcY);
 										interpolatedByte = MResampler.interpolateBytesBilinear(bytes, x_diff, y_diff);
-										if(interpolatedByte == 0){
-											Log.d("Rep", String.format("%d %d %d %d %d", bytes[0],bytes[1],bytes[2],bytes[3],interpolatedByte));
-										}
 										break;
 									case BICUBIC:
 										src_model_coord.x = src_raster_x;

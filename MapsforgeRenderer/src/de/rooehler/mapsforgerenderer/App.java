@@ -9,7 +9,7 @@ public class App extends Application {
 	@Override
 	public void onCreate() {
 		super.onCreate();
-		
+		//this call is mandatory to use the Mapsforge library
 		AndroidGraphicFactory.createInstance(this);
 			
 

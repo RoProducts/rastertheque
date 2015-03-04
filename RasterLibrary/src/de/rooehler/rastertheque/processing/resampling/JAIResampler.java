@@ -9,9 +9,7 @@ import java.util.Map;
 import android.graphics.Rect;
 import android.util.Log;
 
-import com.vividsolutions.jts.geom.Envelope;
-
-import de.rooehler.raster_jai.JaiInterpolate;
+import de.rooehler.jai.JaiInterpolate;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;

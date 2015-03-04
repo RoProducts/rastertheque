@@ -7,19 +7,16 @@ import java.io.Serializable;
 import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.List;
-
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
 import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
-
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.util.Log;
-
 import com.vividsolutions.jts.geom.Envelope;
-
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterJob;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterRenderer;
 import de.rooehler.rastertheque.core.Band.Color;
@@ -36,7 +33,8 @@ import de.rooehler.rastertheque.processing.resampling.Resampler;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 /**
- * A Renderer of gdal data for Mapsforge
+ * A Renderer of GDAL datasets for Mapsforge
+ * 
  * @author Robert Oehler
  *
  */
@@ -188,12 +186,10 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         
         int readFromX = job.tile.tileX * readAmountX;
         int readFromY = job.tile.tileY * readAmountY;
-        
-        
+          
 //        Log.d(TAG, String.format("tile %d %d zoom %d read from %d %d amount %d %d",job.tile.tileX,job.tile.tileY,job.tile.zoomLevel,readFromX,readFromY,readAmountX,readAmountY));   
         
         if(readFromX < 0 || readFromX + readAmountX > w ||  readFromY < 0 || readFromY + readAmountY > h){
-//        	Log.e(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");
 
         	//if entirely out of bounds -> return white tile
         	if(readFromX + readAmountX <= 0 || readFromX  > w ||
@@ -251,14 +247,9 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
             
 
         }
-//        else{ //this rectangle is fully covered by the file
-//        	Log.i(TAG, "reading of ("+readAmountX+","+readAmountY +") from "+readFromX+","+readFromY+" of file {"+w+","+h+"}");    	
-//        } 
         
         final Rect targetDim = useGDALAsResampler(ts , readAmountX) ? 
         		new Rect(0, 0, ts, ts) : new Rect(0, 0, readAmountX, readAmountY);
-       
-	
         		
         final int pixels[] = executeQuery(
         		bounds,
@@ -332,6 +323,11 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         }
 	}
 	
+	/**
+	 * renders the bands of the the raster interpreting them a r,g and b channels
+	 * @param raster the raster containing the rgb bands
+	 * @return the array of argb pixels
+	 */
 	private int[] renderRGB(final Raster raster) {
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
@@ -442,7 +438,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 	 * @param tilebitmap
 	 * @param job
 	 */
-	@SuppressWarnings("unused")
+	@SuppressLint("DefaultLocale")
 	private void saveBitmap(final TileBitmap tilebitmap,final RasterJob job){
 		
 		final String newFileName = String.format("tile_%d_%d_%d.png", job.tile.tileX, job.tile.tileY, job.tile.zoomLevel);
@@ -531,6 +527,4 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		
 		return mRasterDataset.getSource();
 	}
-	
-
 }

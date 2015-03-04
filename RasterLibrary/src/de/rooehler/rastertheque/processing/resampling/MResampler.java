@@ -18,12 +18,34 @@ import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
-
+/**
+ * Implementation of the Resampling operation
+ * following algorithms and samples found in :
+ * 
+ * Burger, Wilhelm & Burge, Mark James :
+ * Digital Image Processing. Springer, 2008
+ * 
+ * Currently the interpolation methods
+ * 
+ * NEARESTNEIGHBOUR
+ * BILINEAR
+ * BICUBIC
+ * 
+ * are realised
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class MResampler extends Resampler implements RasterOp, Serializable  {
 
-	
+
 	private static final long serialVersionUID = -5891230160742468189L;
 
+	/**
+	 * executes the operation on the @param raster according to the @params
+	 * using the optional @param hints
+	 * the  @listener reports the progress in terms of percent (1-99)
+	 */
 	@Override
 	public void execute(Raster raster,Map<Key,Serializable> params, Hints hints, ProgressListener listener) {
 
@@ -36,7 +58,7 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}else{
 			throw new IllegalArgumentException("no scale factors provided, cannot continue");
 		}
-		
+
 		ResampleMethod method = ResampleMethod.BILINEAR;
 		if(hints != null && hints.containsKey(Hints.KEY_INTERPOLATION)){
 			method = (ResampleMethod) hints.get(Hints.KEY_INTERPOLATION);
@@ -44,7 +66,7 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 		final int srcWidth  = raster.getDimension().right - raster.getDimension().left;
 		final int srcHeight = raster.getDimension().bottom - raster.getDimension().top;
-		
+
 		final int dstWidth = (int) (srcWidth * scaleX);
 		final int dstHeight = (int) (srcHeight * scaleY);
 
@@ -59,17 +81,19 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 		final int newBufferSize = ((int)dstWidth) * ((int)dstHeight) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
 
-		final float onePercent = raster.getBands().size() * dstHeight * dstWidth / 100f;
+		final int bandAmount = raster.getBands().size();
+		final float onePercent = bandAmount * dstHeight * dstWidth / 100f;
 		float current = onePercent;
+		int percent = 1;
 		try{
 
 			final ByteBuffer buffer = ByteBuffer.allocate(newBufferSize);
 			buffer.order(ByteOrder.nativeOrder()); 
 
-			for(int h = 0; h < raster.getBands().size(); h++){
+			for(int h = 0; h < bandAmount; h++){
 				final int dataSize = raster.getBands().get(h).datatype().size();
 				final int bandIndex = h * srcHeight * srcWidth;
-				
+
 				for (int i = 0; i < dstHeight; i++) {
 					for (int j = 0; j < dstWidth; j++) {
 
@@ -80,29 +104,30 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 						// offsets from the current pos to the pos in the new image
 						x_diff = (x_ratio * j) - x;
 						y_diff = (y_ratio * i) - y;
-						
+
 						// current pos
 						index = y * srcWidth + x;
-						
-						if(index * raster.getBands().size() > current){
+
+						if(index * bandAmount > current){
 							if(listener != null){								
-								listener.onProgress((int) current);
+								listener.onProgress(percent);
 							}
 							current += onePercent;
+							percent++;
 						}
-						
+
 						reader.seekToOffset(index * dataSize + bandIndex);
 
 						final int nearestX = (int) Math.rint(x + x_diff);
 						final int nearestY = (int) Math.rint(y + y_diff);
 
 						switch(raster.getBands().get(h).datatype()) {
-						
+
 						case BYTE:
 
 							byte[] bytes = getByteNeighbours(reader, readerSize, dataSize, srcWidth);					
 							byte interpolatedByte = 0;
-							
+
 							switch (method) {
 							case NEARESTNEIGHBOUR:
 								interpolatedByte = interpolateBytesNN(bytes, nearestX, nearestY, x, y);
@@ -125,7 +150,7 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 							char[] chars = getCharNeighbours(reader,readerSize,dataSize, srcWidth);
 							char interpolatedValue = 0;
-							
+
 							switch(method){
 							case BICUBIC:
 								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
@@ -184,7 +209,7 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 							int[] ints = getIntNeighbours(reader,readerSize,dataSize,srcWidth);
 							int interpolatedInt = 0;
-							
+
 							switch(method){
 							case BICUBIC:							
 								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
@@ -219,10 +244,10 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 							buffer.putLong(interpolatedLong);
 							break;
 						case SHORT:
-							
+
 							short[] shorts = getShortNeighbours(reader,readerSize,dataSize,srcWidth);
 							short interpolatedShort= 0;
-							
+
 							switch(method){
 							case BICUBIC:								
 								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
@@ -241,17 +266,18 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 					}
 				}
 			}
-			
+
 			raster.setDimension(new Rect(0, 0, dstWidth, dstHeight));
-			
+
 			raster.setData(buffer);
-			
+
 		}catch(IOException e){
 			Log.e(MResampler.class.getSimpleName(), "Error reading raster values",e);
 		}
 	}
 
-/////////////////**************SHORTS*************/////////////////////////////	
+	/////////////////**************SHORTS*************/////////////////////////////	
+
 	public static short[] getShortNeighbours(ByteBufferReader reader, int readerSize,int dataSize, int srcWidth) throws IOException {
 		short[] shorts = new short[4];
 		shorts[0] = reader.readShort();
@@ -262,7 +288,6 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 
 		if(reader.getPos() + (srcWidth * dataSize - 2 * dataSize) < readerSize){
-			//reader is at index + 2 * dataSize
 			reader.seekToOffset(reader.getPos() + (srcWidth * dataSize - 2 * dataSize)); 
 			shorts[2] = reader.readShort();	
 			if(reader.getPos() < readerSize){
@@ -276,13 +301,14 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 		return shorts;
 	}
+
 	public static short interpolateShortsBicubic(short[] shorts, Coordinate coord, ByteBufferReader reader, int x, int y, int srcWidth, int srcHeight, int dataSize) throws IOException{
-		
+
 		final double a = 0.0d;
 		final double _x = coord.x;
 		final double _y = coord.y;
-		
-		final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+
+		final int x0 = (int) Math.floor(_x);
 		final int y0 = (int) Math.floor(_y);
 		short bicubic_short = 0;
 
@@ -290,15 +316,15 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		for (int _j = 0; _j < 4; _j++) {
 			final int v = y0 - 1 + _j;
 			double  p = 0;
-			
+
 			for (int _i = 0; _i < 4; _i++) {
 				final int u = x0 - 1 + _i;
 				final int _index = v * srcWidth + u;
-				
+
 				seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
 				bicubic_short = reader.readShort();
 
-			    p = p + bicubic_short * cubic(x - u, a);
+				p = p + bicubic_short * cubic(x - u, a);
 			}
 
 			q = q + p * cubic(y - v, a);
@@ -307,14 +333,16 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		return (short) q;
 
 	}
+
 	public static short interpolateShortsBilinear(short[] shorts, float x_diff, float y_diff){
-		
+
 		return (short)  Math.rint((shorts[0] * (1 - x_diff) * (1 - y_diff) +
-						shorts[1] * (x_diff) * (1 - y_diff) +
-						shorts[2] * (y_diff) * (1 - x_diff) +
-						shorts[3] * (x_diff * y_diff)));
+				shorts[1] * (x_diff) * (1 - y_diff) +
+				shorts[2] * (y_diff) * (1 - x_diff) +
+				shorts[3] * (x_diff * y_diff)));
 
 	}
+
 	public static short interpolateShortsNN(short[] shorts, int nearestX, int nearestY, int x, int y){
 
 		if(nearestX == x && nearestY == y){
@@ -328,8 +356,9 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 		return 0;
 	}
-	
-/////////////////**************LONGS*************/////////////////////////////
+
+	/////////////////**************LONGS*************/////////////////////////////
+
 	public static long[] getLongNeighbours(ByteBufferReader reader, int readerSize,int dataSize, int srcWidth)throws IOException {
 		long[] longs = new long[4];
 		longs[0] = reader.readLong();
@@ -353,14 +382,14 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 		return longs;
 	}
-	
+
 	public static long interpolateLongsBicubic(long[] longs, Coordinate coord, ByteBufferReader reader, int x, int y, int srcWidth, int srcHeight, int dataSize) throws IOException{
-		
+
 		final double a = 0.0d;
 		final double _x = coord.x;
 		final double _y = coord.y;
-		
-		final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+
+		final int x0 = (int) Math.floor(_x);
 		final int y0 = (int) Math.floor(_y);
 		long bicubic_long = 0;
 
@@ -368,15 +397,15 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		for (int _j = 0; _j < 4; _j++) {
 			final int v = y0 - 1 + _j;
 			double  p = 0;
-			
+
 			for (int _i = 0; _i < 4; _i++) {
 				final int u = x0 - 1 + _i;
 				final int _index = v * srcWidth + u;
-				
+
 				seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
 				bicubic_long = reader.readLong();
 
-			    p = p + bicubic_long * cubic(x - u, a);
+				p = p + bicubic_long * cubic(x - u, a);
 			}
 
 			q = q + p * cubic(y - v, a);
@@ -385,13 +414,13 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		return (long) q;
 
 	}
-	
+
 	public static long interpolateLongsBilinear(long[] longs, float x_diff, float y_diff){
-		
+
 		return 	(long)  Math.rint((longs[0] * (1 - x_diff) * (1 - y_diff) +
-						longs[1] * (x_diff) * (1 - y_diff) +
-						longs[2] * (y_diff) * (1 - x_diff) +
-						longs[3] * (x_diff * y_diff)));
+				longs[1] * (x_diff) * (1 - y_diff) +
+				longs[2] * (y_diff) * (1 - x_diff) +
+				longs[3] * (x_diff * y_diff)));
 
 	}
 	public static long interpolateLongsNN(long[] longs, int nearestX, int nearestY, int x, int y){
@@ -409,7 +438,8 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 	}
 
-/////////////////**************INTS*************/////////////////////////////
+	/////////////////**************INTS*************/////////////////////////////
+
 	public static int[] getIntNeighbours(ByteBufferReader reader, int readerSize,int dataSize, int srcWidth) throws IOException{
 		int[] ints = new int[4];
 		ints[0] = reader.readInt();
@@ -433,15 +463,15 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 		return ints;
 	}
-	
-	
+
+
 	public static int interpolateIntsBicubic(int[] ints, Coordinate coord, ByteBufferReader reader, int x, int y, int srcWidth, int srcHeight, int dataSize) throws IOException{
-		
+
 		final double a = 0.0d;
 		final double _x = coord.x;
 		final double _y = coord.y;
-		
-		final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+
+		final int x0 = (int) Math.floor(_x);
 		final int y0 = (int) Math.floor(_y);
 		float bicubic_int = 0;
 
@@ -449,15 +479,15 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		for (int _j = 0; _j < 4; _j++) {
 			final int v = y0 - 1 + _j;
 			double  p = 0;
-			
+
 			for (int _i = 0; _i < 4; _i++) {
 				final int u = x0 - 1 + _i;
 				final int _index = v * srcWidth + u;
-				
+
 				seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
 				bicubic_int = reader.readInt();
 
-			    p = p + bicubic_int * cubic(x - u, a);
+				p = p + bicubic_int * cubic(x - u, a);
 			}
 
 			q = q + p * cubic(y - v, a);
@@ -466,15 +496,16 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		return (int) q;
 
 	}
-	
+
 	public static int interpolateIntsBilinear(int[] ints, float x_diff, float y_diff){
-		
+
 		return 	 (int)  Math.rint((ints[0] * (1 - x_diff) * (1 - y_diff) +
-						ints[1] * (x_diff) * (1 - y_diff) +
-						ints[2] * (y_diff) * (1 - x_diff) +
-						ints[3] * (x_diff * y_diff)));
+				ints[1] * (x_diff) * (1 - y_diff) +
+				ints[2] * (y_diff) * (1 - x_diff) +
+				ints[3] * (x_diff * y_diff)));
 
 	}
+
 	public static int interpolateIntsNN(int[] ints, int nearestX, int nearestY, int x, int y){
 
 		if(nearestX == x && nearestY == y){
@@ -489,8 +520,9 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		return 0;
 
 	}
-	
-/////////////////**************FLOATS*************/////////////////////////////
+
+	/////////////////**************FLOATS*************/////////////////////////////
+
 	public static float[] getFloatNeighbours(ByteBufferReader reader, int readerSize,	int dataSize, int srcWidth) throws IOException{
 		float[] floats = new float[4];
 		floats[0] = reader.readFloat();
@@ -514,14 +546,14 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 		return floats;
 	}
-	
+
 	public static float interpolateFloatsBicubic(float[] floats, Coordinate coord, ByteBufferReader reader, int x, int y, int srcWidth, int srcHeight, int dataSize) throws IOException{
-		
+
 		final double a = 0.0d;
 		final double _x = coord.x;
 		final double _y = coord.y;
-		
-		final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+
+		final int x0 = (int) Math.floor(_x);
 		final int y0 = (int) Math.floor(_y);
 		float bicubic_float = 0;
 
@@ -529,15 +561,15 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		for (int _j = 0; _j < 4; _j++) {
 			final int v = y0 - 1 + _j;
 			double  p = 0;
-			
+
 			for (int _i = 0; _i < 4; _i++) {
 				final int u = x0 - 1 + _i;
 				final int _index = v * srcWidth + u;
-				
+
 				seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
 				bicubic_float = reader.readFloat();
 
-			    p = p + bicubic_float * cubic(x - u, a);
+				p = p + bicubic_float * cubic(x - u, a);
 			}
 
 			q = q + p * cubic(y - v, a);
@@ -545,15 +577,17 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 		return (float) q;
 	}
+
 	public static float interpolateFloatsBilinear(float[] floats, float x_diff, float y_diff){
-		
+
 		return 	floats[0] * (1 - x_diff) * (1 - y_diff) +
 				floats[1] * (x_diff) * (1 - y_diff) +
 				floats[2] * (y_diff) * (1 - x_diff) +
 				floats[3] * (x_diff * y_diff);
 	}
+
 	public static float interpolateFloatsNN(float[] floats, int nearestX, int nearestY, int x, int y){
-		
+
 		if(nearestX == x && nearestY == y){
 			return floats[0];
 		}else if(nearestX == x && nearestY == (y + 1)){
@@ -567,7 +601,7 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 	}
 	/////////////////**************DOUBLES*************/////////////////////////////
-	
+
 	public static double[] getDoubleNeighbours(ByteBufferReader reader,int readerSize, int dataSize, int srcWidth) throws IOException {
 		double[] doubles = new double[4];
 		doubles[0] = reader.readDouble();
@@ -591,16 +625,18 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 		return doubles;
 	}
+
 	public static double interpolateDoublesBilinear(double[] doubles, float x_diff, float y_diff){
-		
+
 		return 	doubles[0] * (1 - x_diff) * (1 - y_diff) +
 				doubles[1] * (x_diff) * (1 - y_diff) +
 				doubles[2] * (y_diff) * (1 - x_diff) +
 				doubles[3] * (x_diff * y_diff);
 
 	}
+
 	public static double interpolateDoublesNN(double[] doubles, int nearestX, int nearestY, int x, int y){
-		
+
 		if(nearestX == x && nearestY == y){
 			return doubles[0];
 		}else if(nearestX == x && nearestY == (y + 1)){
@@ -613,12 +649,13 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		return 0;
 
 	}
+
 	public static double interpolateDoublesBicubic(double[] doubles, Coordinate coord, ByteBufferReader reader, int x, int y, int srcWidth, int srcHeight, int dataSize) throws IOException{
 		final double a = 0.0d;
 		final double _x = coord.x;
 		final double _y = coord.y;
-		
-		final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+
+		final int x0 = (int) Math.floor(_x);
 		final int y0 = (int) Math.floor(_y);
 		double bicubic_double = 0;
 
@@ -626,30 +663,30 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		for (int _j = 0; _j < 4; _j++) {
 			final int v = y0 - 1 + _j;
 			double  p = 0;
-			
+
 			for (int _i = 0; _i < 4; _i++) {
 				final int u = x0 - 1 + _i;
 				final int _index = v * srcWidth + u;
-				
+
 				seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
 				bicubic_double = reader.readDouble();
 
-			    p = p + bicubic_double * cubic(x - u, a);
+				p = p + bicubic_double * cubic(x - u, a);
 			}
 
 			q = q + p * cubic(y - v, a);
 		}
 		return q;
 	}
-	
+
 	/////////////////**************CHARS*************/////////////////////////////
 
 	public static char interpolateCharsBicubic(char[] bytes, Coordinate coord, ByteBufferReader reader, int x, int y, int srcWidth, int srcHeight, int dataSize) throws IOException{
 		final double a = 0.0d;
 		final double _x = coord.x;
 		final double _y = coord.y;
-		
-		final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+
+		final int x0 = (int) Math.floor(_x);
 		final int y0 = (int) Math.floor(_y);
 		char bicubic_char = 0;
 
@@ -657,15 +694,15 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		for (int _j = 0; _j < 4; _j++) {
 			final int v = y0 - 1 + _j;
 			double  p = 0;
-			
+
 			for (int _i = 0; _i < 4; _i++) {
 				final int u = x0 - 1 + _i;
 				final int _index = v * srcWidth + u;
-				
+
 				seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
 				bicubic_char = reader.readChar();
 
-			    p = p + bicubic_char * cubic(x - u, a);
+				p = p + bicubic_char * cubic(x - u, a);
 			}
 
 			q = q + p * cubic(y - v, a);
@@ -673,6 +710,7 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 		return  (char) q;
 	}
+
 	public static char[] getCharNeighbours(ByteBufferReader reader, int readerSize,int dataSize, int srcWidth) throws IOException{
 		char[] chars =  new char[4];
 		chars[0] = reader.readChar();
@@ -683,7 +721,6 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 
 		if(reader.getPos() + (srcWidth * dataSize  - 2 * dataSize) < readerSize){
-			//reader is at index + 2 * dataSize
 			reader.seekToOffset(reader.getPos() + (srcWidth * dataSize - 2 * dataSize)); 
 			chars[2] = reader.readChar();
 			if(reader.getPos() < readerSize){
@@ -697,17 +734,18 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 		return chars;
 	}
-	
+
 	public static char interpolateCharsBilinear(char[] chars, float x_diff, float y_diff){
-		
+
 		return (char)  Math.rint((chars[0] * (1 - x_diff) * (1 - y_diff) +
-						chars[1] * (x_diff) * (1 - y_diff) +
-						chars[2] * (y_diff) * (1 - x_diff) +
-						chars[3] * (x_diff * y_diff)));
+				chars[1] * (x_diff) * (1 - y_diff) +
+				chars[2] * (y_diff) * (1 - x_diff) +
+				chars[3] * (x_diff * y_diff)));
 
 	}
+
 	public static char interpolateCharsNN(char[] chars, int nearestX, int nearestY, int x, int y){
-		
+
 		if(nearestX == x && nearestY == y){
 			return chars[0];
 		}else if(nearestX == x && nearestY == (y + 1)){
@@ -721,8 +759,9 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		return 0;
 
 	}
+
 	/////////////////**************BYTES*************/////////////////////////////
-	
+
 	public static byte[] getByteNeighbours(ByteBufferReader reader, int readerSize, int dataSize, int srcWidth) throws IOException {
 		byte[] bytes = new byte[4];
 		bytes[0] = reader.readByte();
@@ -733,7 +772,6 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 
 		if(reader.getPos() + (srcWidth * dataSize - 2 * dataSize) < readerSize){
-			//reader is at index + 2 * dataSize
 			reader.seekToOffset(reader.getPos() + (srcWidth * dataSize - 2 * dataSize)); 
 			bytes[2] = reader.readByte();	
 			if(reader.getPos() < readerSize){
@@ -747,14 +785,14 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 		return bytes;
 	}
-	
+
 	public static byte interpolateBytesBicubic(byte[] bytes, Coordinate coord, ByteBufferReader reader, int x, int y, int srcWidth, int srcHeight, int dataSize) throws IOException{
 		final double a = 0.0d;
-		
+
 		final double _x = coord.x;
 		final double _y = coord.y;
-		
-		final int x0 = (int) Math.floor(_x);	//use floor to handle negative coordinates too
+
+		final int x0 = (int) Math.floor(_x);
 		final int y0 = (int) Math.floor(_y);
 		byte bicubic_byte = 0;
 
@@ -762,15 +800,15 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		for (int _j = 0; _j < 4; _j++) {
 			final int v = y0 - 1 + _j;
 			double  p = 0;
-			
+
 			for (int _i = 0; _i < 4; _i++) {
 				final int u = x0 - 1 + _i;
 				final int _index = v * srcWidth + u;
-				
+
 				seekTo(reader, _index, dataSize, u, v, srcWidth, srcHeight);
 				bicubic_byte = reader.readByte();
 
-			    p = p + bicubic_byte * cubic(x - u, a);
+				p = p + bicubic_byte * cubic(x - u, a);
 			}
 
 			q = q + p * cubic(y - v, a);
@@ -778,16 +816,17 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 		return (byte) q;
 	}
-	
+
 	public static byte interpolateBytesBilinear(byte[] bytes, float x_diff, float y_diff){
-		
+
 		return 	(byte) Math.rint((bytes[0] * (1 - x_diff) * (1 - y_diff) +
-						bytes[1] * (x_diff) * (1 - y_diff) +
-						bytes[2] * (y_diff) * (1 - x_diff) +
-						bytes[3] * (x_diff * y_diff)));
+				bytes[1] * (x_diff) * (1 - y_diff) +
+				bytes[2] * (y_diff) * (1 - x_diff) +
+				bytes[3] * (x_diff * y_diff)));
 	}
+
 	public static byte interpolateBytesNN(byte[] bytes, int nearestX, int nearestY, int x, int y){
-		
+
 		if(nearestX == x && nearestY == y){
 			return bytes[0];
 		}else if(nearestX == x && nearestY == (y + 1)){
@@ -801,9 +840,9 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 		}
 
 	}
-	
+
 	/////////////////**************UTIL*************/////////////////////////////
-	
+
 	private static void seekTo(ByteBufferReader reader, int _index, int dataSize, int u, int v, int srcWidth, int srcHeight){
 		if( v < 0){
 			if(u >= 0){
@@ -829,7 +868,7 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 			reader.seekToOffset(_index * dataSize);
 		}
 	}
-	
+
 	private static  double cubic(double r, double a) {
 		if (r < 0) r = -r;
 		double w = 0;
@@ -839,14 +878,14 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 			w = a*r*r*r - 5*a*r*r + 8*a*r - 4*a;
 		return w;
 	}
-	
-	
-	
+
+
+
 	@Override
 	public Priority getPriority() {
-		
+
 		return Priority.NORMAL;
 	}
-	
+
 }
 
