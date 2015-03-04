@@ -72,6 +72,20 @@ public class Proj {
 		}
 		return csFactory.createFromParameters(null, projdef);
 	}
+	/**
+	 * Creates a crs object from a "well-known-text" String
+	 * 
+	 * @param wkt the wkt.
+	 * 
+	 * @return The crs object.
+	 */
+	public static CoordinateReferenceSystem crs(String wkt) {
+		String[] projdef = wkt2proj(wkt);
+		if (projdef != null ) {
+			return csFactory.createFromParameters(null, projdef[0]);
+		}
+		return null;
+	}
 
 	/**
 	 * Reprojects an envelope between two coordinate reference systems.

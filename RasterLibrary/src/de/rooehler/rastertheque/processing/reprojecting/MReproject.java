@@ -6,7 +6,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Map;
 
-import org.gdal.osr.SpatialReference;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 import org.osgeo.proj4j.CoordinateTransform;
 import org.osgeo.proj4j.ProjCoordinate;
@@ -21,9 +20,8 @@ import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.core.util.ReferencedEnvelope;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
-import de.rooehler.rastertheque.processing.resampling.MResampler;
-import de.rooehler.rastertheque.processing.resampling.Resampler;
 import de.rooehler.rastertheque.processing.RasterOp;
+import de.rooehler.rastertheque.processing.resampling.MResampler;
 import de.rooehler.rastertheque.proj.Proj;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
@@ -35,11 +33,10 @@ public class MReproject extends Reproject implements RasterOp {
 	@Override
 	public void execute(Raster raster, Map<Key, Serializable> params,Hints hints, ProgressListener listener) {
 
-		// src projection
-		SpatialReference src_proj = raster.getCRS();
-
+		// src projection		
+		CoordinateReferenceSystem src_crs = raster.getCRS();
 		// target projection
-		SpatialReference dst_proj = null;
+		CoordinateReferenceSystem dst_crs = null;
 
 		if(params != null && params.containsKey(Reproject.KEY_REPROJECT_TARGET_CRS)){
 			String wkt = (String) params.get(Reproject.KEY_REPROJECT_TARGET_CRS);
@@ -47,11 +44,11 @@ public class MReproject extends Reproject implements RasterOp {
 			if(wkt != null && wkt.startsWith("+proj")){
 				wkt = Proj.proj2wkt(wkt);
 			}
-			//try to create a SpatialReference from it
-			if(wkt != null){				
-				dst_proj = new SpatialReference(wkt);
+			//try to create a CoordinateReferenceSystem from it
+			if(wkt!= null){				
+				dst_crs = Proj.crs(wkt);
 			}else{
-				Log.e(MReproject.class.getSimpleName(), "no well-known text provided as dst crs parameter");
+				Log.e(MReproject.class.getSimpleName(), "no proj params String provided as dst crs parameter");
 				return;
 			}
 			
@@ -62,11 +59,11 @@ public class MReproject extends Reproject implements RasterOp {
 			Log.e(MReproject.class.getSimpleName(), "no parameter for the target crs provided");
 			return;
 		}
-		if(src_proj == null){
+		if(src_crs == null){
 			Log.e(MReproject.class.getSimpleName(), "src raster does not have a crs, cannot reproject");
 			return;	
 		}
-		if(dst_proj == null){		
+		if(dst_crs == null){		
 			Log.e(MReproject.class.getSimpleName(), "invalid well-known text provided as dst crs parameter");
 			return;
 		}
@@ -79,9 +76,6 @@ public class MReproject extends Reproject implements RasterOp {
 		final DataType dataType = raster.getBands().get(0).datatype();
 		final int srcWidth  = raster.getDimension().width();
 		final int srcHeight = raster.getDimension().height();
-
-		CoordinateReferenceSystem src_crs = Proj.crs(src_proj.ExportToProj4());
-		CoordinateReferenceSystem dst_crs = Proj.crs(dst_proj.ExportToProj4());
 
 		ReferencedEnvelope	src_refEnv = new ReferencedEnvelope(raster.getBoundingBox(), src_crs);
 

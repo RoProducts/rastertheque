@@ -27,7 +27,7 @@ public class Raster {
     /**
      * The projection of the raster.
      */
-    SpatialReference crs;
+    CoordinateReferenceSystem crs;
 
     /**
      * The dimensions of the raster.
@@ -55,7 +55,7 @@ public class Raster {
     Hashtable<?, ?> metadata;
 
     
-    public Raster(Envelope pBounds, SpatialReference pCrs, Rect pSize, List<Band> pBands, ByteBuffer pData, Hashtable<?, ?> pMetaData) {
+    public Raster(Envelope pBounds, CoordinateReferenceSystem pCrs, Rect pSize, List<Band> pBands, ByteBuffer pData, Hashtable<?, ?> pMetaData) {
     	
     	this.bounds = pBounds;
     	this.crs = pCrs;
@@ -82,14 +82,14 @@ public class Raster {
     /**
      * The world projection of the raster.
      */
-    public SpatialReference getCRS() {
+    public CoordinateReferenceSystem getCRS() {
         return crs;
     }
 
     /**
      * Sets the world projection of the raster.
      */
-    public void setCRS(SpatialReference pCrs) {
+    public void setCRS(CoordinateReferenceSystem pCrs) {
         this.crs = pCrs;
     }
 

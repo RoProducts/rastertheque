@@ -2,7 +2,7 @@ package de.rooehler.rastertheque.core;
 
 import java.util.List;
 
-import org.gdal.osr.SpatialReference;
+import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.graphics.Rect;
 
@@ -24,7 +24,7 @@ public class RasterQuery {
     /**
      * projection of query.
      */
-    SpatialReference crs;
+    CoordinateReferenceSystem crs;
 
     /**
      * band selection
@@ -44,7 +44,7 @@ public class RasterQuery {
     
     public RasterQuery(
     		final Envelope pBounds,
-    		final SpatialReference pCrs,
+    		final CoordinateReferenceSystem  pCrs,
     		final List<Band> pBands,
     		final Rect pDimension,
     		final DataType pDatatype) {
@@ -95,7 +95,7 @@ public class RasterQuery {
     /**
      * Sets the crs of the query.
      */
-    public void setCRS(SpatialReference crs) {
+    public void setCRS(CoordinateReferenceSystem  crs) {
         this.crs = crs;
     }
 
@@ -104,7 +104,7 @@ public class RasterQuery {
      *
      * @see #crs(org.osgeo.proj4j.CoordinateReferenceSystem)
      */
-    public SpatialReference getCRS() {
+    public CoordinateReferenceSystem  getCRS() {
         return crs;
     }
 

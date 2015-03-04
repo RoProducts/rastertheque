@@ -3,6 +3,8 @@ package de.rooehler.mapboxrenderer;
 import java.io.File;
 import java.io.IOException;
 
+import org.osgeo.proj4j.CoordinateReferenceSystem;
+
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
@@ -35,6 +37,8 @@ import de.rooehler.mapboxrenderer.renderer.GDALTileLayer;
 import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Drivers;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
+import de.rooehler.rastertheque.io.gdal.GDALDriver;
+import de.rooehler.rastertheque.proj.Proj;
 
 
 
@@ -54,6 +58,8 @@ public class MapBoxSampleActivity extends Activity {
 	private ActionBarDrawerToggle mDrawerToggle;
 	private CharSequence mDrawerTitle;
     private CharSequence mTitle;
+    
+    private final boolean DEBUG = false;
     
 	
 	@Override
@@ -248,6 +254,13 @@ public class MapBoxSampleActivity extends Activity {
 				AlertFactory.showErrorAlert(this, "No CRS ", "No CRS available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
 				dataset.close();
 				return;
+			}else{
+				//if it is not 900913 transform to 900913
+				if(!dataset.getCRS().equals(Proj.EPSG_900913)){
+					Log.i(TAG, "reprojecting to EPSG 900913");
+					org.gdal.gdal.Dataset reproj = ((GDALDataset)dataset).transform(Proj.proj2wkt(Proj.EPSG_900913.getParameterString()));
+					dataset = new GDALDataset(dataset.getSource(), reproj, (GDALDriver)dataset.getDriver());
+				}
 			}
 			if(dataset.getBoundingBox() == null){
 				AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
@@ -255,8 +268,9 @@ public class MapBoxSampleActivity extends Activity {
 				return;
 			}
 			//this dataset is okay, close any earlier opened
-			if(mCurrentLayer != null && mCurrentLayer instanceof GDALTileLayer){
-				((GDALTileLayer) mCurrentLayer).close();
+			if(mCurrentLayer != null){
+				mCurrentLayer.detach();
+				mCurrentLayer = null;
 			}
 		}else {
 			Log.w(TAG, "cannot open file "+filePath);
@@ -279,7 +293,7 @@ public class MapBoxSampleActivity extends Activity {
 		mv.setTileSource(mCurrentLayer);
 		
 		//DEBUG
-		MapView.setDebugMode(true);
+		MapView.setDebugMode(DEBUG);
 	}
 	
 	/**

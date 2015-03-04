@@ -3,6 +3,7 @@ package de.rooehler.rastertheque.io.mbtiles;
 import java.io.File;
 
 import org.gdal.osr.SpatialReference;
+import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -13,6 +14,7 @@ import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Driver;
+import de.rooehler.rastertheque.proj.Proj;
 import de.rooehler.rastertheque.util.Constants;
 /**
  * A MbTilesDataset wraps the access to a MBTiles
@@ -80,9 +82,9 @@ public class MBTilesDataset implements Dataset {
 	 * MBTiles are always in Google Mercator
 	 */
 	@Override
-	public SpatialReference getCRS() {
+	public CoordinateReferenceSystem getCRS() {
 		
-		 return new SpatialReference(Constants.EPSG_900913);
+		 return Proj.EPSG_900913;
 	}
 
 	@Override

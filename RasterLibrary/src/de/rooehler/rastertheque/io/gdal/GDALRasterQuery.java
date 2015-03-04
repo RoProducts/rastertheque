@@ -2,7 +2,7 @@ package de.rooehler.rastertheque.io.gdal;
 
 import java.util.List;
 
-import org.gdal.osr.SpatialReference;
+import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.graphics.Rect;
 
@@ -36,7 +36,7 @@ public class GDALRasterQuery extends RasterQuery {
 	Rect targetDimension;
 
 	public GDALRasterQuery(Envelope pBounds,
-			SpatialReference pCrs,
+			CoordinateReferenceSystem  pCrs,
 			List<Band> pBands,
 			Rect pDimension,
 			DataType pDatatype,

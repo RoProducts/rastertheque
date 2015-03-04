@@ -1,6 +1,6 @@
 package de.rooehler.rastertheque.core;
 
-import org.gdal.osr.SpatialReference;
+import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import com.vividsolutions.jts.geom.Envelope;
 
@@ -21,7 +21,7 @@ public interface Dataset extends Disposable {
 	
 	String getSource();
 	
-	SpatialReference getCRS();
+	CoordinateReferenceSystem getCRS();
 	
 	Envelope getBoundingBox();	
 	

@@ -11,6 +11,7 @@ import org.gdal.gdal.Dataset;
 import org.gdal.gdal.gdal;
 import org.gdal.osr.CoordinateTransformation;
 import org.gdal.osr.SpatialReference;
+import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.graphics.Rect;
 import android.util.Log;
@@ -23,6 +24,7 @@ import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
+import de.rooehler.rastertheque.proj.Proj;
 /**
  * A GDALDataset wraps a org.gdal.gdal.dataset
  * and gives access to its properties and metadata
@@ -42,7 +44,7 @@ public class GDALDataset implements RasterDataset{
 
 	String mSource;
 	
-	SpatialReference mCRS;
+	CoordinateReferenceSystem mCRS;
 	
 	List<Band> mBands;
 	
@@ -211,13 +213,13 @@ public class GDALDataset implements RasterDataset{
 	 * http://www.geoapi.org/3.0/javadoc/org/opengis/referencing/doc-files/WKT.html
 	 * @return dataset in the projection of @param wkt
 	 */
-	public GDALDataset transform(final String wkt){
+	public org.gdal.gdal.Dataset transform(final String wkt){
 
 		SpatialReference dstRef = new SpatialReference(wkt);
 
 		Dataset vrt_ds = gdal.AutoCreateWarpedVRT(dataset,dataset.GetProjection(), dstRef.ExportToWkt());
 
-		return new GDALDataset(vrt_ds);
+		return vrt_ds;
 
 	}
 	
@@ -282,16 +284,16 @@ public class GDALDataset implements RasterDataset{
 	 * null otherwise
 	 */
 	@Override
-	public SpatialReference getCRS() {
+	public CoordinateReferenceSystem getCRS() {
 
 		if(mCRS == null){
 			
 			String proj = dataset.GetProjection();
 			if (proj != null) {
-				mCRS = new SpatialReference(proj);
-				return mCRS;
+				mCRS = Proj.crs(proj);
+			}else{				
+				return null;
 			}
-			return null;
 		}
 		
 		return mCRS;
@@ -307,7 +309,7 @@ public class GDALDataset implements RasterDataset{
 		
 		if(getCRS() != null){
 			
-			return getCRS().ExportToWkt();
+			return Proj.proj2wkt(getCRS().getParameterString());
 		}else{
 			
 			return null;

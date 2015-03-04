@@ -19,6 +19,8 @@ import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.processing.reprojecting.MReproject;
+import de.rooehler.rastertheque.processing.reprojecting.Reproject;
+import de.rooehler.rastertheque.proj.Proj;
 import de.rooehler.rastertheque.util.Constants;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
@@ -68,7 +70,7 @@ public class ReprojectionTest extends android.test.ActivityTestCase {
 		
 		HashMap<Key,Serializable> params = new HashMap<>();
 		
-		params.put(MReproject.KEY_REPROJECT_TARGET_CRS, wkt);
+		params.put(Reproject.KEY_REPROJECT_TARGET_CRS, wkt);
 		
 		Hints hints = new Hints(Hints.KEY_INTERPOLATION, ResampleMethod.BICUBIC);
 		
@@ -89,7 +91,7 @@ public class ReprojectionTest extends android.test.ActivityTestCase {
 		
 		assertNotNull(bitmap);
 
-		TestUtil.saveImage(bitmap,"ReprojectOp_m_bic_3857");
+		TestUtil.saveImage(bitmap,"ReprojectOp_gdal_3857");
 	}
 	
 	

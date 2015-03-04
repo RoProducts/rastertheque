@@ -35,6 +35,7 @@ import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
 import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.processing.rendering.MColorMap;
 import de.rooehler.rastertheque.processing.resampling.Resampler;
+import de.rooehler.rastertheque.proj.Proj;
 import de.rooehler.rastertheque.util.Formulae;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
@@ -87,7 +88,7 @@ public class GDALTileLayer extends TileLayer {
     	
 		this.mTileSize = getTileSizePixels();
     	
-		final Envelope bb = GDALDataset.convertToLatLon(mRasterDataset.getBoundingBox(),mRasterDataset.getCRS().ExportToWkt());
+		final Envelope bb = GDALDataset.convertToLatLon(mRasterDataset.getBoundingBox(),Proj.proj2wkt(mRasterDataset.getCRS().getParameterString()));
 
 		final LatLng sw = new LatLng(bb.getMinY(),bb.getMinX()); 
 		final LatLng ne = new LatLng(bb.getMaxY(),bb.getMaxX()); 
@@ -122,23 +123,27 @@ public class GDALTileLayer extends TileLayer {
     }
 
     /**
-     * calculates a Drawable
+     * calculates a Raster Drawable using the GDAL dataset
      */
     @Override
     public Drawable getDrawableFromTile(final MapTileDownloader downloader, final MapTile aTile, boolean hdpi) {
 
+    	if(mRasterDataset == null || mRasterDataset.getBands().size() == 0){
+    		return null;
+    	}
+    	
     	int ts = mTileSize;
     	if(aTile.getTileRect() != null){
     		ts = aTile.getTileRect().width();  	
     	}
     	final int zoom = aTile.getZ();
-
+    	
     	final Rect dim = mRasterDataset.getDimension();
 		final int w  = dim.width();
 		final int h = dim.height();
-		
+				
 		final DataType datatype = mRasterDataset.getBands().get(0).datatype();
-		
+				
     	long now = System.currentTimeMillis();
     	
     	//1. where is tile which should be displayed
@@ -165,15 +170,11 @@ public class GDALTileLayer extends TileLayer {
     	double readFromX2 =  w * xRatio2;
     	double readFromY2 =  h * yRatio2;
 
-    	//4. TODO improve calculate the amount to read
-    	int zoomedTSX = (int) Math.round(readFromX2 - readFromX);  
-    	int zoomedTSY = (int) Math.round(readFromY2 - readFromY);  
-    	final float scaleFactor = (float) ((zoomedTSX + zoomedTSY) / 2) / ts;
-
-    	int readAmountX = zoomedTSX;
-    	int readAmountY = zoomedTSY;
+    	//4. calculate the amount to read
+    	int readAmountX = (int) Math.round(readFromX2 - readFromX);  
+    	int readAmountY = (int) Math.round(readFromY2 - readFromY);  
     	
-    	if(zoomedTSX < 0 || zoomedTSY < 0){
+    	if(readAmountX < 0 || readAmountY < 0){
     		return returnNoDataTile(downloader, aTile, ts, now);
     	}
 
@@ -181,6 +182,7 @@ public class GDALTileLayer extends TileLayer {
         
         if(readFromX < 0 || readFromX + readAmountX > w ||  readFromY < 0 || readFromY + readAmountY > h){
 
+        	
         	//if entirely out of bounds -> return white tile
         	if(readFromX + readAmountX <= 0 || readFromX  > w ||
         	   readFromY + readAmountY <= 0 || readFromY  > h){
@@ -192,16 +194,18 @@ public class GDALTileLayer extends TileLayer {
         	int availableX = readAmountX, availableY = readAmountY;
         	int targetXSize = ts, targetYSize = ts;
             int coveredXOrigin = 0, coveredYOrigin = 0;
+            final float scaleFactorX = (float) readAmountX  / ts;
+            final float scaleFactorY = (float) readAmountY  / ts;
 
         	if(readFromX + readAmountX > w || 	readFromY + readAmountY > h){
         		//max x or y bounds hit
         		if(readFromX + readAmountX > w){        			
         			availableX = (int) (w -  readFromX);   			
-        			targetXSize = (int) (availableX * (1 / scaleFactor));
+        			targetXSize = (int) (availableX * (1 / scaleFactorX));
         		}
         		if(readFromY + readAmountY > h){        			
         			availableY = (int) (h - readFromY);  			
-        			targetYSize = (int) (availableY * (1 / scaleFactor));
+        			targetYSize = (int) (availableY * (1 / scaleFactorY));
         		}
         	}
 
@@ -209,14 +213,14 @@ public class GDALTileLayer extends TileLayer {
         		//min x or y bounds hit
         		if(readFromX < 0){        			
         			availableX = (int) (readAmountX - Math.abs(readFromX));
-        			coveredXOrigin = Math.round((readAmountX - availableX) /  scaleFactor);
-        			targetXSize = (int) (availableX * (1 /  scaleFactor));
+        			coveredXOrigin = Math.round((readAmountX - availableX) /  scaleFactorX);
+        			targetXSize = (int) (availableX * (1 /  scaleFactorX));
         			readFromX = 0;
         		}
         		if(readFromY < 0){        			
         			availableY = (int) (readAmountY - Math.abs(readFromY));
-        			coveredYOrigin = Math.round((readAmountY - availableY) / scaleFactor);
-        			targetYSize = (int) (availableY * (1 / scaleFactor));
+        			coveredYOrigin = Math.round((readAmountY - availableY) / scaleFactorY);
+        			targetYSize = (int) (availableY * (1 / scaleFactorY));
         			readFromY = 0;
         		}
         	}
@@ -468,6 +472,10 @@ public class GDALTileLayer extends TileLayer {
     @Override
     public void detach() {
     	
+    	if(mRasterDataset != null){    		
+    		mRasterDataset.close();
+    		mRasterDataset = null;
+    	}
     }
     /**
      * checks if the resampling should be done inherently by GDAL or by the provided Resampler
@@ -488,11 +496,6 @@ public class GDALTileLayer extends TileLayer {
 	public boolean useGDALAsResampler(int desiredTileSize, int readFromDataSetSize){
 		
 		return desiredTileSize <= readFromDataSetSize;
-	}
-    
-	public void close(){
-		mRasterDataset.close();
-				
 	}
 	
 	public int getStartZoomLevel(){

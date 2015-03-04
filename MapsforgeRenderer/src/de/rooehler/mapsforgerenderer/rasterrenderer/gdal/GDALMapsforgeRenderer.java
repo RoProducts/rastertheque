@@ -8,11 +8,11 @@ import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.List;
 
-import org.gdal.osr.SpatialReference;
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
 import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
+import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.graphics.Bitmap;
 import android.graphics.Rect;
@@ -467,7 +467,7 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
 		}
 	}
 	
-	public SpatialReference getCurrentCRS(){
+	public CoordinateReferenceSystem  getCurrentCRS(){
 		
 		return mRasterDataset.getCRS();
 	}

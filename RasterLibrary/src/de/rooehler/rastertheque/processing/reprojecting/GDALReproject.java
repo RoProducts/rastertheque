@@ -9,13 +9,11 @@ import org.gdal.gdal.Dataset;
 import org.gdal.gdal.Driver;
 import org.gdal.gdal.gdal;
 import org.gdal.gdalconst.gdalconst;
-import org.gdal.osr.SpatialReference;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.graphics.Rect;
 import android.util.Log;
 
-import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Band;
 import de.rooehler.rastertheque.core.DataType;
@@ -41,11 +39,10 @@ public class GDALReproject extends Reproject implements RasterOp {
 	@Override
 	public void execute(Raster raster, Map<Key, Serializable> params, Hints hints, ProgressListener listener) {
 
-		// src projection
-		SpatialReference src_proj = raster.getCRS();
-
+		// src projection		
+		CoordinateReferenceSystem src_crs = raster.getCRS();
 		// target projection
-		SpatialReference dst_proj = null;
+		CoordinateReferenceSystem dst_crs = null;
 
 		if(params != null && params.containsKey(Reproject.KEY_REPROJECT_TARGET_CRS)){
 			String wkt = (String) params.get(Reproject.KEY_REPROJECT_TARGET_CRS);
@@ -53,12 +50,14 @@ public class GDALReproject extends Reproject implements RasterOp {
 			if(wkt != null && wkt.startsWith("+proj")){
 				wkt = Proj.proj2wkt(wkt);
 			}
-			if(wkt != null){				
-				dst_proj = new SpatialReference(wkt);
+			//try to create a CoordinateReferenceSystem from it
+			if(wkt!= null){				
+				dst_crs = Proj.crs(wkt);
 			}else{
-				Log.e(MReproject.class.getSimpleName(), "no well-known text provided as dst crs parameter");
+				Log.e(MReproject.class.getSimpleName(), "no proj params String provided as dst crs parameter");
 				return;
 			}
+			
 		}else if(params == null){	
 			Log.e(MReproject.class.getSimpleName(), "no params provided");
 			return;
@@ -66,17 +65,17 @@ public class GDALReproject extends Reproject implements RasterOp {
 			Log.e(MReproject.class.getSimpleName(), "no parameter for the target crs provided");
 			return;
 		}
-		if(src_proj == null){
+		if(src_crs == null){
 			Log.e(MReproject.class.getSimpleName(), "src raster does not have a crs, cannot reproject");
 			return;	
 		}
-		if(dst_proj == null){		
+		if(dst_crs == null){		
 			Log.e(MReproject.class.getSimpleName(), "invalid well-known text provided as dst crs parameter");
 			return;
-		}	
+		}
 		
-		CoordinateReferenceSystem src_crs = Proj.crs(src_proj.ExportToProj4());
-		CoordinateReferenceSystem dst_crs = Proj.crs(dst_proj.ExportToProj4());
+		final String src_wkt = Proj.proj2wkt(src_crs.getParameterString());
+		final String dst_wkt = Proj.proj2wkt(dst_crs.getParameterString());
 
 		final DataType dataType = raster.getBands().get(0).datatype();
 
@@ -96,7 +95,7 @@ public class GDALReproject extends Reproject implements RasterOp {
 				bandCount,
 				gdalDataType);
 
-		ds.SetProjection(src_proj.ExportToWkt());
+		ds.SetProjection(src_wkt);
 
 		//set transform
 		double[] geotransform = raster.getGeoTransform();
@@ -140,9 +139,9 @@ public class GDALReproject extends Reproject implements RasterOp {
 				- ((reprojected.getEnvelope().getMaxY() - reprojected.getEnvelope().getMinY()) / src_raster_height) /* n-s pixel resolution (negative value) */
 		};
 		warped.SetGeoTransform(warped_geotransform);
-		warped.SetProjection(dst_proj.ExportToWkt());
+		warped.SetProjection(dst_wkt);
 		
-		int success = gdal.ReprojectImage(ds, warped,src_proj.ExportToWkt(),dst_proj.ExportToWkt(),gdalconst.GRA_NearestNeighbour);
+		int success = gdal.ReprojectImage(ds, warped,src_wkt,dst_wkt,gdalconst.GRA_NearestNeighbour);
 		
 		if(success != gdalconst.CE_None){
 			Log.e(MReproject.class.getSimpleName(), "error reprojecting with gdal");
@@ -161,7 +160,7 @@ public class GDALReproject extends Reproject implements RasterOp {
 		
 		RasterQuery query = new GDALRasterQuery(
 				reprojected.getEnvelope(),
-				dst_proj,
+				dst_crs,
 				bands,
 				readDim,
 				dataType,
@@ -179,7 +178,7 @@ public class GDALReproject extends Reproject implements RasterOp {
 	@Override
 	public Priority getPriority() {
 		// TODO correct
-		return Priority.LOW;
+		return Priority.HIGH;
 	}
 
 }
