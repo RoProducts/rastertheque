@@ -125,6 +125,7 @@ public class TestIO extends android.test.AndroidTestCase {
 	@SuppressWarnings({ "serial", "unchecked" })
 	public void testDrivers(){
 		
+		//The "getDrivers" method is no longer public, hence use Reflection to execute it 
 		Method method = null;
 		try {
 			method = Drivers.class.getDeclaredMethod("getDrivers", String.class);

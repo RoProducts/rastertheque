@@ -13,7 +13,7 @@
   <name>Raster</name>
   
    <modules>
-    <module>Raster_JAI</module>
+    <module>JAILibrary</module>
     <module>OpenCvLibrary</module>
     <module>RasterLibrary</module>
     <module>MapboxLibrary</module>

@@ -34,8 +34,8 @@
     </dependency>
 
     <dependency>
-      <groupId>de.rooehler.raster_jai</groupId>
-      <artifactId>raster_jai</artifactId>
+      <groupId>de.rooehler.rastertheque</groupId>
+      <artifactId>JAILibrary</artifactId>
       <version>1.0.0-SNAPSHOT</version>
     </dependency>
     
