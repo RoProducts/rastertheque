@@ -26,6 +26,11 @@ proguard/
 *.log
 
 *.class
+*.classpath
+*.project
+*project.properties
+*bash_profile
+
 /target
 ./target
 /target/**
