@@ -3,8 +3,6 @@ package de.rooehler.mapboxrenderer;
 import java.io.File;
 import java.io.IOException;
 
-import org.osgeo.proj4j.CoordinateReferenceSystem;
-
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
@@ -41,7 +39,17 @@ import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.proj.Proj;
 
 
-
+/**
+ * Main and sole activity of the Mapbox Sample Application
+ * 
+ * contains a listdrawer which enables the user to select a map type
+ * whereof only the type "Raster" is customized
+ * the other ones are implemented by the Mapbox SDK 
+ * 
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class MapBoxSampleActivity extends Activity {
 
 	private final static String TAG = MapBoxSampleActivity.class.getSimpleName(); 
@@ -86,21 +94,17 @@ public class MapBoxSampleActivity extends Activity {
 
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view,int pos, long id) {
-				Log.d(TAG, "selected pos "+ pos);
-				
+
 				mDrawerLayout.closeDrawers();
 				
 				applyMapStyle(pos);
-				
-				
+					
 			}
 		});
         
         getActionBar().setDisplayHomeAsUpEnabled(true);
         getActionBar().setHomeButtonEnabled(true);
         
-        // ActionBarDrawerToggle ties together the the proper interactions
-        // between the sliding drawer and the action bar app icon
         mDrawerToggle = new ActionBarDrawerToggle(
                 this,                  /* host Activity */
                 mDrawerLayout,         /* DrawerLayout object */
@@ -134,43 +138,32 @@ public class MapBoxSampleActivity extends Activity {
 		}	
 
 	}
-
 	
 	@Override
     public void setTitle(CharSequence title) {
         mTitle = title;
         getActionBar().setTitle(mTitle);
     }
-	
-	/**
-     * When using the ActionBarDrawerToggle, you must call it during
-     * onPostCreate() and onConfigurationChanged()...
-     */
 
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-        // Sync the toggle state after onRestoreInstanceState has occurred.
         mDrawerToggle.syncState();
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        // Pass any configuration change to the drawer toggls
         mDrawerToggle.onConfigurationChanged(newConfig);
     }
     
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-         // The action bar home/up action should open or close the drawer.
-         // ActionBarDrawerToggle will take care of this.
         if (mDrawerToggle.onOptionsItemSelected(item)) {
             return true;
         }
         return true;
     }
-
 	
 	public void applyMapStyle(int pos) {
 		

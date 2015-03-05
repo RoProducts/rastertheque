@@ -64,15 +64,15 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 			method = (ResampleMethod) hints.get(Hints.KEY_INTERPOLATION);
 		}
 
-		final int srcWidth  = raster.getDimension().right - raster.getDimension().left;
-		final int srcHeight = raster.getDimension().bottom - raster.getDimension().top;
+		final int srcWidth  = raster.getDimension().width();
+		final int srcHeight = raster.getDimension().height();
 
 		final int dstWidth = (int) (srcWidth * scaleX);
 		final int dstHeight = (int) (srcHeight * scaleY);
 
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 
-		int x, y, index;
+		int x, y, index, nearestX, nearestY;
 		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
 		float y_ratio = ((float) (srcHeight - 1)) / dstHeight;
 		float x_diff, y_diff;
@@ -81,10 +81,14 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 		final int newBufferSize = ((int)dstWidth) * ((int)dstHeight) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
 
+		Coordinate coord = new Coordinate();
+		
 		final int bandAmount = raster.getBands().size();
 		final float onePercent = bandAmount * dstHeight * dstWidth / 100f;
 		float current = onePercent;
 		int percent = 1;
+		
+		
 		try{
 
 			final ByteBuffer buffer = ByteBuffer.allocate(newBufferSize);
@@ -108,6 +112,7 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 						// current pos
 						index = y * srcWidth + x;
 
+						//progress
 						if(index * bandAmount > current){
 							if(listener != null){								
 								listener.onProgress(percent);
@@ -115,11 +120,8 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 							current += onePercent;
 							percent++;
 						}
-
+						//move buffer
 						reader.seekToOffset(index * dataSize + bandIndex);
-
-						final int nearestX = (int) Math.rint(x + x_diff);
-						final int nearestY = (int) Math.rint(y + y_diff);
 
 						switch(raster.getBands().get(h).datatype()) {
 
@@ -129,15 +131,18 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 							byte interpolatedByte = 0;
 
 							switch (method) {
-							case NEARESTNEIGHBOUR:
-								interpolatedByte = interpolateBytesNN(bytes, nearestX, nearestY, x, y);
+							case BICUBIC:
+								coord.x = x_ratio * j;
+								coord.y = y_ratio * i;
+								interpolatedByte = interpolateBytesBicubic(bytes, coord, reader, x, y, srcWidth, srcHeight, dataSize);
 								break;
 							case BILINEAR:
 								interpolatedByte = interpolateBytesBilinear(bytes, x_diff, y_diff);
 								break;
-							case BICUBIC:
-								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
-								interpolatedByte = interpolateBytesBicubic(bytes, coord, reader, x, y, srcWidth, srcHeight, dataSize);
+							case NEARESTNEIGHBOUR:
+								nearestX = (int) Math.rint(x + x_diff);
+								nearestY = (int) Math.rint(y + y_diff);
+								interpolatedByte = interpolateBytesNN(bytes, nearestX, nearestY, x, y);
 								break;
 
 							default:
@@ -153,13 +158,16 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 							switch(method){
 							case BICUBIC:
-								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
+								coord.x = x_ratio * j;
+								coord.y = y_ratio * i;
 								interpolatedValue = interpolateCharsBicubic(chars, coord, reader, x, y, srcWidth, srcHeight, dataSize);				
 								break;						
 							case BILINEAR:
 								interpolatedValue = interpolateCharsBilinear(chars, x_diff, y_diff);
 								break;						
-							case NEARESTNEIGHBOUR:					
+							case NEARESTNEIGHBOUR:	
+								nearestX = (int) Math.rint(x + x_diff);
+								nearestY = (int) Math.rint(y + y_diff);
 								interpolatedValue = interpolateCharsNN(chars, nearestX, nearestY, x, y);
 								break;
 							}
@@ -172,7 +180,8 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 							switch(method){
 							case BICUBIC:								
-								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
+								coord.x = x_ratio * j;
+								coord.y = y_ratio * i;
 								interpolatedDouble = interpolateDoublesBicubic(doubles, coord, reader, x, y, srcWidth, srcHeight, dataSize);
 								break;							
 							case BILINEAR:
@@ -180,6 +189,8 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 								interpolatedDouble = interpolateDoublesBilinear(doubles, x_diff, y_diff);
 								break;
 							case NEARESTNEIGHBOUR:
+								nearestX = (int) Math.rint(x + x_diff);
+								nearestY = (int) Math.rint(y + y_diff);
 								interpolatedDouble = interpolateDoublesNN(doubles, nearestX, nearestY, x, y);
 								break;						
 							}
@@ -193,13 +204,16 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 							switch(method){
 							case BICUBIC:						
-								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
+								coord.x = x_ratio * j;
+								coord.y = y_ratio * i;
 								interpolatedFloat = interpolateFloatsBicubic(floats, coord, reader, x, y, srcWidth, srcHeight, dataSize);
 								break;					
 							case BILINEAR:
 								interpolatedFloat = interpolateFloatsBilinear(floats, x_diff, y_diff);
 								break;
 							case NEARESTNEIGHBOUR:	
+								nearestX = (int) Math.rint(x + x_diff);
+								nearestY = (int) Math.rint(y + y_diff);
 								interpolatedFloat = interpolateFloatsNN(floats, nearestX, nearestY, x, y);
 								break;
 							}
@@ -212,13 +226,16 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 							switch(method){
 							case BICUBIC:							
-								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
+								coord.x = x_ratio * j;
+								coord.y = y_ratio * i;
 								interpolatedInt = interpolateIntsBicubic(ints, coord, reader, x, y, srcWidth, srcHeight, dataSize);
 								break;					
 							case BILINEAR:
 								interpolatedInt = interpolateIntsBilinear(ints, x_diff, y_diff);
 								break;
-							case NEARESTNEIGHBOUR:		
+							case NEARESTNEIGHBOUR:	
+								nearestX = (int) Math.rint(x + x_diff);
+								nearestY = (int) Math.rint(y + y_diff);
 								interpolatedInt = interpolateIntsNN(ints, nearestX, nearestY, x, y);
 								break;
 							}
@@ -231,13 +248,16 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 							switch(method){
 							case BICUBIC:					
-								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
+								coord.x = x_ratio * j;
+								coord.y = y_ratio * i;
 								interpolatedLong = interpolateLongsBicubic(longs, coord, reader, x, y, srcWidth, srcHeight, dataSize);
 								break;							
 							case BILINEAR:
 								interpolatedLong = interpolateLongsBilinear(longs, x_diff, y_diff);
 								break;						
-							case NEARESTNEIGHBOUR:							
+							case NEARESTNEIGHBOUR:
+								nearestX = (int) Math.rint(x + x_diff);
+								nearestY = (int) Math.rint(y + y_diff);
 								interpolatedLong = interpolateLongsNN(longs, nearestX, nearestY, x, y);
 								break;
 							}
@@ -250,13 +270,16 @@ public class MResampler extends Resampler implements RasterOp, Serializable  {
 
 							switch(method){
 							case BICUBIC:								
-								Coordinate coord = new Coordinate(x_ratio * j,y_ratio * i);
+								coord.x = x_ratio * j;
+								coord.y = y_ratio * i;
 								interpolatedShort = interpolateShortsBicubic(shorts, coord, reader, x, y, srcWidth, srcHeight, dataSize);
 								break;							
 							case BILINEAR:
 								interpolatedShort = interpolateShortsBilinear(shorts, x_diff, y_diff);
 								break;							
-							case NEARESTNEIGHBOUR:							
+							case NEARESTNEIGHBOUR:	
+								nearestX = (int) Math.rint(x + x_diff);
+								nearestY = (int) Math.rint(y + y_diff);
 								interpolatedShort = interpolateShortsNN(shorts, nearestX, nearestY, x, y);
 								break;
 							}

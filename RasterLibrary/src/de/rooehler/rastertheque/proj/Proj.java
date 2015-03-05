@@ -20,12 +20,14 @@ import com.vividsolutions.jts.geom.Envelope;
 /**
  * A class which wraps JTS' CoordinateReferenceSystem
  * 
- * It is able to create CRS from epsg ints or proj parameter lists
- * It provides a locally defined definition for EGSP 900913 
+ * It is able to create CRS from epsg identifiers,
+ * wkt Strings or proj parameter lists
+ * 
+ * It provides a locally defined definition for EPSG 900913 
  * which is not correctly contained in Proj4j
  * 
  * It features transformation methods for
- * reprojecting Envelopes between different CRS
+ * reprojecting envelopes between different CRS
  * 
  * @author Robert Oehler
  *

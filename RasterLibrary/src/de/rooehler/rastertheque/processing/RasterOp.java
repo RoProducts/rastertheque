@@ -9,6 +9,12 @@ import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
 
 
+/**
+ * A RasterOp models an abstract operation on a Raster
+ * 
+ * @author Robert Oehler
+ *
+ */
 
 public interface RasterOp {
 	

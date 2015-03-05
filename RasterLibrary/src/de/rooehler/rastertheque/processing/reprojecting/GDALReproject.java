@@ -57,7 +57,12 @@ public class GDALReproject extends Reproject implements RasterOp {
 			}
 			//try to create a CoordinateReferenceSystem from it
 			if(wkt!= null){				
-				dst_crs = Proj.crs(wkt);
+				try{
+					dst_crs = Proj.crs(wkt);
+				}catch(RuntimeException e){
+					Log.e(Reproject.class.getSimpleName(), "error parsing target projection String "+wkt);
+					return;
+				}
 			}else{
 				Log.e(MReproject.class.getSimpleName(), "no proj params String provided as dst crs parameter");
 				return;
@@ -197,14 +202,13 @@ public class GDALReproject extends Reproject implements RasterOp {
 
 	@Override
 	public Priority getPriority() {
-		// TODO correct
 		return Priority.HIGH;
 	}
 	
 	private int resampleMethod2GDALInterpolation(ResampleMethod m){
+		
 		switch (m) {
-		case NEARESTNEIGHBOUR:
-			 
+		case NEARESTNEIGHBOUR: 
 			return gdalconst.GRA_NearestNeighbour;
 		case BILINEAR:
 			return gdalconst.GRA_Bilinear;

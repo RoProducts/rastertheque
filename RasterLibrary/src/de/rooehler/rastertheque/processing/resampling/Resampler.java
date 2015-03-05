@@ -33,13 +33,13 @@ public abstract class Resampler implements RasterOp {
 		}
 	};
 
-	
+	//implemented by subclasses
 	@Override
 	public abstract Priority getPriority();
 
+	//implemented by subclasses
 	@Override
-	public abstract void execute(Raster raster, Map<Key, Serializable> params,
-			Hints hints, ProgressListener listener);
+	public abstract void execute(Raster raster, Map<Key, Serializable> params,Hints hints, ProgressListener listener);
 	
 	/**
 	 * the default interpolation method for a resampling operation is
@@ -99,6 +99,9 @@ public abstract class Resampler implements RasterOp {
 		return false;
 	}
 	
+	/**
+	 * The name of the resampling operation
+	 */
 	@Override
 	public  String getOperationName() {
 		

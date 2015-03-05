@@ -15,6 +15,15 @@ import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
 
+/**
+ * MColorMap is a symbolization operation which uses a colormap
+ * to symbolize rasters
+ * 
+ * the colormap must be provided within the according bands of the raster
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class MColorMap implements RasterOp, Serializable{
 
 

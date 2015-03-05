@@ -30,13 +30,13 @@ public abstract class AmplitudeRescaler implements RasterOp{
 		
 	};
 	
+	//implemented by subclasses
 	@Override
 	public abstract Priority getPriority();
 
+	//implemented by subclasses
 	@Override
-	public abstract void execute(Raster raster, Map<Key, Serializable> params,
-			Hints hints, ProgressListener listener);
-	
+	public abstract void execute(Raster raster, Map<Key, Serializable> params,Hints hints, ProgressListener listener);
 	
 	/**
 	 * there are no default hints for this operation

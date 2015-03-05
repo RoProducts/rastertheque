@@ -2,6 +2,16 @@ package de.rooehler.rastertheque.core;
 
 import java.io.IOException;
 
+/**
+ * A driver specifies a way to access files using the library
+ * 
+ * Driver implementation which are loaded during runtime using
+ * Drivers.open() must be specified in a configuration file
+ * called "de.rooehler.rastertheque.driver"
+ * 
+ * @author Robert Oehler
+ *
+ */
 public interface Driver {
 
     /**

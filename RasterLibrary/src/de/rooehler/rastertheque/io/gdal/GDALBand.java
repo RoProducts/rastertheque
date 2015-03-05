@@ -80,6 +80,9 @@ public class GDALBand implements Band{
 		return band.GetDescription();
 	}
 
+	/**
+	 * returns the data type of this band
+	 */
 	@Override
 	public DataType datatype() {
 		
@@ -121,6 +124,10 @@ public class GDALBand implements Band{
         return NoData.NONE;
 	}
 	
+	/**
+	 * returns the original gdal. Band
+	 * @return
+	 */
 	public org.gdal.gdal.Band getBand(){
 		return this.band;
 	}

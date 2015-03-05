@@ -101,7 +101,7 @@ public enum DataType {
 	}
 
 	/**
-	 * The size of the datatype in bits.
+	 * The size of the datatype in bits, specified by each subclass
 	 */
 	 protected abstract int bits();
 }

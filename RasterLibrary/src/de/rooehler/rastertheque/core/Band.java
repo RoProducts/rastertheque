@@ -4,24 +4,24 @@ import de.rooehler.rastertheque.processing.rendering.ColorMap;
 
 
 /**
- * A band or component of a raster dataset.
+ * A band is a component of a raster dataset.
  */
 public interface Band {
 
     /**
-     * Enumeration for color interpretation.
+     * Possible color interpretation of this band
      */
     static enum Color {
         UNDEFINED, GRAY, RED, GREEN, BLUE, OTHER;
     }
 
     /**
-     * The name of the band.
+     * The name of the band
      */
     String name();
 
     /**
-     * Returns the numeric type of data stored in the band.
+     * Returns the data type of this band
      */
     DataType datatype();
     
@@ -38,9 +38,9 @@ public interface Band {
     ColorMap colorMap();
     
     /**
-     * The nodata value of the band.
+     * The nodata value of the band
      *
-     * @return The value or <tt>null</tt> if the band has no nodata value.
+     * @return The value or NoData.None if the band has no nodata value yet
      */
     NoData nodata();
 

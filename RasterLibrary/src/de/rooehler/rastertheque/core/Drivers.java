@@ -7,10 +7,8 @@ import java.util.Iterator;
 import de.rooehler.rastertheque.core.util.CustomServiceLoader;
 import de.rooehler.rastertheque.util.Hints;
 /**
- * Facade class to access the available Driver during runtime
- * 
- * They need to be defined within a configuration file called
- * "de.rooehler.rastertheque.driver"
+ * Facade class to access available drivers during runtime
+ * and open files using them
  * 
  * @author Robert Oehler
  *
@@ -26,13 +24,18 @@ public class Drivers {
 	}
 	
 	/**
-	 * opens a dataset by
-	 * 1.if a driver is provided in the hints using it
-	 * 2.getting all available drivers and trying to open the file using them
+	 * opens a file resulting in a dataset using
+	 * 1. a driver provided in the hints
+	 * 2.the first driver which is able to open the file
+	 * which is available during runtime and was specified in a
+	 * configuration file called "de.rooehler.rastertheque.driver"
+	 * 
+	 * @see https://docs.oracle.com/javase/6/docs/api/java/util/ServiceLoader.html for a description of the concept
+	 * 
 	 * @param filePath the path to the file
 	 * @param hints (can be null) can contain a priorized driver to open the file
-	 * @return the dataset which the driver opened
-	 * @throws IOException that occurred during I/O operation
+	 * @return the dataset which the driver opened or null if no driver was able to open the file
+	 * @throws IOException that occurred during I/O operation on the file
 	 */
 	public static Dataset open(String filePath, Hints hints) throws IOException{
 		

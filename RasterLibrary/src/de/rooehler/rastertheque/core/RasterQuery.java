@@ -48,6 +48,7 @@ public class RasterQuery {
     		final List<Band> pBands,
     		final Rect pDimension,
     		final DataType pDatatype) {
+    	
 		this.bounds = pBounds;
 		this.crs = pCrs;
 		this.bands = pBands;
@@ -104,7 +105,7 @@ public class RasterQuery {
      *
      * @see #crs(org.osgeo.proj4j.CoordinateReferenceSystem)
      */
-    public CoordinateReferenceSystem  getCRS() {
+    public CoordinateReferenceSystem getCRS() {
         return crs;
     }
 

@@ -151,7 +151,8 @@ public class GDALDataset implements RasterDataset{
 	}
 
 	/**
-	 * returns the bounds of this dataset in the coordinates of this crs
+	 * returns the bounds of this dataset 
+	 * in the coordinate system of this crs
 	 */
 	@Override
 	public Envelope getBoundingBox(){
@@ -310,15 +311,14 @@ public class GDALDataset implements RasterDataset{
 	 * @param crs the crs to convert
 	 * @return the crs as wkt
 	 */
-	public String toWKT(SpatialReference crs) {
+	public String toWKT(CoordinateReferenceSystem crs) {
 		
-		if(getCRS() != null){
+		if(crs != null){
 			
-			return Proj.proj2wkt(getCRS().getParameterString());
-		}else{
-			
-			return null;
+			return Proj.proj2wkt(crs.getParameterString());
 		}
+			
+		return null;	
 	}
 	
 	/**
@@ -343,7 +343,7 @@ public class GDALDataset implements RasterDataset{
 	@Override
 	public String getDescription() {
 		
-		return dataset.GetDescription();
+		return dataset != null ? dataset.GetDescription() : null;
 	}
 	/**
 	 * returns the extent of this dataset
@@ -351,7 +351,7 @@ public class GDALDataset implements RasterDataset{
 	@Override
 	public Rect getDimension() {
 
-		if(mDimension == null){
+		if(mDimension == null && dataset != null){
 
 			mDimension = new Rect(0, 0, dataset.GetRasterXSize(), dataset.getRasterYSize());
 		}
@@ -364,7 +364,7 @@ public class GDALDataset implements RasterDataset{
 	 */
 	public Hashtable<?, ?> getMetadata(){
 		
-		return dataset.GetMetadata_Dict();
+		return dataset != null ? dataset.GetMetadata_Dict() : null;
 				
 	}
 }

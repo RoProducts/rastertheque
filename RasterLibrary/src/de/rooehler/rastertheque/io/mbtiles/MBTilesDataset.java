@@ -2,7 +2,6 @@ package de.rooehler.rastertheque.io.mbtiles;
 
 import java.io.File;
 
-import org.gdal.osr.SpatialReference;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.database.Cursor;
@@ -15,10 +14,8 @@ import com.vividsolutions.jts.geom.Envelope;
 import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.proj.Proj;
-import de.rooehler.rastertheque.util.Constants;
 /**
- * A MbTilesDataset wraps the access to a MBTiles
- * database
+ * A MbTilesDataset wraps the access to a MBTiles database
  * 
  * @author Robert Oehler
  *

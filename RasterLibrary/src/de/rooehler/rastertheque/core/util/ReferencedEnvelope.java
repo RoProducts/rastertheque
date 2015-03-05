@@ -89,6 +89,19 @@ public class ReferencedEnvelope {
         return new ReferencedEnvelope(expanded, targetCRS);
     }
 
+    /**
+     * transforms the @param sourceEnvelope according to transformation @param tx
+     * the transformation is applied to @param targetEnvelope
+     * which is returned
+     * 
+     * the envelope is expanded by @param nPoints 
+     * 
+     * @param sourceEnvelope
+     * @param targetEnvelope
+     * @param tx
+     * @param npoints
+     * @return the transformed envelope
+     */
     public Envelope transform(final Envelope sourceEnvelope, Envelope targetEnvelope,
             final CoordinateTransform tx, int npoints)  {
     	

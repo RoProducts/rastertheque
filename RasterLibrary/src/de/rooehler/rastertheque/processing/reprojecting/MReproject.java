@@ -27,7 +27,7 @@ import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
 /**
- * Implementation of the Reproject operation 
+ * Implementation of the reproject operation 
  * in a "manual" way, step by step
  * 
  * @author Robert Oehler
@@ -56,7 +56,12 @@ public class MReproject extends Reproject implements RasterOp {
 			}
 			//try to create a CoordinateReferenceSystem from it
 			if(wkt!= null){				
-				dst_crs = Proj.crs(wkt);
+				try{
+					dst_crs = Proj.crs(wkt);
+				}catch(RuntimeException e){
+					Log.e(Reproject.class.getSimpleName(), "error parsing target projection String "+wkt);
+					return;
+				}
 			}else{
 				Log.e(MReproject.class.getSimpleName(), "no proj params String provided as dst crs parameter");
 				return;

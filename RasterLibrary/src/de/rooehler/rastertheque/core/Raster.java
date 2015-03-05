@@ -4,7 +4,6 @@ import java.nio.ByteBuffer;
 import java.util.Hashtable;
 import java.util.List;
 
-import org.gdal.osr.SpatialReference;
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.graphics.Rect;
@@ -12,7 +11,7 @@ import android.graphics.Rect;
 import com.vividsolutions.jts.geom.Envelope;
 /**
  * Raster contains the result of
- * a read process against a dataset
+ * a read operation against a dataset
  * 
  * @author Robert Oehler
  *

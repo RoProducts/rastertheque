@@ -22,7 +22,22 @@ import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
-
+/**
+ * The OpenCVAmplitudeRescaler makes use of the OpenCV library to
+ * determine min/max of a raster
+ * 
+ * the rest of the operation is carried out manually
+ * 
+ * if min/max are provided as parameter to the operation
+ * OpenCV is not used at all
+ * 
+ * Look out that there exists a bug in Android 5.0 which
+ * causes problems using a direct bytebuffer
+ * Also this implementation is affected
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class OpenCVAmplitudeRescaler extends AmplitudeRescaler implements RasterOp, Serializable{
 
 

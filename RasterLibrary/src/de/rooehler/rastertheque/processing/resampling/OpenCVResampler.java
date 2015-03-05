@@ -42,6 +42,7 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 	
 	private final static String TAG = OpenCVResampler.class.getSimpleName();
 
+	//needs to initialize the OpenCV library when the class is loaded
 	static {
 		if (!OpenCVLoader.initDebug()) {
 			Log.e(OpenCVResampler.class.getSimpleName(), "error initialising OpenCV");
@@ -68,8 +69,8 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 			method = (ResampleMethod) hints.get(Hints.KEY_INTERPOLATION);
 		}
 		//define src dimension
-		final int srcWidth  = raster.getDimension().right - raster.getDimension().left;
-		final int srcHeight = raster.getDimension().bottom - raster.getDimension().top;
+		final int srcWidth  = raster.getDimension().width();
+		final int srcHeight = raster.getDimension().height();
 		//define target dimension
 		final int dstWidth = (int) (srcWidth * scaleX);
 		final int dstHeight = (int) (srcHeight * scaleY);

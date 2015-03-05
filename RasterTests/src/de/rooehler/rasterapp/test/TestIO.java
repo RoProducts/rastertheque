@@ -94,8 +94,8 @@ public class TestIO extends android.test.AndroidTestCase {
         
         assertNotNull(pixels);
         
-        final int rasterWidth  = raster.getDimension().right - raster.getDimension().left;
-      	final int rasterHeight = raster.getDimension().bottom - raster.getDimension().top;
+        final int rasterWidth  = raster.getDimension().width();
+      	final int rasterHeight = raster.getDimension().height();
         
         //check a pixel
         final int pixel = pixels[rasterWidth * rasterHeight / 2];

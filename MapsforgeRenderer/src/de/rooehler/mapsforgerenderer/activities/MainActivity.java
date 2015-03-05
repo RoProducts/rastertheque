@@ -76,8 +76,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 	final static String PREFS_FILEPATH = "de.rooehler.rastertheque.filepath";
 	final static String PREFS_RENDERER_TYPE = "de.rooehler.rastertheque.renderer_type";
 	
-	private MapView mapView;
-	
+	private MapView mapView;	
 	private TileCache tileCache;
 	
 	private DrawerLayout mDrawerLayout;
@@ -86,10 +85,8 @@ public class MainActivity extends Activity implements IWorkStatus{
 	private CharSequence mDrawerTitle;
     private CharSequence mTitle;
     
-    private boolean isRendering = false;
-    
-    private Dataset ds;
-    
+    private boolean isRendering = false;    
+    private Dataset ds;   
     private long now;
     
 
@@ -124,8 +121,6 @@ public class MainActivity extends Activity implements IWorkStatus{
         getActionBar().setDisplayHomeAsUpEnabled(true);
         getActionBar().setHomeButtonEnabled(true);
 
-        // ActionBarDrawerToggle ties together the the proper interactions
-        // between the sliding drawer and the action bar app icon
         mDrawerToggle = new ActionBarDrawerToggle(
                 this,                  /* host Activity */
                 mDrawerLayout,         /* DrawerLayout object */
@@ -135,12 +130,12 @@ public class MainActivity extends Activity implements IWorkStatus{
                 ) {
             public void onDrawerClosed(View view) {
                 getActionBar().setTitle(mTitle);
-                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
+                invalidateOptionsMenu(); 
             }
 
             public void onDrawerOpened(View drawerView) {
                 getActionBar().setTitle(mDrawerTitle);
-                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
+                invalidateOptionsMenu();
             }
         };
         mDrawerLayout.setDrawerListener(mDrawerToggle);
@@ -212,9 +207,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 
 		fpd = new FilePickerDialog(this, "Select a file", SupportedType.getExtensions(type), callback);
 		
-		
 		fpd.show();
-
 	}
 
 	private void setMapStyle(final SupportedType type, final String filePath) {
@@ -353,7 +346,6 @@ public class MainActivity extends Activity implements IWorkStatus{
 			break;
 		}
 
-
 		if(mapView.getLayerManager().getLayers().size() > 0 ){
 			mapView.setClickable(true);
 			mapView.setBuiltInZoomControls(true);
@@ -413,23 +405,16 @@ public class MainActivity extends Activity implements IWorkStatus{
         mTitle = title;
         getActionBar().setTitle(mTitle);
     }
-	
-	/**
-     * When using the ActionBarDrawerToggle, you must call it during
-     * onPostCreate() and onConfigurationChanged()...
-     */
 
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-        // Sync the toggle state after onRestoreInstanceState has occurred.
         mDrawerToggle.syncState();
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        // Pass any configuration change to the drawer toggls
         mDrawerToggle.onConfigurationChanged(newConfig);
     }
     
@@ -448,8 +433,6 @@ public class MainActivity extends Activity implements IWorkStatus{
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        // If the nav drawer is open, hide action items related to the content view
-
         return super.onPrepareOptionsMenu(menu);
     }
 

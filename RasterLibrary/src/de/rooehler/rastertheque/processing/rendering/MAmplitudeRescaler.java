@@ -17,7 +17,18 @@ import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
-
+/**
+ *  Manual implementation of the amplitude rescaling operation
+ *  
+ *  if no min/max parameter is provided is determines them
+ *  
+ *  and subsequently interpolates raster values as grey scale pixels
+ *  
+ *  according to the determined range
+ *  
+ * @author Robert Oehler
+ *
+ */
 public class MAmplitudeRescaler extends AmplitudeRescaler implements RasterOp, Serializable {
 
 

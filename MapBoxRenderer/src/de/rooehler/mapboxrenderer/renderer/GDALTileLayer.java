@@ -331,7 +331,11 @@ public class GDALTileLayer extends TileLayer {
 		}
 	}
 
-	
+	/**
+	 * renders the bands of the the raster interpreting them a r,g and b channels
+	 * @param raster the raster containing the rgb bands
+	 * @return the array of argb pixels
+	 */
 	private int[] renderRGB(final Raster raster) {
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());

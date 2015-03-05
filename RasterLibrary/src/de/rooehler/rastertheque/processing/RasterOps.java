@@ -21,7 +21,9 @@ import de.rooehler.rastertheque.util.ProgressListener;
  */
 public class RasterOps {
 
-
+	/**
+	 * Currently implemented operations
+	 */
 	public final static String RESIZE = "RESIZE";
 	public final static String COLORMAP = "COLORMAP";
 	public final static String AMPLITUDE_RESCALING = "AMPLITUDE_RESCALING";
@@ -29,16 +31,22 @@ public class RasterOps {
 
 	private static Map<String,List<RasterOp>> operations;
 
+	/**
+	 * Load available implementation of the RasterOp interface
+	 */
 	static{
 		operations = (Map<String,List<RasterOp>>) getRasterOps("org/rastertheque/processing/raster/");
 	}
 
 	/**
 	 * executes a RasterOp, defined by its @param operation name
-	 * according to @param params, with optional hints and progreslistener listener
+	 * according to @param params, with optional hints 
+	 * the progress of the operation is reported via @param listener
 	 * 
 	 * this method retrieves all implementations of @class RasterOp which are available
-	 * during runtime within the classpath
+	 * in a configuration file "de.rooehler.rastertheque.processing.RasterOp"
+	 * 
+	 * @see https://docs.oracle.com/javase/6/docs/api/java/util/ServiceLoader.html for a description of the concept
 	 * 
 	 * they are inspected for the desired operation
 	 * if there are implementations found, the one with the highest priority is selected
@@ -50,7 +58,7 @@ public class RasterOps {
 	 * @param hints a map of hints - can be null
 	 * @param listener  progress listener - can be null
 	 */
-	public static void execute(Raster raster, String operation, HashMap<Key,Serializable> params,  Hints hints, ProgressListener listener){
+	public static void execute(Raster raster, String operation, HashMap<Key, Serializable> params, Hints hints, ProgressListener listener){
 
 
 		RasterOp selectedOp = null;

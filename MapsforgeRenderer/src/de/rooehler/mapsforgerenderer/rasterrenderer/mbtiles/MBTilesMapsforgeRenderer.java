@@ -8,7 +8,7 @@ import android.graphics.BitmapFactory;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterJob;
 import de.rooehler.mapsforgerenderer.rasterrenderer.RasterRenderer;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDataset;
-import de.rooehler.rastertheque.io.mbtiles.RGBMResampler;
+import de.rooehler.rastertheque.io.mbtiles.MBTilesResampler;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 /**
  * Legacy implementation of a renderer of MBTiles for Mapsforge
@@ -28,7 +28,7 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 	
 	private final MBTilesDataset mDataset;
 	
-	private final RGBMResampler mResampler;
+	private final MBTilesResampler mResampler;
 
 	public MBTilesMapsforgeRenderer(GraphicFactory graphicFactory, final MBTilesDataset pRaster) {
 		
@@ -36,7 +36,7 @@ public class MBTilesMapsforgeRenderer implements RasterRenderer{
 		
 		this.graphicFactory = graphicFactory;
 		
-		this.mResampler = new RGBMResampler();
+		this.mResampler = new MBTilesResampler();
 	}
 
 	/**

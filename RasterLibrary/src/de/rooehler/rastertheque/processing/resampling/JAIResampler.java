@@ -8,8 +8,8 @@ import java.util.Map;
 
 import android.graphics.Rect;
 import android.util.Log;
-
 import de.rooehler.jai.JaiInterpolate;
+import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
@@ -17,7 +17,19 @@ import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
-
+/**
+ * The JAIResampler makes use of the JAI Library to interpolate 
+ * a resampled pixel inside the source neighbourhood
+ * 
+ * This implementation corresponds to MResampler
+ * except for the interpolation part which is done by JAI
+ * 
+ * As JAI supports only int as Integer data format, other 
+ * integer datatypes are wrapped by ints
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class JAIResampler extends Resampler implements RasterOp, Serializable  {
 
 	
@@ -42,14 +54,16 @@ public class JAIResampler extends Resampler implements RasterOp, Serializable  {
 			method = (ResampleMethod) hints.get(Hints.KEY_INTERPOLATION);
 		}
 
-		final int srcWidth  = raster.getDimension().right - raster.getDimension().left;
-		final int srcHeight = raster.getDimension().bottom - raster.getDimension().top;
+		final int srcWidth  = raster.getDimension().width();
+		final int srcHeight = raster.getDimension().height();
 		
 		final int dstWidth = (int) (srcWidth * scaleX);
 		final int dstHeight = (int) (srcHeight * scaleY);
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
-		
+		final DataType dataType = raster.getBands().get(0).datatype();
+		final int bandSize = srcWidth * srcHeight * dataType.size();
+		final int readerSize = bandSize * raster.getBands().size();
 		
 		int interpolation = 0;
 		switch (method) {
@@ -63,11 +77,8 @@ public class JAIResampler extends Resampler implements RasterOp, Serializable  {
 			interpolation = 2;
 			break;
 		}
-		
-		final int oldBufferSize = ((int)srcWidth) * ((int)srcHeight) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
-
-		final int newBufferSize = ((int)dstWidth) * ((int)dstHeight) * raster.getBands().size() * raster.getBands().get(0).datatype().size();
-		
+				
+		final int newBufferSize = dstWidth * dstHeight * raster.getBands().size() * raster.getBands().get(0).datatype().size();
 		final ByteBuffer buffer = ByteBuffer.allocate(newBufferSize);
 		buffer.order(ByteOrder.nativeOrder()); 
 		
@@ -75,11 +86,13 @@ public class JAIResampler extends Resampler implements RasterOp, Serializable  {
 		float x_ratio = ((float) (srcWidth - 1)) / dstWidth;
 		float y_ratio = ((float) (srcHeight - 1)) / dstHeight;
 		float x_diff, y_diff;
+		final int bandAmount = raster.getBands().size();
 		
 		final float onePercent = raster.getBands().size() * dstHeight * dstWidth / 100f;
 		float current = onePercent;
+		int percent = 1;
 
-		for(int h = 0; h <raster.getBands().size(); h++){
+		for(int h = 0; h < bandAmount; h++){
 			
 			final int dataSize = raster.getBands().get(h).datatype().size();
 			final int bandIndex = h * srcHeight * srcWidth;
@@ -97,11 +110,13 @@ public class JAIResampler extends Resampler implements RasterOp, Serializable  {
 
 					index = (y * srcWidth + x);
 					
-					if(index * raster.getBands().size() > current){
+					//progress
+					if(index * bandAmount > current){
 						if(listener != null){							
-							listener.onProgress((int) current);
+							listener.onProgress(percent);
 						}
 						current += onePercent;
+						percent++;
 					}
 					
 					reader.seekToOffset(index * dataSize + bandIndex);
@@ -110,184 +125,61 @@ public class JAIResampler extends Resampler implements RasterOp, Serializable  {
 
 						switch(raster.getBands().get(h).datatype()) {
 
-						case CHAR:
-							final int[] chars = new int[4];
-							chars[0] = reader.readChar();
-							if(reader.getPos() < oldBufferSize){					
-								chars[1] = reader.readChar();
-							}else{
-								chars[1] = chars[0];
-							}
-
-							if(reader.getPos() + (srcWidth * dataSize  - 2 * dataSize) < oldBufferSize){
-								//reader is at index + 2 * dataSize
-								reader.seekToOffset(reader.getPos() + (srcWidth * dataSize - 2 * dataSize)); 
-								chars[2] = reader.readChar();
-								if(reader.getPos() < oldBufferSize){
-									chars[3] = reader.readChar();
-								}else{
-									chars[3] = chars[2];				    	
-								}
-							}else{
-								chars[2] = chars[0];	
-								chars[3] = chars[1];
-							}
-							final int interpolatedChar = JaiInterpolate.interpolateRawInts(chars, x_diff, y_diff, interpolation);
-
-							buffer.putChar((char)interpolatedChar);
-							break;
 						case BYTE:
-							final int[] bytes = new int[4];
-							bytes[0] = reader.readByte();
-							if(reader.getPos() < oldBufferSize){					
-								bytes[1] = reader.readByte();
-							}else{
-								bytes[1] = bytes[0];
+							final byte[] bytes = MResampler.getByteNeighbours(reader, readerSize, dataSize, srcWidth);	
+							final int[] _bytes = new int[4];
+							for(int ib = 0; ib < 4; ib++){
+								_bytes[ib] = (int) bytes[ib];
 							}
-
-							if(reader.getPos() + (srcWidth * dataSize - 2 * dataSize) < oldBufferSize){
-								//reader is at index + 2 * dataSize
-								reader.seekToOffset(reader.getPos() + (srcWidth * dataSize - 2 * dataSize)); 
-								bytes[2] = reader.readByte();	
-								if(reader.getPos() < oldBufferSize){
-									bytes[3] = reader.readByte();
-								}else{
-									bytes[3] = bytes[2];	
-								}
-							}else{
-								bytes[2] = bytes[0];	
-								bytes[3] = bytes[1];
-							}
-
-							final int interpolatedByte = JaiInterpolate.interpolateRawInts(bytes, x_diff, y_diff, interpolation);
+							final int interpolatedByte = JaiInterpolate.interpolateRawInts(_bytes, x_diff, y_diff, interpolation);
 
 							buffer.put((byte)interpolatedByte);
 							break;
+						case CHAR:
+							final char[] chars = MResampler.getCharNeighbours(reader, readerSize, dataSize, srcWidth);	
+							final int[] _chars = new int[4];
+							for(int ic = 0; ic < 4; ic++){
+								_chars[ic] = (int) chars[ic];
+							}
+							final int interpolatedChar = JaiInterpolate.interpolateRawInts(_chars, x_diff, y_diff, interpolation);
+							
+							buffer.putChar((char)interpolatedChar);
+							break;
 						case SHORT:
-							final int[] shorts = new int[4];
-							shorts[0] = reader.readShort();
-							if(reader.getPos() < oldBufferSize){					
-								shorts[1] = reader.readShort();
-							}else{
-								shorts[1] = shorts[0];
+							final short[] shorts = MResampler.getShortNeighbours(reader, readerSize, dataSize, srcWidth);			
+							final int[] _shorts = new int[4];
+							for(int is = 0; is < 4; is++){
+								_shorts[is] = (int) shorts[is];
 							}
-
-							if(reader.getPos() + (srcWidth * dataSize - 2 * dataSize) < oldBufferSize){
-								//reader is at index + 2 * dataSize
-								reader.seekToOffset(reader.getPos() + (srcWidth * dataSize - 2 * dataSize)); 
-								shorts[2] = reader.readShort();	
-								if(reader.getPos() < oldBufferSize){
-									shorts[3] = reader.readShort();
-								}else{
-									shorts[3] = shorts[2];	
-								}
-							}else{
-								shorts[2] = shorts[0];	
-								shorts[3] = shorts[1];
-							}
-
-							final int interpolatedShort = JaiInterpolate.interpolateRawInts(shorts, x_diff, y_diff, interpolation);
-
+							final int interpolatedShort = JaiInterpolate.interpolateRawInts(_shorts, x_diff, y_diff, interpolation);
 							buffer.putShort((short)interpolatedShort);
 							break;
 						case INT:
-							final int[] ints = new int[4];
-							ints[0] = reader.readInt();
-							if(reader.getPos() < oldBufferSize){					
-								ints[1] = reader.readInt();
-							}else{
-								ints[1] = ints[0];
-							}
-
-							if(reader.getPos() + (srcWidth * dataSize - 2 * dataSize) < oldBufferSize){
-								reader.seekToOffset(reader.getPos() + (srcWidth * dataSize - 2 * dataSize)); 
-								ints[2] = reader.readInt();	
-								if(reader.getPos() < oldBufferSize){
-									ints[3] = reader.readInt();
-								}else{
-									ints[3] = ints[2];	
-								}
-							}else{
-								ints[2] = ints[0];	
-								ints[3] = ints[1];
-							}
+							final int[] ints = MResampler.getIntNeighbours(reader, readerSize, dataSize, srcWidth);	
 							final int interpolatedInt = JaiInterpolate.interpolateRawInts(ints, x_diff, y_diff, interpolation);
 
 							buffer.putInt(interpolatedInt);
 							break;
 						case LONG:
-							final int[] longs = new int[4];
-							longs[0] = (int) reader.readLong();
-							if(reader.getPos() < oldBufferSize){					
-								longs[1] = (int) reader.readLong();
-							}else{
-								longs[1] = longs[0];
+							final long[] longs= MResampler.getLongNeighbours(reader, readerSize, dataSize, srcWidth);		
+							final int[] _longs = new int[4];
+							for(int il = 0; il < 4; il++){
+								_longs[il] = (int) longs[il];
 							}
-
-							if(reader.getPos() + (srcWidth * dataSize - 2 * dataSize) < oldBufferSize){
-								reader.seekToOffset(reader.getPos() + (srcWidth * dataSize - 2 * dataSize)); 
-								longs[2] = (int) reader.readLong();	
-								if(reader.getPos() < oldBufferSize){
-									longs[3] = (int) reader.readLong();
-								}else{
-									longs[3] = longs[2];	
-								}
-							}else{
-								longs[2] = longs[0];	
-								longs[3] = longs[1];
-							}
-							final int interpolatedLong = JaiInterpolate.interpolateRawInts(longs, x_diff, y_diff, interpolation);
+							final int interpolatedLong = JaiInterpolate.interpolateRawInts(_longs, x_diff, y_diff, interpolation);
 
 							buffer.putLong(interpolatedLong);
 							break;
 						case FLOAT:
-							final float[] floats = new float[4];
-							floats[0] = reader.readFloat();
-							if(reader.getPos() < oldBufferSize){					
-								floats[1] = reader.readFloat();
-							}else{
-								floats[1] = floats[0];
-							}
-
-							if(reader.getPos() + (srcWidth * dataSize - 2 * dataSize) < oldBufferSize){
-								reader.seekToOffset(reader.getPos() + (srcWidth * dataSize - 2 * dataSize)); 
-								floats[2] = reader.readFloat();	
-								if(reader.getPos() < oldBufferSize){
-									floats[3] = reader.readFloat();
-								}else{
-									floats[3] = floats[2];	
-								}
-							}else{
-								floats[2] = floats[0];	
-								floats[3] = floats[1];
-							}
+							final float[] floats = MResampler.getFloatNeighbours(reader, readerSize, dataSize, srcWidth);	
+							
 							final float interpolatedFloat = JaiInterpolate.interpolateRawFloats(floats, x_diff, y_diff, interpolation);
 
 							buffer.putFloat(interpolatedFloat);
-
 							break;
 						case DOUBLE:
-							final double[] doubles = new double[4];
-							doubles[0] = reader.readDouble();
-							if(reader.getPos() < oldBufferSize){					
-								doubles[1] = reader.readDouble();
-							}else{
-								doubles[1] = doubles[0];
-							}
-
-							if(reader.getPos() + (srcWidth * dataSize - 2 * dataSize) < oldBufferSize){
-								reader.seekToOffset(reader.getPos() + (srcWidth * dataSize - 2 * dataSize)); 
-								doubles[2] = reader.readDouble();	
-								if(reader.getPos() < oldBufferSize){
-									doubles[3] = reader.readDouble();
-								}else{
-									doubles[3] = doubles[2];	
-								}
-							}else{
-								doubles[2] = doubles[0];	
-								doubles[3] = doubles[1];
-								reader.seekToOffset(-dataSize); //go one back
-							}
+							final double[] doubles = MResampler.getDoubleNeighbours(reader, readerSize, dataSize, srcWidth);	
+							
 							final double interpolatedDouble = JaiInterpolate.interpolateRawDoubles(doubles, x_diff, y_diff, interpolation);
 
 							buffer.putDouble(interpolatedDouble);

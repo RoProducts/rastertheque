@@ -122,8 +122,6 @@ public abstract class FetchFilesTask extends AsyncTask<Void, Void,ArrayList<Stri
 	}
 	/**
 	 * compares fileName to sort and retrieve a list which is alphabetically sorted
-	 * @author robertoehler
-	 *
 	 */
 	public class MyFileNameComparator implements Comparator<String>{
 
