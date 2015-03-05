@@ -28,10 +28,22 @@ import de.rooehler.rastertheque.processing.resampling.Resampler;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 
+/**
+ * tests the processing part of the library :
+ * 
+ * performance of resampling operations
+ * 
+ * comparison of a resampling by GDAL to a manual Resampling
+ * 
+ * the functionality of the RaterOps facade
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class TestProcessing extends android.test.AndroidTestCase  {
 	
 	/**
-	 * tests and compares interpolations
+	 * tests interpolations in terms of performance (time)
 	 */
 	public void dotestBilinearInterpolation() throws IOException{		
 		
@@ -222,6 +234,9 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         return newHeight * newWidth;
 	}
 	
+	/**
+	 * test if all currently available implementations of RasterOp are retrieved during runtime
+	 */
 	@SuppressWarnings("unchecked")
 	public void dotestRasterOpServices(){
 		

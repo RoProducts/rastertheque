@@ -25,15 +25,13 @@ import de.rooehler.rastertheque.util.Constants;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 
+/**
+ * tests the reprojection of a raster
+ * 
+ * 
+ */
 public class ReprojectionTest extends android.test.ActivityTestCase {
 	
-	/**
-	 * tests the reprojection of a raster
-	 * 
-	 * the result cannnot be checked thoroughly, it needs to be visualized and checked by "eye"
-	 * 
-	 * @throws IOException
-	 */
 	
 	final boolean writeResult = false;
 	

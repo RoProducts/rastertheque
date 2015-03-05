@@ -9,7 +9,14 @@ import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 import de.rooehler.rastertheque.util.ProgressListener;
 
-
+/**
+ * Test Implementation of a RasterOP which does nothing
+ * 
+ * it is only used test the retrieval of implementations during runtime
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class TestColorMapImpl implements RasterOp {
 
 	@Override

@@ -32,11 +32,20 @@ import de.rooehler.rastertheque.util.Hints.Key;
 
 /**
  * 
- * Raw Resampling test class
+ * Raw Resampling test 
  * 
- * TODO JAI Bicubic
+ * Tests all data types for correct resampling
  * 
- * @author robertoehler
+ * byte and float are tested by all three resampling implementations
+ * 
+ * the other data types which are less frequent only by OpenCV
+ * 
+ * @author Robert Oehler
+ * 
+ * TODO
+ * 
+ * this uses hardcoded local files
+ * provide files within the test project
  *
  */
 
@@ -52,8 +61,6 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 	public final static String SAMPLE_DOUBLE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/HN+24_double.tif";
 
 	
-	
-	@SuppressWarnings("unchecked")
 	public void testCharRawResampling() throws IOException {
 		
 		final int threshold = 2;
@@ -132,7 +139,6 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 	}
 	
-	@SuppressWarnings("unchecked")
 	public void testShortRawResampling() throws IOException {
 		
 		final int threshold = 2;
@@ -210,8 +216,6 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 	}
 	
-	
-	@SuppressWarnings("unchecked")
 	public void testIntRawResampling() throws IOException {
 		
 		final int threshold = 2;
@@ -289,7 +293,6 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 	}
 	
-	@SuppressWarnings("unchecked")
 	public void testLongRawResampling() throws IOException {
 		
 		final int threshold = 2;
@@ -455,7 +458,6 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 	}
 	
-	@SuppressWarnings("unchecked")
 	public void testDoubleRasterRawResampling() throws IOException {
 		
 		final int threshold = 2;

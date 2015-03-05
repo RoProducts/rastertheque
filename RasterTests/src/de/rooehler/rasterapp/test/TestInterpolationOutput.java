@@ -26,11 +26,24 @@ import de.rooehler.rastertheque.processing.resampling.Resampler;
 import de.rooehler.rastertheque.util.Hints;
 import de.rooehler.rastertheque.util.Hints.Key;
 
-
+/**
+ * tests the output of a resampling on RGB raster file
+ * which does not need to be symbolized
+ * 
+ * this way the operation result can be verified visually
+ * 
+ * and differences between interpolation methods can be analyzed
+ * 
+ * use the flag write to write the result to disk
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class TestInterpolationOutput extends android.test.ActivityTestCase {
 	
+	final boolean write = false;
+
 	
-	@SuppressWarnings("unchecked")
 	public void testInterpolationMethods(){
 
 		Dataset dataset = null;
@@ -69,7 +82,7 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 	    
 	    final byte[] origBytes = raster.getData().array().clone();
 	    
-	    final ArrayList<RasterOp> ops = new ArrayList(){{
+		final ArrayList<RasterOp> ops = new ArrayList(){{
 	    	add(new OpenCVResampler());
 	    	add(new MResampler());
 	    	add(new JAIResampler());
@@ -79,7 +92,6 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 
 		resizeParams.put(Resampler.KEY_SIZE, new Double[]{ts / srcEnv.getWidth(), ts / srcEnv.getHeight()});
 			
-		boolean write = false;
 
 		for(int i = 0; i < ops.size(); i++){
 			final RasterOp resampler = ops.get(i);
@@ -98,7 +110,7 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 					Log.i(TestInterpolationOutput.class.getSimpleName(), "testing " + resampler.getClass().getSimpleName()+" with "+ m.name()+ " took : "+(System.currentTimeMillis() - now));
 					
 					if(write){
-						TestUtil.convert3bandByteRasterToPixels(raster, ts, "RGB_BANDS_Resampled");
+						TestUtil.convert3bandByteRasterToPixels(raster, ts, "RGB_BANDS_"+ resampler.getClass().getSimpleName()+"_"+m.toString()+"_Resampled");
 					}
 					
 					//return to initial state

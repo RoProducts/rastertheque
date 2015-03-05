@@ -21,7 +21,17 @@ import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
 import de.rooehler.rastertheque.io.mbtiles.MBTilesDriver;
 import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.processing.rendering.MAmplitudeRescaler;
-
+/**
+ * tests of the i/O part of the library containing:
+ * 
+ * test if a file can be opened
+ * test if a file can be read
+ * 
+ * test the driver implementations retrieval functionality
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class TestIO extends android.test.AndroidTestCase {
 
 	

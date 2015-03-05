@@ -9,9 +9,21 @@ import android.os.Environment;
 import android.util.Log;
 import de.rooehler.rastertheque.core.Raster;
 
+/**
+ * provides some utility methods for testing
+ * 
+ * @author Robert Oehler
+ *
+ */
 public class TestUtil {
 
-
+	/**
+	 * converts a @param raster containing 3 bands of RGB values
+	 * to ARGB pixels and subsequently saved the result to disk
+	 * @param raster the raster to operate on
+	 * @param ts the targetSize of the image
+	 * @param fileName the name for the file to save
+	 */
 	public static void convert3bandByteRasterToPixels(Raster raster, final int ts, final String fileName){
 
 		final int targetSize = ts * ts;
@@ -20,10 +32,6 @@ public class TestUtil {
 		final byte[] r_band  = new byte[targetSize];
 		final byte[] g_band  = new byte[targetSize];
 		final byte[] b_band  = new byte[targetSize];
-
-		//		raster.getData().get(r_band, 0, targetSize);
-		//		raster.getData().get(g_band, 0, targetSize);
-		//		raster.getData().get(b_band, 0, targetSize);
 
 		int count = 0;
 		for(int i = 0; i < 3; i++){
@@ -64,8 +72,12 @@ public class TestUtil {
 
 		saveImage(bitmap,fileName);
 	}
-
-	public static void saveImage(Bitmap finalBitmap, final String name) {
+	/**
+	 * saves a @param bitmap to disk to a folder named "rastertheque"
+	 * using the provided filename @param name
+	 * 
+	 */
+	public static void saveImage(final Bitmap bitmap, final String name) {
 
 		String root = Environment.getExternalStorageDirectory().toString();
 		File myDir = new File(root + "/rastertheque");    
@@ -80,7 +92,7 @@ public class TestUtil {
 		}
 		try {
 			FileOutputStream out = new FileOutputStream(file);
-			finalBitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+			bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
 			out.flush();
 			out.close();
 
