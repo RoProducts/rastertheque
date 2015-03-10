@@ -130,6 +130,9 @@ public class MReproject extends Reproject implements RasterOp {
 		float current = onePercent;
 		int percent = 1;
 		
+		int bufferPos, srcX, srcY, dataSize;
+		double src_raster_x,src_raster_y;
+		
 		for(int i = 0; i < bandAmount; i++){
 			//determine the nodata for each band
 			noData = raster.getBands().get(i).nodata();
@@ -137,7 +140,7 @@ public class MReproject extends Reproject implements RasterOp {
 			if(noData == NoData.NONE){
 				noData = NoData.noDataForDataType(dataType);
 			}
-			final int dataSize = raster.getBands().get(i).datatype().size();
+			dataSize = raster.getBands().get(i).datatype().size();
 
 			for(int y = 0; y < srcHeight; y++){
 				for(int x = 0; x < srcWidth; x++){
@@ -165,17 +168,17 @@ public class MReproject extends Reproject implements RasterOp {
 					if(raster.getBoundingBox().contains(src_model_coord)){
 
 						//calculate src raster position
-						double src_raster_x = (src_model_coord.x - src_upperLeft.x) / src_x_res;
-						double src_raster_y = (src_upperLeft.y - src_model_coord.y) / src_y_res;
+						src_raster_x = (src_model_coord.x - src_upperLeft.x) / src_x_res;
+						src_raster_y = (src_upperLeft.y - src_model_coord.y) / src_y_res;
 
 						//reference src raster position (upper left of neighbourhood)
-						final int srcX = (int) src_raster_x;
-						final int srcY = (int) src_raster_y;
+						srcX = (int) src_raster_x;
+						srcY = (int) src_raster_y;
 						
 						if(srcX >= 0 && srcX < srcWidth && srcY >= 0 && srcY < srcHeight){
 
 							//determine the pos of this raster value within the src raster
-							int bufferPos = (i * bandSize) + (srcY * srcWidth + srcX) * dataType.size();
+							bufferPos = (i * bandSize) + (srcY * srcWidth + srcX) * dataType.size();
 
 							//move buffer to this pos			
 							reader.seekToOffset(bufferPos);

@@ -7,16 +7,17 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 /**
- * RGBResampler is a legacy class which resamples
+ * MBTilesResampler is a legacy class which resamples
  * an array of rgb int pixels 
  * according to an interpolation method
  * 
  * this is not a RasterOp operation, which works 
- * independently of the data value and using a raster
+ * independently of the data type and uses a raster
  * 
  * @author Robert Oehler
  *
  */
+@Deprecated
 public class MBTilesResampler {
 
 	/**

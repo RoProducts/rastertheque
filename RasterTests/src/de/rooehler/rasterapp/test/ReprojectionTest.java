@@ -33,9 +33,9 @@ import de.rooehler.rastertheque.util.Hints.Key;
 public class ReprojectionTest extends android.test.ActivityTestCase {
 	
 	
-	final boolean writeResult = false;
+	final boolean writeResult = true;
 	
-	final boolean compare = true;
+	final boolean compare = false;
 	
 	public void testReprojection() throws IOException {
 		
@@ -110,7 +110,7 @@ public class ReprojectionTest extends android.test.ActivityTestCase {
 
 			assertNotNull(bitmap);
 
-			TestUtil.saveImage(bitmap,"ReprojectOp_m_bic_3857");
+			TestUtil.saveImage(bitmap,"ReprojectOp_openCV_bil_3857");
 		}
 	}
 	

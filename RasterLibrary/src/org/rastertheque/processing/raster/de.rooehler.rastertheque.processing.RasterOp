@@ -6,3 +6,4 @@ de.rooehler.rastertheque.processing.resampling.MResampler
 de.rooehler.rastertheque.processing.resampling.OpenCVResampler
 de.rooehler.rastertheque.processing.reprojecting.MReproject
 de.rooehler.rastertheque.processing.reprojecting.GDALReproject
+de.rooehler.rastertheque.processing.reprojecting.OpenCVReproject

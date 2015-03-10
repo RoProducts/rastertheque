@@ -1,18 +1,31 @@
 package de.rooehler.rastertheque.io.mbtiles;
 
 import java.io.File;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.osgeo.proj4j.CoordinateReferenceSystem;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Rect;
 import android.util.Log;
 
 import com.vividsolutions.jts.geom.Envelope;
 
-import de.rooehler.rastertheque.core.Dataset;
+import de.rooehler.rastertheque.core.Band;
+import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Driver;
+import de.rooehler.rastertheque.core.NoData;
+import de.rooehler.rastertheque.core.Raster;
+import de.rooehler.rastertheque.core.RasterDataset;
+import de.rooehler.rastertheque.core.RasterQuery;
+import de.rooehler.rastertheque.processing.rendering.ColorMap;
 import de.rooehler.rastertheque.proj.Proj;
 /**
  * A MbTilesDataset wraps the access to a MBTiles database
@@ -20,9 +33,11 @@ import de.rooehler.rastertheque.proj.Proj;
  * @author Robert Oehler
  *
  */
-public class MBTilesDataset implements Dataset {
+public class MBTilesDataset implements RasterDataset {
 	
 	private final static String TAG = MBTilesDataset.class.getSimpleName();
+	
+	public static final int MBTILES_SIZE = 256;
 	
 	static final String METADATA = "metadata";
 
@@ -31,6 +46,14 @@ public class MBTilesDataset implements Dataset {
 	private String mSource;
 	
 	private SQLiteDatabase db;
+	
+	private Envelope mBounds;
+	
+	private String mDescription;
+	
+	private String mName;
+	
+	private int[] mZoomBounds;
 
 	
 	public MBTilesDataset(final String pFilePath){
@@ -54,6 +77,54 @@ public class MBTilesDataset implements Dataset {
 	public boolean isWorking() {
 
 		return this.isDBOpen;
+	}
+	
+	/**
+	 * reads the defined query from the database
+	 * 
+	 * A conversion from the bytes read to a bitmap of MBTiles_SIZE X MBTiles_Size
+	 * is applied
+	 * 
+	 * the bitmaps data is saved within the raster
+	 * 
+	 * if no data was available the rasters data is null
+	 * 
+	 */
+	@Override
+	public Raster read(RasterQuery query) {
+		
+		if(query instanceof MBTilesRasterQuery){
+			int[] coords =  ((MBTilesRasterQuery) query).getTileCoords();
+			byte zoom    =  ((MBTilesRasterQuery) query).getZoom();
+
+			byte[] data = getTileAsBytes(String.valueOf(coords[0]), String.valueOf(coords[1]), Byte.toString(zoom));
+			
+			int width = MBTILES_SIZE;
+			ByteBuffer bb = null;
+			if(data != null){
+
+				Bitmap decodedBitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+				int[] mbTilesPixels = new int[MBTILES_SIZE * MBTILES_SIZE];
+				if (decodedBitmap != null) {
+					// copy all pixels from the decoded bitmap to the color array
+					// the MBTILES database has always 256 x256 tiles
+					decodedBitmap.getPixels(mbTilesPixels, 0, MBTILES_SIZE, 0, 0, MBTILES_SIZE, MBTILES_SIZE);
+					decodedBitmap.recycle();
+				} else {
+					for (int i = 0; i < mbTilesPixels.length; i++) {
+						mbTilesPixels[i] = 0xffffffff;
+					}
+				}
+				bb = ByteBuffer.allocate(mbTilesPixels.length * DataType.INT.size());
+				bb.order(ByteOrder.nativeOrder());
+				bb.asIntBuffer().put(mbTilesPixels);
+
+			}
+						
+			return new Raster(query.getBounds(),query.getCRS(),	new Rect(0,0,width,width),query.getBands(), bb,	null);
+		}
+		
+		return null;
 	}
 
 	/**
@@ -84,35 +155,170 @@ public class MBTilesDataset implements Dataset {
 		 return Proj.EPSG_900913;
 	}
 
+	/**
+	 * returns the bounds of this dataset
+	 */
 	@Override
 	public Envelope getBoundingBox() {
-		
-		try {
-			final Cursor c = this.db.rawQuery("select value from metadata where name=?", new String[] { "bounds" });
-			if (!c.moveToFirst()) {
+
+		if(mBounds == null){
+			try {
+				final Cursor c = this.db.rawQuery("select value from metadata where name=?", new String[] { "bounds" });
+				if (!c.moveToFirst()) {
+					c.close();
+					return null;
+				}
+				final String box = c.getString(c.getColumnIndex("value"));
+
+				String[] split = box.split(",");
+				if (split.length != 4) {
+					return null;
+				}
+				double minlon = Double.parseDouble(split[0]);
+				double minlat = Double.parseDouble(split[1]);
+				double maxlon = Double.parseDouble(split[2]);
+				double maxlat = Double.parseDouble(split[3]);
 				c.close();
+
+				mBounds = new  Envelope(minlon, maxlon, minlat, maxlat);
+
+			} catch (NullPointerException e) {
+				Log.e(TAG, "NPE retrieving boundingbox from db", e);
 				return null;
 			}
-			final String box = c.getString(c.getColumnIndex("value"));
-
-			String[] split = box.split(",");
-			if (split.length != 4) {
-				return null;
-			}
-			double minlon = Double.parseDouble(split[0]);
-			double minlat = Double.parseDouble(split[1]);
-			double maxlon = Double.parseDouble(split[2]);
-			double maxlat = Double.parseDouble(split[3]);
-			c.close();
-
-			return new Envelope(minlon, maxlon, minlat, maxlat);
-
-		} catch (NullPointerException e) {
-			Log.e(TAG, "NPE retrieving boundingbox from db", e);
-			return null;
 		}
 		
+		return mBounds;
+		
 	}
+
+	/**
+	 * accesses the databases metadata
+	 * to retrieve min and max zoom of this 
+	 * mbtiles dataset
+	 * @return an array in the form int[]{min,max}
+	 */
+	public int[] getMinMaxZoom(){
+		
+		if(mZoomBounds == null){
+
+			mZoomBounds = new int[2];
+			try {
+				Cursor c = this.db.rawQuery("select value from metadata where name=?", new String[] { "minzoom" });
+				if (!c.moveToFirst()) {
+					c.close();
+					return null;
+				}
+				mZoomBounds[0] = c.getInt(c.getColumnIndex("value"));
+				c.close();
+				c = this.db.rawQuery("select value from metadata where name=?", new String[] { "maxzoom" });
+
+				if (!c.moveToFirst()) {
+					c.close();
+					return null;
+				}
+				mZoomBounds[1] = c.getInt(c.getColumnIndex("value"));
+
+				c.close();
+
+			} catch (NullPointerException e) {
+				Log.e(TAG, "NPE retrieving boundingbox from db", e);
+				return null;
+			}
+		}
+		return mZoomBounds;
+	}
+
+	@Override
+	public Driver getDriver() {
+		
+		return new MBTilesDriver();
+	}
+
+	@Override
+	public String getName() {
+		
+		if(mName == null){
+
+			android.database.Cursor c = db.query(METADATA, new String[]{"value"}, "name = ?", new String[]{"name"}, null, null, null);
+			try {
+				if (c.moveToNext()) {
+					mName =  c.getString(0);
+				}
+			}
+			finally {
+				c.close();
+			}
+		}
+		return mName;
+	}
+
+	@Override
+	public String getDescription() {
+
+		if(mDescription == null){
+
+			android.database.Cursor c = db.query(METADATA, new String[]{"value"}, "name = ?", new String[]{"description"}, null, null, null);
+			try {
+				if (c.moveToNext()) {
+					mDescription = c.getString(0);
+				}
+			}
+			finally {
+				c.close();
+			}
+		}
+		return mDescription;
+	}
+
+	@Override
+	public String getSource() {
+		return mSource;
+	}
+
+	@Override
+	public Rect getDimension() {
+
+		return new Rect(0,0,MBTILES_SIZE,MBTILES_SIZE);
+	}
+
+	@Override
+	public List<Band> getBands() {
+
+		List<Band> bands = new ArrayList<Band>();
+		
+		Band b = new Band() {
+			
+			@Override
+			public NoData nodata() {
+				return NoData.NONE;
+			}
+			
+			@Override
+			public String name() {
+				return "MBTiles band";
+			}
+			
+			@Override
+			public DataType datatype() {
+				return DataType.INT;
+			}
+			
+			@Override
+			public ColorMap colorMap() {
+				return null;
+			}
+			
+			@Override
+			public Color color() {
+				return Color.OTHER;
+			}
+		};
+		bands.add(b);
+		
+		return bands;
+	}
+
 	
 	/**
 	 * queries the database for the data of an raster image
@@ -125,7 +331,7 @@ public class MBTilesDataset implements Dataset {
 	 *            the z coordinate
 	 * @return the data, if available for these coordinates
 	 */
-	public byte[] getTileAsBytes(String x, String y, String z) {
+	private byte[] getTileAsBytes(String x, String y, String z) {
 		try {
 			final Cursor c = this.db.rawQuery(
 					"select tile_data from tiles where tile_column=? and tile_row=? and zoom_level=?", new String[] {
@@ -146,82 +352,5 @@ public class MBTilesDataset implements Dataset {
 			Log.e(TAG, "SQLiteException getTileAsBytes", e);
 			return null;
 		}
-	}
-	/**
-	 * accesses the databases metadata
-	 * to retrieve min and max zoom of this 
-	 * mbtiles dataset
-	 * @return an array in the form int[]{min,max}
-	 */
-	public int[] getMinMaxZoom(){
-		
-		
-		int[] zoomValues = new int[2];
-		try {
-			Cursor c = this.db.rawQuery("select value from metadata where name=?", new String[] { "minzoom" });
-			if (!c.moveToFirst()) {
-				c.close();
-				return null;
-			}
-			zoomValues[0] = c.getInt(c.getColumnIndex("value"));
-			c.close();
-			c = this.db.rawQuery("select value from metadata where name=?", new String[] { "maxzoom" });
-
-			if (!c.moveToFirst()) {
-				c.close();
-				return null;
-			}
-			zoomValues[1] = c.getInt(c.getColumnIndex("value"));
-
-			c.close();
-
-			return zoomValues;
-
-		} catch (NullPointerException e) {
-			Log.e(TAG, "NPE retrieving boundingbox from db", e);
-			return null;
-		}
-	}
-
-	@Override
-	public Driver getDriver() {
-		
-		return new MBTilesDriver();
-	}
-
-	@Override
-	public String getName() {
-		
-		 android.database.Cursor c = db.query(METADATA, new String[]{"value"}, "name = ?", new String[]{"name"}, null, null, null);
-        try {
-            if (c.moveToNext()) {
-                return c.getString(0);
-            }
-        }
-        finally {
-            c.close();
-        }
-
-        return null;
-	}
-
-	@Override
-	public String getDescription() {
-		 android.database.Cursor c = db.query(METADATA, new String[]{"value"}, "name = ?", new String[]{"description"}, null, null, null);
-	        try {
-	            if (c.moveToNext()) {
-	                return c.getString(0);
-	            }
-	        }
-	        finally {
-	            c.close();
-	        }
-
-	        return null;
-	}
-
-	@Override
-	public String getSource() {
-		return mSource;
 	}
 }

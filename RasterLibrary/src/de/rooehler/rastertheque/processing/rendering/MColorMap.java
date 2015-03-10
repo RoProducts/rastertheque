@@ -29,6 +29,18 @@ public class MColorMap implements RasterOp, Serializable{
 
 	private static final long serialVersionUID = 1184127428068286145L;
 
+	
+	private static final int INT_KEY_COLORMAP = 1007;	
+	
+	public static final Key KEY_COLORMAP = new Hints.Key(INT_KEY_COLORMAP){
+		
+		@Override
+		public boolean isCompatibleValue(Object val) {
+			return val != null && val instanceof ColorMap;
+		}
+		
+	};
+	
 	/**
 	 * generates an array of colored pixels for a buffer of 
 	 * raster pixels according to a priorly loaded ColorMap
@@ -46,11 +58,20 @@ public class MColorMap implements RasterOp, Serializable{
 	@Override
 	public void execute(Raster raster, Map<Key, Serializable> params, Hints hints, ProgressListener listener) {
 		
-		if(raster.getBands().get(0).colorMap() == null){
-			throw new IllegalArgumentException("no colorMap available");
-		}
+		ColorMap map = null;
 		
-		final ColorMap map = raster.getBands().get(0).colorMap();
+		//if available, use colormap param
+		if(params != null && params.containsKey(KEY_COLORMAP)){
+			map = (ColorMap) params.get(KEY_COLORMAP);
+		}
+		//if no param provided, use band colormap
+		if(map == null && raster.getBands().get(0).colorMap() != null){
+			 map = raster.getBands().get(0).colorMap();
+		}
+		//if none was available, throw
+		if(map == null){			
+			throw new IllegalArgumentException("no colorMap available");
+		}		
 		
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 		final int raster_width  = raster.getDimension().width();

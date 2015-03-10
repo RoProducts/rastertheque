@@ -5,7 +5,9 @@ import org.osgeo.proj4j.CoordinateTransform;
 import org.osgeo.proj4j.CoordinateTransformFactory;
 import org.osgeo.proj4j.ProjCoordinate;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
+import com.vividsolutions.jts.geom.util.AffineTransformation;
 import com.vividsolutions.jts.geom.util.GeometryEditor.CoordinateOperation;
 
 import de.rooehler.rastertheque.proj.Proj;
@@ -49,7 +51,7 @@ public class ReferencedEnvelope {
      * using the specified amount of points.
      * <p>
      * This method can handle the case where the envelope contains the North or South pole,
-     * or when it cross the &plusmn;180ï¿½ longitude.
+     * or when it cross the +180° longitude.
      *
      * @param targetCRS The target coordinate reference system.
      * @param lenient   {@code true} if datum shift should be applied even if there is
@@ -72,12 +74,12 @@ public class ReferencedEnvelope {
         }
         /*
          * Gets a first estimation using an algorithm capable to take singularity in account
-         * (North pole, South pole, 180ï¿½ longitude). We will expand this initial box later.
+         * (North pole, South pole, 180° longitude). We will expand this initial box later.
          */
         CoordinateTransformFactory txFactory = new CoordinateTransformFactory();
         CoordinateTransform tx = txFactory.createTransform(crs, targetCRS);
         Envelope transformed = Proj.reproject(envelope, crs, targetCRS);
-
+        
         /*
          * Now expands the box using the usual utility methods.
          */
