@@ -11,9 +11,11 @@ import android.util.Log;
 import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rasterapp.test.testImpl.TestDriverImpl;
+import de.rooehler.rastertheque.core.Dataset;
 import de.rooehler.rastertheque.core.Driver;
 import de.rooehler.rastertheque.core.Drivers;
 import de.rooehler.rastertheque.core.Raster;
+import de.rooehler.rastertheque.core.RasterDataset;
 import de.rooehler.rastertheque.core.RasterQuery;
 import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALDriver;
@@ -22,7 +24,7 @@ import de.rooehler.rastertheque.io.mbtiles.MBTilesDriver;
 import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.processing.rendering.MAmplitudeRescaler;
 /**
- * tests of the i/O part of the library containing:
+ * tests of the I/O part of the library containing:
  * 
  * test if a file can be opened
  * test if a file can be read
@@ -38,24 +40,26 @@ public class TestIO extends android.test.AndroidTestCase {
 	public final static String GRAY_50M_BYTE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/GRAY_50M_SR_OB.tif";
 	public final static String DEM_FLOAT = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/dem.tif";
 	public final static String RGB_BANDS_BYTE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/land_shallow_topo_21600.tif";
-
 	public final static String C4107a1_INT_CM = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/c41078a1_int_cm.tif";
+	
 	/**
 	 * tests opening of the file
 	 */
 	public void testIO() throws IOException{
 				
-		GDALDriver driver = new GDALDriver();
+		final String filePath = GRAY_50M_BYTE;
 		
-		assertTrue(driver.canOpen(GRAY_50M_BYTE));
+		Dataset dataset = Drivers.open(filePath, null);
+
+		assertNotNull(dataset);
 		
-		GDALDataset dataset = driver.open(GRAY_50M_BYTE);
+		assertTrue(dataset instanceof GDALDataset);
 		
 		assertNotNull(dataset.getBoundingBox());
 		
 		assertNotNull(dataset.getCRS());
 		
-		final Rect dim = dataset.getDimension();
+		final Rect dim = ((RasterDataset)dataset).getDimension();
 		final int width  = dim.width();
 		final int height = dim.height();
 		
@@ -71,11 +75,13 @@ public class TestIO extends android.test.AndroidTestCase {
 	 */
 	public void testRead() throws IOException{
 		
-		GDALDriver driver = new GDALDriver();
+		final String filePath = GRAY_50M_BYTE;
 		
-		assertTrue(driver.canOpen(GRAY_50M_BYTE));
+		Dataset ds = Drivers.open(filePath, null);
 		
-		GDALDataset dataset = driver.open(GRAY_50M_BYTE);
+		assertTrue(ds instanceof GDALDataset);
+		
+		GDALDataset dataset = (GDALDataset) ds;
 		
 		final Rect dim = dataset.getDimension();
 		final int width  = dim.width();

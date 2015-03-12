@@ -16,6 +16,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Rect;
 import android.util.Log;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.Band;
@@ -145,7 +146,88 @@ public class MBTilesDataset implements RasterDataset {
 	public int[] googleTile2TmsTile(long tx, long ty, byte zoom) {
 		return new int[] { (int) tx, (int) ((Math.pow(2, zoom) - 1) - ty) };
 	}
+	
+	/****************************************************************
+	 * 
+	 * CONVERSION METHODS TILE -> ENVELOPE
+	 * LAT/LON -> Tile x,y
+	 * according to
+	 * 
+	 * http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+	 * 
+	 ***************************************************************/
+	
+	/**
+	 * According to http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Java
+	 * @param tx
+	 * @param ty
+	 * @param zoom
+	 * @return
+	 */
+	public Coordinate slippy2latlon(int tx, int ty, int zoom){
 
+		return new Coordinate(tile2lon(tx, zoom),tile2lat(ty, zoom));
+	}
+	
+	/**
+	 * converts x coordinate and zoom level to longitude
+	 * @param x
+	 * @param z
+	 * @return
+	 */
+	public double tile2lon(int x, int z) {
+		return x / Math.pow(2.0, z) * 360.0 - 180;
+	}
+	
+	/**
+	 * converts y coordinate and zoom level to latitude
+	 * @param y
+	 * @param z
+	 * @return
+	 */
+	public double tile2lat(int y, int z) {
+		double n = Math.PI - (2.0 * Math.PI * y) / Math.pow(2.0, z);
+		return Math.toDegrees(Math.atan(Math.sinh(n)));
+	}
+	
+	/**
+	 * converts tile coordinates to the bounds the tile covers
+	 * @param x coordinate
+	 * @param y coordinate
+	 * @param z toom level
+	 * @return the bounds of the tile
+	 */
+	public Envelope tile2boundingBox(final int x, final int y, final int zoom) {
+
+		return new Envelope(
+				tile2lon(x + 1, zoom),
+				tile2lon(x, zoom),
+				tile2lat(y + 1, zoom),
+				tile2lat(y, zoom)
+				);
+	}
+	/**
+	 * converts longitude and zoom level to a slippy tile x coordinate
+	 * @param lat
+	 * @param z
+	 * @return
+	 */
+	public int long2tilex(double lon, int z) 
+	{ 
+		return (int)(Math.floor((lon + 180.0) / 360.0 * Math.pow(2.0, z))); 
+	}
+	
+	/**
+	 * converts latitude and zoom level to a slippy tile y coordinate
+	 * @param lat
+	 * @param z
+	 * @return
+	 */
+	public int lat2tiley(double lat, int z)
+	{ 
+		return (int)(Math.floor((1.0 - Math.log( Math.tan(lat * Math.PI/180.0) + 1.0 / Math.cos(lat * Math.PI/180.0)) / Math.PI) / 2.0 * Math.pow(2.0, z))); 
+	}
+	
 	/**
 	 * MBTiles are always in Google Mercator
 	 */
