@@ -4,7 +4,10 @@ import de.rooehler.rastertheque.processing.rendering.ColorMap;
 
 
 /**
- * A band is a component of a raster dataset.
+ * A band is a component of a raster dataset
+ * 
+ * @author Robert Oehler
+ *
  */
 public interface Band {
 

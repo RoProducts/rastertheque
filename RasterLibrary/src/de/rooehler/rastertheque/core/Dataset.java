@@ -6,7 +6,8 @@ import com.vividsolutions.jts.geom.Envelope;
 
 import de.rooehler.rastertheque.core.util.Disposable;
 /**
- * A dataset models a 
+ * A dataset models the properties of a features
+ * which is accessed via a driver
  * 
  * @author Robert Oehler
  *
