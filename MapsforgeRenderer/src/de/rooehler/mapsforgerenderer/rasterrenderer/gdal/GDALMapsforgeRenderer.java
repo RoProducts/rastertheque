@@ -305,12 +305,14 @@ public class GDALMapsforgeRenderer implements RasterRenderer {
         }else{
 
         	HashMap<Key,Serializable> renderParams = new HashMap<>();
-
-        	renderParams.put(Hints.KEY_COLORMAP, new MColorMap());
-//        	renderParams.put(Hints.KEY_AMPLITUDE_RESCALING, new OpenCVAmplitudeRescaler());
-
-        	RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
-//        	RasterOps.execute(raster, RasterOps.AMPLITUDE_RESCALING, renderParams, null, null);
+        	
+        	boolean containsColorMap = raster.getBands().get(0).colorMap() != null;
+        	
+        	if(containsColorMap){
+        		RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
+        	}else{
+        		RasterOps.execute(raster, RasterOps.AMPLITUDE_RESCALING, renderParams, null, null);
+        	}        	
         	
         	final int width  = raster.getDimension().width();
     		final int height = raster.getDimension().height();

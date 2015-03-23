@@ -177,7 +177,9 @@ public class Proj {
 				return csFactory.createFromParameters(auth+":"+code, r.readParameters(code, in));
 			}
 			finally {
-				in.close();
+				if(in != null){					
+					in.close();
+				}
 			}
 		}
 		catch(IOException e) {

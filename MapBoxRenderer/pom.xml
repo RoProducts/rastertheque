@@ -74,7 +74,7 @@
             <platform>19</platform>
           </sdk>
           <extractDuplicates>true</extractDuplicates>
-          <deleteConflictingFiles>true</deleteConflictingFiles>
+          <deleteConflictingFiles>false</deleteConflictingFiles>
           <undeployBeforeDeploy>true</undeployBeforeDeploy>
         </configuration>
         <extensions>true</extensions>

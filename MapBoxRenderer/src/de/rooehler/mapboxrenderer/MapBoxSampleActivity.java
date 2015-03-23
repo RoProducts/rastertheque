@@ -249,11 +249,11 @@ public class MapBoxSampleActivity extends Activity {
 				return;
 			}else{
 				//if it is not 900913 transform to 900913
-				if(!dataset.getCRS().equals(Proj.EPSG_900913)){
-					Log.i(TAG, "reprojecting to EPSG 900913");
-					org.gdal.gdal.Dataset reproj = ((GDALDataset)dataset).transform(Proj.proj2wkt(Proj.EPSG_900913.getParameterString()));
-					dataset = new GDALDataset(dataset.getSource(), reproj, (GDALDriver)dataset.getDriver());
-				}
+//				if(!dataset.getCRS().equals(Proj.EPSG_900913)){
+//					Log.i(TAG, "reprojecting to EPSG 900913");
+//					org.gdal.gdal.Dataset reproj = ((GDALDataset)dataset).transform(Proj.proj2wkt(Proj.EPSG_900913.getParameterString()));
+//					dataset = new GDALDataset(dataset.getSource(), reproj, (GDALDriver)dataset.getDriver());
+//				}
 			}
 			if(dataset.getBoundingBox() == null){
 				AlertFactory.showErrorAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");

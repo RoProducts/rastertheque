@@ -149,7 +149,7 @@ public class MainActivity extends Activity implements IWorkStatus{
 		
 		
 		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-		final SupportedType type = SupportedType.values()[prefs.getInt(PREFS_RENDERER_TYPE, 0)];
+		final SupportedType type = SupportedType.values()[prefs.getInt(PREFS_RENDERER_TYPE, 2)];
 		
 		String savedFilePath = prefs.getString(PREFS_FILEPATH, null);
 		if(savedFilePath == null){
@@ -274,7 +274,8 @@ public class MainActivity extends Activity implements IWorkStatus{
 			
 			Dataset gdalDataset = null;
 			try{
-				gdalDataset = Drivers.open(filePath, null);
+				final GDALDriver driver = new GDALDriver();
+				gdalDataset = driver.open(filePath);// Drivers.open(filePath, null);
 			}catch(IOException e){
 				Log.e(TAG, "error opening file "+filePath);
 				AlertFactory.showAlert(this, "Error", "There was an error opening the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1));
@@ -289,11 +290,11 @@ public class MainActivity extends Activity implements IWorkStatus{
 					return;
 				}else{
 					//if it is not 900913 transform to 900913
-					if(!gdalDataset.getCRS().equals(Proj.EPSG_900913)){
-						Log.i(TAG, "reprojecting to EPSG 900913");
-						org.gdal.gdal.Dataset reproj = ((GDALDataset)gdalDataset).transform(Proj.proj2wkt(Proj.EPSG_900913.getParameterString()));
-						gdalDataset = new GDALDataset(gdalDataset.getSource(), reproj, (GDALDriver)gdalDataset.getDriver());
-					}
+//					if(!gdalDataset.getCRS().equals(Proj.EPSG_900913)){
+//						Log.i(TAG, "reprojecting to EPSG 900913");
+//						org.gdal.gdal.Dataset reproj = ((GDALDataset)gdalDataset).transform(Proj.proj2wkt(Proj.EPSG_900913.getParameterString()));
+//						gdalDataset = new GDALDataset(gdalDataset.getSource(), reproj, (GDALDriver)gdalDataset.getDriver());
+//					}
 				}
 				if(gdalDataset.getBoundingBox() == null){
 					AlertFactory.showAlert(this, "No BoundingBox", "No BoundingBox available for the file : \n"+filePath.substring(filePath.lastIndexOf("/") + 1) +"\n\nCannot show it");
