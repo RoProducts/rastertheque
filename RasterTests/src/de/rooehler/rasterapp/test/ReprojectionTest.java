@@ -1,5 +1,6 @@
 package de.rooehler.rasterapp.test;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashMap;
@@ -39,7 +40,11 @@ public class ReprojectionTest extends android.test.ActivityTestCase {
 	
 	public void testReprojection() throws IOException {
 		
-		GDALDataset dataset = (GDALDataset) Drivers.open(TestIO.C4107a1_INT_CM, null);
+		final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TestIO.TEST_INTERNAL_COLORMAP);
+		
+		assertNotNull(file);
+		
+		GDALDataset dataset = (GDALDataset) Drivers.open(file.getAbsolutePath(), null);
 		
 		Envelope bounds = dataset.getBoundingBox();
 		Rect dim = dataset.getDimension();
@@ -112,6 +117,8 @@ public class ReprojectionTest extends android.test.ActivityTestCase {
 
 			TestUtil.saveImage(bitmap,"ReprojectOp_openCV_bil_3857");
 		}
+		
+		TestUtil.deletefile(file);
 	}
 	
 	

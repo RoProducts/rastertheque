@@ -1,9 +1,14 @@
 package de.rooehler.rasterapp.test;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 
+import android.content.res.AssetManager;
 import android.graphics.Rect;
 import android.os.Environment;
 import android.util.Log;
@@ -34,22 +39,22 @@ import de.rooehler.rastertheque.processing.rendering.MAmplitudeRescaler;
  * @author Robert Oehler
  *
  */
-public class TestIO extends android.test.AndroidTestCase {
+public class TestIO extends android.test.ActivityTestCase {
 
 	
-	public final static String GRAY_50M_BYTE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/GRAY_50M_SR_OB.tif";
-	public final static String DEM_FLOAT = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/dem.tif";
-	public final static String RGB_BANDS_BYTE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/land_shallow_topo_21600.tif";
-	public final static String C4107a1_INT_CM = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/c41078a1_int_cm.tif";
+	public final static String TEST_SMALL_BYTE = "test_000261_0001sx8.tif";
+	public final static String TEST_GRAY_BYTE = "gray_sub.tif";
+	public final static String TEST_RGB_BANDS_BYTE = "shallow_topo.tif";
+	public final static String TEST_INTERNAL_COLORMAP = "internal_colormap_sub.tif";
 	
 	/**
 	 * tests opening of the file
 	 */
 	public void testIO() throws IOException{
 				
-		final String filePath = GRAY_50M_BYTE;
+		final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TEST_SMALL_BYTE);
 		
-		Dataset dataset = Drivers.open(filePath, null);
+		Dataset dataset = Drivers.open(file.getAbsolutePath(), null);
 
 		assertNotNull(dataset);
 		
@@ -69,15 +74,20 @@ public class TestIO extends android.test.AndroidTestCase {
 		
 		dataset.close();
 		
+		if(file != null && file.exists()){			
+			file.delete();
+		}
+		
 	}
+
 	/**
 	 * tests reading a region of the file
 	 */
 	public void testRead() throws IOException{
 		
-		final String filePath = GRAY_50M_BYTE;
+		final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TEST_SMALL_BYTE);
 		
-		Dataset ds = Drivers.open(filePath, null);
+		Dataset ds = Drivers.open(file.getAbsolutePath(), null);
 		
 		assertTrue(ds instanceof GDALDataset);
 		
@@ -131,6 +141,10 @@ public class TestIO extends android.test.AndroidTestCase {
         
         dataset.close();
         
+		if(file != null && file.exists()){			
+			file.delete();
+		}
+        
 	}
 	/**
 	 * tests the identification of Driver implementations 
@@ -181,4 +195,5 @@ public class TestIO extends android.test.AndroidTestCase {
 		}
 	}
 	
+
 }

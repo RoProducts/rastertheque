@@ -1,6 +1,7 @@
 package de.rooehler.rasterapp.test;
 
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -9,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import android.graphics.Rect;
-import android.os.Environment;
 import android.util.Log;
 
 import com.vividsolutions.jts.geom.Envelope;
@@ -41,24 +41,18 @@ import de.rooehler.rastertheque.util.Hints.Key;
  * the other data types which are less frequent only by OpenCV
  * 
  * @author Robert Oehler
- * 
- * TODO
- * 
- * this uses hardcoded local files
- * provide files within the test project
  *
  */
 
 public class RawResamplerTester extends android.test.ActivityTestCase {
 	
 	// 514 x 515
-	public final static String SAMPLE_BYTE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/cea.tif";
-	public final static String SAMPLE_CHAR = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/cea_int16.tif";
-	public final static String SAMPLE_SHORT = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/cea_uint16.tif";
-	public final static String SAMPLE_INT = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/cea_int32.tif";
-	public final static String SAMPLE_LONG = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/cea_uint32.tif";
-	
-	public final static String SAMPLE_DOUBLE = Environment.getExternalStorageDirectory().getAbsolutePath()+"/rastertheque/HN+24_double.tif";
+	public final static String TEST_BYTE =  "cea.tif";
+	public final static String TEST_CHAR =  "cea_int16.tif";
+	public final static String TEST_SHORT = "cea_uint16.tif";
+	public final static String TEST_INT =   "cea_int32.tif";
+	public final static String TEST_LONG =  "cea_uint32.tif";
+	public final static String TEST_FLOAT = "hn_sub.tif";
 
 	
 	public void testCharRawResampling() throws IOException {
@@ -66,10 +60,12 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		final int threshold = 2;
 		
 		GDALDriver driver = new GDALDriver();
+		
+		final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TEST_CHAR);
+		
+		assertTrue(driver.canOpen(file.getAbsolutePath()));
 
-		assertTrue(driver.canOpen(SAMPLE_CHAR));
-
-		GDALDataset dataset = driver.open(SAMPLE_CHAR);
+		GDALDataset dataset = driver.open(file.getAbsolutePath());
 		
 		final int rs = 256;
 
@@ -136,6 +132,8 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		
 		dataset.close();
+		
+		TestUtil.deletefile(file);
 
 	}
 	
@@ -145,9 +143,11 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		
 		GDALDriver driver = new GDALDriver();
 
-		assertTrue(driver.canOpen(SAMPLE_SHORT));
+		final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TEST_SHORT);
+		
+		assertTrue(driver.canOpen(file.getAbsolutePath()));
 
-		GDALDataset dataset = driver.open(SAMPLE_SHORT);
+		GDALDataset dataset = driver.open(file.getAbsolutePath());
 		
 		final int rs = 256;
 
@@ -213,6 +213,8 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		
 		dataset.close();
+		
+		TestUtil.deletefile(file);
 
 	}
 	
@@ -222,9 +224,11 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		
 		GDALDriver driver = new GDALDriver();
 
-		assertTrue(driver.canOpen(SAMPLE_INT));
+		final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TEST_INT);
+		
+		assertTrue(driver.canOpen(file.getAbsolutePath()));
 
-		GDALDataset dataset = driver.open(SAMPLE_INT);
+		GDALDataset dataset = driver.open(file.getAbsolutePath());
 		
 		final int rs = 256;
 
@@ -290,6 +294,8 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		
 		dataset.close();
+		
+		TestUtil.deletefile(file);
 
 	}
 	
@@ -299,9 +305,11 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		
 		GDALDriver driver = new GDALDriver();
 
-		assertTrue(driver.canOpen(SAMPLE_LONG));
+		final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TEST_LONG);
+		
+		assertTrue(driver.canOpen(file.getAbsolutePath()));
 
-		GDALDataset dataset = driver.open(SAMPLE_LONG);
+		GDALDataset dataset = driver.open(file.getAbsolutePath());
 		
 		final int rs = 256;
 
@@ -367,6 +375,8 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 
 		
 		dataset.close();
+		
+		TestUtil.deletefile(file);
 
 	}
 	
@@ -377,9 +387,11 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		
 		GDALDriver driver = new GDALDriver();
 
-		assertTrue(driver.canOpen(TestIO.DEM_FLOAT));
+		final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TEST_FLOAT);
+		
+		assertTrue(driver.canOpen(file.getAbsolutePath()));
 
-		GDALDataset dataset = driver.open(TestIO.DEM_FLOAT);
+		GDALDataset dataset = driver.open(file.getAbsolutePath());
 		
 		final int rs = 256;
 
@@ -455,86 +467,88 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		}
 		
 		dataset.close();
+		
+		TestUtil.deletefile(file);
 
 	}
 	
-	public void testDoubleRasterRawResampling() throws IOException {
-		
-		final int threshold = 2;
-		
-		GDALDriver driver = new GDALDriver();
-
-		assertTrue(driver.canOpen(SAMPLE_DOUBLE));
-
-		GDALDataset dataset = driver.open(SAMPLE_DOUBLE);
-		
-		final int rs = 256;
-
-		final Envelope env = new Envelope(0, rs, 0, rs);
-		final Rect rect = new Rect(0, 0, rs, rs);
-
-		final RasterQuery query = new GDALRasterQuery(
-				env,
-				dataset.getCRS(),
-				dataset.getBands(),
-				rect,
-				dataset.getBands().get(0).datatype(),
-				rect);
-
-		final Envelope targetEnv = new Envelope(0, env.getWidth() * 4, 0, env.getHeight() * 4);
-
-		final int origSize = (int) (env.getWidth() * env.getHeight());
-		final int targetSize = (int) (targetEnv.getWidth() * targetEnv.getHeight());
-		
-		Raster raster = dataset.read(query);
-		
-		final byte[] orig = raster.getData().array().clone();
-		
-		ByteBufferReader reader = new ByteBufferReader(orig, ByteOrder.nativeOrder());
-		double[] doubles = new double[(int)env.getWidth() * (int) env.getHeight()];
-		for(int i = 0; i < origSize; i++){
-			doubles[i] = reader.readDouble();
-		}
-		
-		HashMap<Key,Serializable> resizeParams = new HashMap<>();
-
-		resizeParams.put(Resampler.KEY_SIZE, new Double[]{targetEnv.getWidth() / env.getWidth(), targetEnv.getHeight() / env.getHeight()});
-		
-		final RasterOp resampler = new OpenCVResampler();
-
-		for(int j = 0; j < ResampleMethod.values().length; j++){
-
-			long now = System.currentTimeMillis();
-
-			final ResampleMethod m = ResampleMethod.values()[j];
-
-			resizeParams.put(Hints.KEY_INTERPOLATION, m);
-
-			resampler.execute(raster, resizeParams,null,null);
-
-			Log.d("RawResamplerTester","double testing with "+m.name()+" took : "+(System.currentTimeMillis() - now));
-
-			final byte[] resampled = raster.getData().array().clone();
-
-			ByteBufferReader resampledReader = new ByteBufferReader(resampled, ByteOrder.nativeOrder());
-			double[] resampledDoubles = new double[targetSize];
-			for(int k = 0; k < targetSize; k++){
-				resampledDoubles[k] = resampledReader.readDouble();
-			}
-
-			Log.d(RawResamplerTester.class.getSimpleName(), String.format("orig [last] %f resampled [last] %f", doubles[doubles.length - 1], resampledDoubles[resampledDoubles.length - 1]));
-
-			assertTrue(compareDoublesWithThreshold(doubles[0], resampledDoubles[0], threshold));
-			assertTrue(compareDoublesWithThreshold(doubles[doubles.length - 1], resampledDoubles[resampledDoubles.length - 1],threshold));
-
-			//return to initial state
-			raster = dataset.read(query);
-		}
-
-
-		dataset.close();
-
-	}
+//	public void testDoubleRasterRawResampling() throws IOException {
+//		
+//		final int threshold = 2;
+//		
+//		GDALDriver driver = new GDALDriver();
+//
+//		assertTrue(driver.canOpen(SAMPLE_DOUBLE));
+//
+//		GDALDataset dataset = driver.open(SAMPLE_DOUBLE);
+//		
+//		final int rs = 256;
+//
+//		final Envelope env = new Envelope(0, rs, 0, rs);
+//		final Rect rect = new Rect(0, 0, rs, rs);
+//
+//		final RasterQuery query = new GDALRasterQuery(
+//				env,
+//				dataset.getCRS(),
+//				dataset.getBands(),
+//				rect,
+//				dataset.getBands().get(0).datatype(),
+//				rect);
+//
+//		final Envelope targetEnv = new Envelope(0, env.getWidth() * 4, 0, env.getHeight() * 4);
+//
+//		final int origSize = (int) (env.getWidth() * env.getHeight());
+//		final int targetSize = (int) (targetEnv.getWidth() * targetEnv.getHeight());
+//		
+//		Raster raster = dataset.read(query);
+//		
+//		final byte[] orig = raster.getData().array().clone();
+//		
+//		ByteBufferReader reader = new ByteBufferReader(orig, ByteOrder.nativeOrder());
+//		double[] doubles = new double[(int)env.getWidth() * (int) env.getHeight()];
+//		for(int i = 0; i < origSize; i++){
+//			doubles[i] = reader.readDouble();
+//		}
+//		
+//		HashMap<Key,Serializable> resizeParams = new HashMap<>();
+//
+//		resizeParams.put(Resampler.KEY_SIZE, new Double[]{targetEnv.getWidth() / env.getWidth(), targetEnv.getHeight() / env.getHeight()});
+//		
+//		final RasterOp resampler = new OpenCVResampler();
+//
+//		for(int j = 0; j < ResampleMethod.values().length; j++){
+//
+//			long now = System.currentTimeMillis();
+//
+//			final ResampleMethod m = ResampleMethod.values()[j];
+//
+//			resizeParams.put(Hints.KEY_INTERPOLATION, m);
+//
+//			resampler.execute(raster, resizeParams,null,null);
+//
+//			Log.d("RawResamplerTester","double testing with "+m.name()+" took : "+(System.currentTimeMillis() - now));
+//
+//			final byte[] resampled = raster.getData().array().clone();
+//
+//			ByteBufferReader resampledReader = new ByteBufferReader(resampled, ByteOrder.nativeOrder());
+//			double[] resampledDoubles = new double[targetSize];
+//			for(int k = 0; k < targetSize; k++){
+//				resampledDoubles[k] = resampledReader.readDouble();
+//			}
+//
+//			Log.d(RawResamplerTester.class.getSimpleName(), String.format("orig [last] %f resampled [last] %f", doubles[doubles.length - 1], resampledDoubles[resampledDoubles.length - 1]));
+//
+//			assertTrue(compareDoublesWithThreshold(doubles[0], resampledDoubles[0], threshold));
+//			assertTrue(compareDoublesWithThreshold(doubles[doubles.length - 1], resampledDoubles[resampledDoubles.length - 1],threshold));
+//
+//			//return to initial state
+//			raster = dataset.read(query);
+//		}
+//
+//
+//		dataset.close();
+//
+//	}
 
 	
 	
@@ -545,10 +559,12 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		
 		final int threshold = 256;
 		
-		assertTrue(driver.canOpen(SAMPLE_BYTE));
 		try{
+			final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TEST_BYTE);
+			
+			assertTrue(driver.canOpen(file.getAbsolutePath()));
 
-			GDALDataset dataset = driver.open(SAMPLE_BYTE);
+			GDALDataset dataset = driver.open(file.getAbsolutePath());
 
 			final int rs = 256;
 			
@@ -607,6 +623,8 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 			}
 
 			dataset.close();
+			
+			TestUtil.deletefile(file);
 
 		}catch(Exception e){
 			Log.e(RawResamplerTester.class.getSimpleName(), "Exception raw resampling",e);

@@ -84,7 +84,7 @@
       <version>1.11.0</version>
     </dependency>
     
-    <!-- so dependencies -->
+    <!-- native libraries dependencies -->
 
     <dependency>
       <groupId>org.gdal.gdal</groupId>
@@ -130,8 +130,8 @@
       <type>so</type>
       <classifier>armeabi</classifier>
     </dependency>
-
   </dependencies>
+  
   <build>
     <sourceDirectory>src</sourceDirectory>
     <finalName>${project.artifactId}</finalName>
@@ -141,7 +141,7 @@
           <artifactId>maven-resources-plugin</artifactId>
           <version>2.6</version>
           <executions>
-              
+              <!-- copies configuration files from the library to the target -->
             <execution>
               <id>copy-resource1</id>
               <phase>validate</phase>
@@ -177,7 +177,7 @@
                 </resources>
               </configuration>
             </execution>
-            
+              <!-- copies proj extra file from the library to the target -->
             <execution>
               <id>copy-resource3</id>
               <phase>validate</phase>
@@ -225,7 +225,7 @@
           <nativeLibrariesDirectory>${project.basedir}/libs/armeabi</nativeLibrariesDirectory>
           
           <extractDuplicates>true</extractDuplicates>
-          <deleteConflictingFiles>false</deleteConflictingFiles>
+          <deleteConflictingFiles>true</deleteConflictingFiles>
           <undeployBeforeDeploy>true</undeployBeforeDeploy>
         </configuration>
         <extensions>true</extensions>

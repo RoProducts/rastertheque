@@ -2,7 +2,12 @@ package de.rooehler.rasterapp.test;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
+import android.content.Context;
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.os.Environment;
@@ -100,5 +105,42 @@ public class TestUtil {
 			Log.e(TestInterpolationOutput.class.getSimpleName(), "error saving "+name,e);
 			throw new AssertionError("error saving name");
 		}
+	}
+	
+	public static File createFileFromAssets(final Context context,String fileName) {
+
+		   try{
+			   AssetManager am = context.getAssets();
+			   InputStream inputStream = am.open(fileName);
+				
+			   File dir = new File(Environment.getExternalStorageDirectory() + "/rastertheque");
+			   if(!dir.exists()){
+				   dir.mkdir();
+			   }
+			   File f = new File(dir.getAbsolutePath()+"/test.tif");
+			   OutputStream outputStream = new FileOutputStream(f);
+			   byte buffer[] = new byte[1024];
+			   int length = 0;
+
+		      while((length=inputStream.read(buffer)) > 0) {
+		        outputStream.write(buffer,0,length);
+		      }
+
+		      outputStream.close();
+		      inputStream.close();
+
+		      return f;
+		   }catch (IOException e) {
+		         //Logging exception
+		   }
+
+		   return null;
+		}
+	public static void deletefile(File file) {
+		
+		if(file != null && file.exists()){
+			file.delete();
+		}
+		
 	}
 }

@@ -1,5 +1,6 @@
 package de.rooehler.rasterapp.test;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -46,9 +47,13 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 	
 	public void testInterpolationMethods(){
 
+		final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TestIO.TEST_RGB_BANDS_BYTE);
+		
+		assertNotNull(file);
+		
 		Dataset dataset = null;
 		try {
-			dataset = Drivers.open(TestIO.RGB_BANDS_BYTE, null);
+			dataset = Drivers.open(file.getAbsolutePath(), null);
 		} catch (IOException e) {
 			Log.e(TestInterpolationOutput.class.getSimpleName(), "Error opening three banded raster");
 		}
@@ -59,9 +64,9 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 		
 		GDALDataset ds = (GDALDataset) dataset;
 		
-		assertTrue(ds.getDimension().right == 21600);
+		assertTrue(ds.getDimension().right == 1000);
 
-		final int rf = 2345;
+		final int rf = 0;
 		final int os = 256;
 		final int ts = os * 4; 
 		
@@ -120,6 +125,6 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 				}
 		}
 
-
+		TestUtil.deletefile(file);
 	}
 }

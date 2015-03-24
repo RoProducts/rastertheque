@@ -1,5 +1,6 @@
 package de.rooehler.rasterapp.test;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Method;
@@ -20,6 +21,7 @@ import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.processing.RasterOps;
+import de.rooehler.rastertheque.processing.rendering.MAmplitudeRescaler;
 import de.rooehler.rastertheque.processing.rendering.MColorMap;
 import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
@@ -40,7 +42,7 @@ import de.rooehler.rastertheque.util.Hints.Key;
  * @author Robert Oehler
  *
  */
-public class TestProcessing extends android.test.AndroidTestCase  {
+public class TestProcessing extends android.test.ActivityTestCase  {
 	
 	/**
 	 * tests interpolations in terms of performance (time)
@@ -49,15 +51,17 @@ public class TestProcessing extends android.test.AndroidTestCase  {
 		
 		final GDALDriver driver = new GDALDriver();
 		
-		assertTrue(driver.canOpen(TestIO.GRAY_50M_BYTE));
+		final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TestIO.TEST_SMALL_BYTE);
 		
-		final GDALDataset dataset = driver.open(TestIO.GRAY_50M_BYTE);
+		assertTrue(driver.canOpen(file.getAbsolutePath()));
+		
+		final GDALDataset dataset = driver.open(file.getAbsolutePath());
 		
 		final Rect dim = dataset.getDimension();
 		final int width  = dim.width();
 		final int height = dim.height();
 		
-		final int tileSize = Math.min(width, height) / 20;
+		final int tileSize = Math.min(width, height);
 		
 		final Envelope env = new Envelope(0, tileSize, 0, tileSize);
 			     
@@ -71,7 +75,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         
         final Raster raster = dataset.read(query);
         
-        final RasterOp renderer = new MColorMap();
+        final RasterOp renderer = new MAmplitudeRescaler();
         
         renderer.execute(raster, null, null, null);
         
@@ -145,18 +149,24 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         assertTrue(mBlue == jaiBlue);
         
         dataset.close();
+        
+        TestUtil.deletefile(file);
 	}
 	
 	/**
 	 * tests and compares resampling methods
 	 */
 	public void testResampling() throws IOException {
-				
+		
 		final GDALDriver driver = new GDALDriver();
 		
-		assertTrue(driver.canOpen(TestIO.GRAY_50M_BYTE));
+		final File file = TestUtil.createFileFromAssets(getInstrumentation().getContext(),TestIO.TEST_SMALL_BYTE);
 		
-		final GDALDataset dataset = driver.open(TestIO.GRAY_50M_BYTE);
+		assertNotNull(file);
+						
+		assertTrue(driver.canOpen(file.getAbsolutePath()));
+		
+		final GDALDataset dataset = driver.open(file.getAbsolutePath());
 
 		final int readSize = 256;
 		final int targetSize = 756;
@@ -172,7 +182,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
        
         assertEquals(manual, gdal);
               
-		
+		TestUtil.deletefile(file);
 	}
 	
 	public int resampleWithGDAL(final Envelope env, final GDALDataset dataset, final int targetSize){
@@ -188,7 +198,7 @@ public class TestProcessing extends android.test.AndroidTestCase  {
         final long gdalNow = System.currentTimeMillis();
         
         final Raster raster = dataset.read(gdalResampleQuery);    
-		final RasterOp renderer = new MColorMap();
+		final RasterOp renderer = new MAmplitudeRescaler();
 		
         renderer.execute(raster, null, null, null);
         
