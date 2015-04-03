@@ -22,7 +22,6 @@ import de.rooehler.rastertheque.io.gdal.GDALDriver;
 import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.processing.RasterOp;
-import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
 import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 import de.rooehler.rastertheque.processing.resampling.Resampler;
@@ -428,7 +427,6 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 	    final ArrayList<RasterOp> ops = new ArrayList(){{
 	    	add(new OpenCVResampler());
 	    	add(new MResampler());
-	    	add(new JAIResampler());
 	    }};
 	    
 		for(int i = 0; i < ops.size(); i++){
@@ -592,7 +590,6 @@ public class RawResamplerTester extends android.test.ActivityTestCase {
 		    final ArrayList<RasterOp> ops = new ArrayList(){{
 		    	add(new OpenCVResampler());
 		    	add(new MResampler());
-		    	add(new JAIResampler());
 		    }};
 			
 			for(int i = 0; i < ops.size(); i++){

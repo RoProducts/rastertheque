@@ -22,8 +22,6 @@ import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.processing.rendering.MAmplitudeRescaler;
-import de.rooehler.rastertheque.processing.rendering.MColorMap;
-import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
 import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 import de.rooehler.rastertheque.processing.resampling.Resampler;
@@ -107,15 +105,6 @@ public class TestProcessing extends android.test.ActivityTestCase  {
         
         Log.d(TestProcessing.class.getSimpleName(), "MInterpolation took "+ (System.currentTimeMillis() - now));
            
-        /////// JAI ///////
-        
-        now = System.currentTimeMillis();
-        
-        new JAIResampler().execute(raster,resizeParams, null, null);
-        
-        Log.d(TestProcessing.class.getSimpleName(), "JAI took "+ (System.currentTimeMillis() - now));
-        
-        assertTrue(jaiResampled.length == pixels.length * resamplingFactor * resamplingFactor);
         
         /////// OpenCV ///////
         

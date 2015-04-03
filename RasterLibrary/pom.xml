@@ -45,12 +45,6 @@
       <artifactId>jts</artifactId>
       <version>1.13</version>
     </dependency>
-
-    <dependency>
-      <groupId>de.rooehler.rastertheque</groupId>
-      <artifactId>JAILibrary</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
-    </dependency>
     
     <dependency>
       <groupId>org.opencv</groupId>

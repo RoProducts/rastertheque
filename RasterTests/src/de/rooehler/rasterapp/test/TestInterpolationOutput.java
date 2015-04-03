@@ -20,7 +20,6 @@ import de.rooehler.rastertheque.io.gdal.GDALDataset;
 import de.rooehler.rastertheque.io.gdal.GDALRasterQuery;
 import de.rooehler.rastertheque.processing.Interpolation.ResampleMethod;
 import de.rooehler.rastertheque.processing.RasterOp;
-import de.rooehler.rastertheque.processing.resampling.JAIResampler;
 import de.rooehler.rastertheque.processing.resampling.MResampler;
 import de.rooehler.rastertheque.processing.resampling.OpenCVResampler;
 import de.rooehler.rastertheque.processing.resampling.Resampler;
@@ -90,7 +89,6 @@ public class TestInterpolationOutput extends android.test.ActivityTestCase {
 		final ArrayList<RasterOp> ops = new ArrayList(){{
 	    	add(new OpenCVResampler());
 	    	add(new MResampler());
-	    	add(new JAIResampler());
 	    }};
 		
 		HashMap<Key,Serializable> resizeParams = new HashMap<>();
