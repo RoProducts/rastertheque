@@ -22,9 +22,9 @@ public class GDALBand implements Band{
 	
 	org.gdal.gdal.Band band;
 	
-	private static ColorMap mColorMap;
+	private ColorMap mColorMap;
 	
-	public static void clearColorMap(){
+	public void clearColorMap(){
 		
 		mColorMap = null;
 	}
@@ -41,7 +41,7 @@ public class GDALBand implements Band{
 	 * 
 	 * @param filePath
 	 */
-	public static void applySLDColorMap(final String filePath){
+	public void applySLDColorMap(final String filePath){
 		
 		if(mColorMap == null ){
 			if(filePath != null){
@@ -130,6 +130,20 @@ public class GDALBand implements Band{
 	 */
 	public org.gdal.gdal.Band getBand(){
 		return this.band;
+	}
+	
+	/**
+	 * calculates the min/max values of a band
+	 * @param the band to use
+	 * @return an array of format {min,max}
+	 */
+	public double[] getMinMax(){
+		
+		double[] min = new double[1];
+        double[] max = new double[1];
+		this.band.ComputeStatistics(true, min, max);
+		
+		return new double[]{min[0],max[0]};
 	}
 
 	/**

@@ -21,8 +21,9 @@ class StaticHelper {
             loadLibrary("cufft");
             loadLibrary("cublas");
         }
-
-        Log.d(TAG, "Trying to get library list");
+        if(ALogUtil.log){        	
+        	Log.d(TAG, "Trying to get library list");
+        }
 
         try
         {
@@ -33,21 +34,29 @@ class StaticHelper {
         {
             Log.e(TAG, "OpenCV error: Cannot load info library for OpenCV");
         }
-
+        if(ALogUtil.log){   
         Log.d(TAG, "Library list: \"" + libs + "\"");
         Log.d(TAG, "First attempt to load libs");
+        }
         if (initOpenCVLibs(libs))
         {
+        	if(ALogUtil.log){   
             Log.d(TAG, "First attempt to load libs is OK");
+        	}
             String eol = System.getProperty("line.separator");
-            for (String str : Core.getBuildInformation().split(eol))
-                Log.i(TAG, str);
+            for (String str : Core.getBuildInformation().split(eol)){
+            	if(ALogUtil.log){               	
+            		Log.i(TAG, str);
+            	}
+            }
 
             result = true;
         }
         else
         {
-            Log.d(TAG, "First attempt to load libs fails");
+        	if(ALogUtil.log){   
+        		Log.d(TAG, "First attempt to load libs fails");
+        	}
             result = false;
         }
 
@@ -57,16 +66,21 @@ class StaticHelper {
     private static boolean loadLibrary(String Name)
     {
         boolean result = true;
-
-        Log.d(TAG, "Trying to load library " + Name);
+        if(ALogUtil.log){   
+        	Log.d(TAG, "Trying to load library " + Name);
+        } 
         try
         {
             System.loadLibrary(Name);
-            Log.d(TAG, "Library " + Name + " loaded");
+            if(ALogUtil.log){   
+            	Log.d(TAG, "Library " + Name + " loaded");
+            }
         }
         catch(UnsatisfiedLinkError e)
         {
-            Log.d(TAG, "Cannot load library \"" + Name + "\"");
+        	if(ALogUtil.log){          		
+        		Log.d(TAG, "Cannot load library \"" + Name + "\"");
+        	}
             e.printStackTrace();
             result &= false;
         }
@@ -76,13 +90,16 @@ class StaticHelper {
 
     private static boolean initOpenCVLibs(String Libs)
     {
-        Log.d(TAG, "Trying to init OpenCV libs");
-
+    	if(ALogUtil.log){   
+    		Log.d(TAG, "Trying to init OpenCV libs");
+    	}
         boolean result = true;
 
         if ((null != Libs) && (Libs.length() != 0))
         {
-            Log.d(TAG, "Trying to load libs by dependency list");
+        	if(ALogUtil.log){           		
+        		Log.d(TAG, "Trying to load libs by dependency list");
+        	}
             StringTokenizer splitter = new StringTokenizer(Libs, ";");
             while(splitter.hasMoreTokens())
             {

@@ -76,7 +76,7 @@ public class OpenCVAmplitudeRescaler extends AmplitudeRescaler implements Raster
  
 		final ByteBufferReader reader = new ByteBufferReader(raster.getData().array(), ByteOrder.nativeOrder());
 
-    	Log.d(OpenCVAmplitudeRescaler.class.getSimpleName(), "rawdata min "+minMax[0] +" max "+minMax[1]);
+//    	Log.d(OpenCVAmplitudeRescaler.class.getSimpleName(), "rawdata min "+minMax[0] +" max "+minMax[1]);
 
 
     	for (int i = 0; i < pixelAmount; i++) {

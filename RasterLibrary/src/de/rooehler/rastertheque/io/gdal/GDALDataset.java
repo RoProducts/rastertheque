@@ -64,6 +64,8 @@ public class GDALDataset implements RasterDataset{
         getBoundingBox();
         
         getMetadata();
+        
+		((GDALBand)this.getBands().get(0)).applySLDColorMap(mSource);
     }
     /**
      * convenience constructor mainly for tests and raster operations
@@ -122,8 +124,6 @@ public class GDALDataset implements RasterDataset{
 					buffer.array(), //buffer to write in
 					readBands);
 		}
-		
-		GDALBand.applySLDColorMap(mSource);
 		
 		return new Raster(query.getBounds() , getCRS(), target, query.getBands(), buffer, getMetadata());
 
@@ -260,6 +260,11 @@ public class GDALDataset implements RasterDataset{
 	@Override
 	public void close(){
 		
+		if(this.getBands() != null){
+			
+			((GDALBand)this.getBands().get(0)).clearColorMap();
+		}
+		
 		if (dataset != null) {
 			dataset.delete();
 			dataset = null;
@@ -269,7 +274,6 @@ public class GDALDataset implements RasterDataset{
 		mCRS = null;
 		mBands = null;
 		
-		GDALBand.clearColorMap();
 	}
 	
 	/**

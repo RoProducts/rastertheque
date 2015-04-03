@@ -65,7 +65,7 @@ public class MAmplitudeRescaler extends AmplitudeRescaler implements RasterOp, S
 			getMinMax(minMax, reader, pixelAmount, raster.getBands().get(0).datatype());
 			reader.init();
 		}
-    	Log.d(MAmplitudeRescaler.class.getSimpleName(), "rawdata min "+minMax[0] +" max "+minMax[1]);
+//    	Log.d(MAmplitudeRescaler.class.getSimpleName(), "rawdata min "+minMax[0] +" max "+minMax[1]);
 
     	for (int i = 0; i < pixelAmount; i++) {
         	
