@@ -6,9 +6,12 @@ import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Map;
 
+import android.util.Log;
+import de.rooehler.rastertheque.core.DataType;
 import de.rooehler.rastertheque.core.Raster;
 import de.rooehler.rastertheque.core.util.ByteBufferReader;
 import de.rooehler.rastertheque.core.util.ByteBufferReaderUtil;
+import de.rooehler.rastertheque.io.gdal.GDALBand;
 import de.rooehler.rastertheque.processing.RasterOp;
 import de.rooehler.rastertheque.processing.RasterOps;
 import de.rooehler.rastertheque.util.Hints;
@@ -84,6 +87,11 @@ public class MColorMap implements RasterOp, Serializable{
         for (int i = 0; i < pixelAmount; i++) {
 
         	double d = ByteBufferReaderUtil.getValue(reader, raster.getBands().get(0).datatype());
+        	
+        	if(d < 0 && raster.getBands().get(0) instanceof GDALBand && raster.getBands().get(0).datatype() == DataType.BYTE){
+        		
+        		d = ((int)d) & 0xff;
+        	}
 
     		pixels[i] = map.getColorAccordingToValue(d);
 

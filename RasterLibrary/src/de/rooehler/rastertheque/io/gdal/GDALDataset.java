@@ -125,6 +125,7 @@ public class GDALDataset implements RasterDataset{
 					readBands);
 		}
 		
+		
 		return new Raster(query.getBounds() , getCRS(), target, query.getBands(), buffer, getMetadata());
 
 	}

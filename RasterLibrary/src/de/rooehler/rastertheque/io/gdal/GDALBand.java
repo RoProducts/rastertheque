@@ -137,11 +137,11 @@ public class GDALBand implements Band{
 	 * @param the band to use
 	 * @return an array of format {min,max}
 	 */
-	public double[] getMinMax(){
+	public double[] getMinMax(boolean approximateForFasterExecution){
 		
 		double[] min = new double[1];
         double[] max = new double[1];
-		this.band.ComputeStatistics(true, min, max);
+		this.band.ComputeStatistics(approximateForFasterExecution, min, max);
 		
 		return new double[]{min[0],max[0]};
 	}

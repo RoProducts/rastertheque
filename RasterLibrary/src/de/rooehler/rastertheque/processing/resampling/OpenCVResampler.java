@@ -64,8 +64,8 @@ public class OpenCVResampler extends Resampler implements RasterOp, Serializable
 		final int srcWidth  = raster.getDimension().width();
 		final int srcHeight = raster.getDimension().height();
 		//define target dimension
-		final int dstWidth = (int) (srcWidth * scaleX);
-		final int dstHeight = (int) (srcHeight * scaleY);
+		final int dstWidth = (int) Math.rint(srcWidth * scaleX);
+		final int dstHeight = (int) Math.rint(srcHeight * scaleY);
 		
 		//select the interpolation method
 		int i = 0;		
