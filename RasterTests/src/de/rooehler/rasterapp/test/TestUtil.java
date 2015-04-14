@@ -64,9 +64,19 @@ public class TestUtil {
 
 		for (int l = 0; l < targetSize; l++) {	
 
-			byte r = r_band[l];
-			byte g = g_band[l];
-			byte b = b_band[l];
+			int r = r_band[l];
+			int g = g_band[l];
+			int b = b_band[l];
+			
+			if(r < 0){
+        		r = ((int)r) & 0xff;
+        	}
+        	if(g < 0){
+        		g = ((int)g) & 0xff;
+        	}
+        	if(b < 0){
+        		b = ((int)b) & 0xff;
+        	}
 
 			pixels[l] = 0xff000000 | ((((int) r) << 16) & 0xff0000) | ((((int) g) << 8) & 0xff00) | ((int) b);
 		}
