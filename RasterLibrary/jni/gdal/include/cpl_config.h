@@ -2,13 +2,22 @@
 /* port/cpl_config.h.in.  Generated from configure.in by autoheader.  */
 
 /* Define if you want to use pthreads based multiprocessing support */
-/* #undef CPL_MULTIPROC_PTHREAD */
+#define CPL_MULTIPROC_PTHREAD 1
 
 /* Define to 1 if you have the `PTHREAD_MUTEX_RECURSIVE' constant. */
 #define HAVE_PTHREAD_MUTEX_RECURSIVE 1
 
+/* Define to 1 if you have the `PTHREAD_MUTEX_ADAPTIVE_NP' constant. */
+/* #undef HAVE_PTHREAD_MUTEX_ADAPTIVE_NP */
+
+/* Define to 1 if you have the `pthread_spinlock_t' type. */
+/* #undef HAVE_PTHREAD_SPINLOCK */
+
+/* Define to 1 if you have the 5 args `mremap' function. */
+/* #undef HAVE_5ARGS_MREMAP */
+
 /* --prefix directory for GDAL install */
-#define GDAL_PREFIX "/Users/robertoehler/Documents/git/gdal/gdal/external/gdal"
+#define GDAL_PREFIX "/Users/robertoehler/Desktop/GDALBuild//external/gdal"
 
 /* Define to 1 if you have the <assert.h> header file. */
 #define HAVE_ASSERT_H 1
@@ -50,7 +59,7 @@
 /* Define if you have the iconv() function and it works. */
 /* #undef HAVE_ICONV */
 
-/* Define as 0 or 1 according to the floating point format suported by the
+/* Define as 0 or 1 according to the floating point format supported by the
    machine */
 #define HAVE_IEEEFP 1
 
@@ -141,6 +150,12 @@
 /* Define to 1 if you have the `vfork' function. */
 #define HAVE_VFORK 1
 
+/* Define to 1 if you have the `mmap' function. */
+#define HAVE_MMAP 1
+
+/* Define to 1 if you have the statvfs' function. */
+/* #undef HAVE_STATVFS */
+
 /* Define to 1 if you have the `lstat' function. */
 #define HAVE_LSTAT 1
 
@@ -215,7 +230,13 @@
 /* Define to 1 if you have the `getaddrinfo' function. */
 #define HAVE_GETADDRINFO 1
 
+/* Define to 1 if you have the _SC_PHYS_PAGES' constant. */
+#define HAVE_SC_PHYS_PAGES 1
+
 /* Use this file to override settings in instances where you're doing FAT compiles
-   on Apple.  It is currently off by default because it doesn't seem to work with 
-   newish ( XCode >= 3/28/11) XCodes */
+   on Apple.  It is currently off by default because it doesn't seem to work with
+   XCode >= 3/28/11 */
 /* #include "cpl_config_extras.h" */
+
+/* Define to 1 if you have the `uselocale' function. */
+/* #undef HAVE_USELOCALE */

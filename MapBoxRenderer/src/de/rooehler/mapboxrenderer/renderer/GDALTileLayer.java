@@ -316,9 +316,13 @@ public class GDALTileLayer extends TileLayer {
 			boolean containsColorMap = raster.getBands().get(0).colorMap() != null;
 			
 			if(containsColorMap){
+				
         		RasterOps.execute(raster, RasterOps.COLORMAP, renderParams, null, null);
+        		
         	}else{
+        		
         		RasterOps.execute(raster, RasterOps.AMPLITUDE_RESCALING, renderParams, null, null);
+        		
         	}  
 			
 			final int width  = raster.getDimension().width();
