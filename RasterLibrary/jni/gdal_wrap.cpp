@@ -272,6 +272,7 @@ using namespace std;
 #include "cpl_string.h"
 #include "cpl_multiproc.h"
 #include "cpl_http.h"
+#include "cpl_vsi_error.h"
 
 #include "gdal.h"
 #include "gdal_priv.h"
@@ -287,9 +288,48 @@ typedef void GDALRasterAttributeTableShadow;
 typedef void GDALTransformerInfoShadow;
 typedef void GDALAsyncReaderShadow;
 
+
+#ifdef DEBUG
+typedef struct OGRSpatialReferenceHS OSRSpatialReferenceShadow;
+typedef struct OGRLayerHS OGRLayerShadow;
+typedef struct OGRGeometryHS OGRGeometryShadow;
+#else
+typedef void OSRSpatialReferenceShadow;
+typedef void OGRLayerShadow;
+typedef void OGRGeometryShadow;
+#endif
+typedef struct OGRStyleTableHS OGRStyleTableShadow;
+
+
 /* use this to not return the int returned by GDAL */
 typedef int RETURN_NONE;
+/* return value that is used for VSI methods that return -1 on error (and set errno) */
+typedef int VSI_RETVAL;
 
+
+static int bUseExceptions=1;
+
+void CPL_STDCALL
+VeryQuietErrorHandler(CPLErr eclass, int code, const char *msg )
+{
+  /* If the error class is CE_Fatal, we want to have a message issued
+     because the CPL support code does an abort() before any exception
+     can be generated */
+  if (eclass == CE_Fatal ) {
+    CPLDefaultErrorHandler(eclass, code, msg );
+  }
+}
+
+
+void UseExceptions() {
+  bUseExceptions = 1;
+  CPLSetErrorHandler( (CPLErrorHandler) VeryQuietErrorHandler );
+}
+
+void DontUseExceptions() {
+  bUseExceptions = 0;
+  CPLSetErrorHandler( CPLDefaultErrorHandler );
+}
 
 
     static CPLErr BandBlockReadWrite_Validate(GDALRasterBandH self, void *nioBuffer, long nioBufferSize)
@@ -317,7 +357,7 @@ typedef int RETURN_NONE;
 static
 GIntBig ComputeDatasetRasterIOSize (int buf_xsize, int buf_ysize, int nPixelSize,
                                 int nBands, int* bandMap, int nBandMapArrayLength,
-                                int nPixelSpace, int nLineSpace, int nBandSpace,
+                                GIntBig nPixelSpace, GIntBig nLineSpace, GIntBig nBandSpace,
                                 int bSpacingShouldBeMultipleOfPixelSize );
 
 static CPLErr DatasetRasterIO( GDALDatasetH hDS, GDALRWFlag eRWFlag,
@@ -338,7 +378,7 @@ static CPLErr DatasetRasterIO( GDALDatasetH hDS, GDALRWFlag eRWFlag,
               "Java array type is not compatible with GDAL data type");
       return CE_Failure;
   }
-    
+
   if (band_list == 0)
   {
       if (pband_list != NULL)
@@ -364,7 +404,7 @@ static CPLErr DatasetRasterIO( GDALDatasetH hDS, GDALRWFlag eRWFlag,
               "Buffer is too small");
       return CE_Failure;
   }
-  return  GDALDatasetRasterIO( hDS, GF_Read, xoff, yoff, xsize, ysize,
+  return  GDALDatasetRasterIO( hDS, eRWFlag, xoff, yoff, xsize, ysize,
                                 regularArray, buf_xsize, buf_ysize,
                                 buf_type, band_list, pband_list, nPixelSpace, nLineSpace, nBandSpace );
 
@@ -375,8 +415,8 @@ static CPLErr DatasetRasterIO( GDALDatasetH hDS, GDALRWFlag eRWFlag,
 
 static
 GIntBig ComputeBandRasterIOSize (int buf_xsize, int buf_ysize, int nPixelSize,
-                             int nPixelSpace, int nLineSpace,
-                             int bSpacingShouldBeMultipleOfPixelSize );
+                                 GIntBig nPixelSpace, GIntBig nLineSpace,
+                                 int bSpacingShouldBeMultipleOfPixelSize );
 
 static CPLErr BandRasterIO( GDALRasterBandH hBand, GDALRWFlag eRWFlag,
                             int xoff, int yoff, int xsize, int ysize,
@@ -395,7 +435,7 @@ static CPLErr BandRasterIO( GDALRasterBandH hBand, GDALRWFlag eRWFlag,
                 "Java array type is not compatible with GDAL data type");
         return CE_Failure;
     }
-  
+
     GIntBig nMinBufferSizeInBytes = ComputeBandRasterIOSize (
                             buf_xsize, buf_ysize, GDALGetDataTypeSize(buf_type) / 8,
                             nPixelSpace, nLineSpace, sizeof_ctype > 1 );
@@ -1141,11 +1181,17 @@ typedef char retStringAndCPLFree;
 
 retStringAndCPLFree* EscapeString(int len, unsigned char *bin_string , int scheme) {
     return CPLEscapeString((const char*)bin_string, len, scheme);
-} 
+}
 
 retStringAndCPLFree* EscapeString(const char* str, int scheme) {
     return CPLEscapeString(str, (str) ? strlen(str) : 0, scheme);
-} 
+}
+
+
+char **wrapper_VSIReadDirEx( const char * utf8_path, int nMaxFiles = 0 )
+{
+    return VSIReadDirEx(utf8_path, nMaxFiles);
+}
 
 
 const char *wrapper_CPLGetConfigOption( const char * pszKey, const char * pszDefault = NULL )
@@ -1171,7 +1217,7 @@ int wrapper_HasThreadSupport()
 }
 
 SWIGINTERN CPLXMLNode *new_CPLXMLNode__SWIG_0(char const *pszString){
-        return CPLParseXMLString( pszString );     
+        return CPLParseXMLString( pszString );
     }
 SWIGINTERN CPLXMLNode *new_CPLXMLNode__SWIG_1(CPLXMLNodeType eType,char const *pszText){
         return CPLCreateXMLNode(NULL, eType, pszText);
@@ -1195,7 +1241,7 @@ SWIGINTERN CPLXMLNode *CPLXMLNode_GetXMLNode(CPLXMLNode *self,char const *pszPat
         return CPLGetXMLNode( self, pszPath );
     }
 SWIGINTERN char const *CPLXMLNode_GetXMLValue(CPLXMLNode *self,char const *pszPath,char const *pszDefault){
-        return CPLGetXMLValue( self, pszPath, pszDefault );                    
+        return CPLGetXMLValue( self, pszPath, pszDefault );
     }
 SWIGINTERN void CPLXMLNode_AddXMLChild(CPLXMLNode *self,CPLXMLNode *psChild){
         CPLAddXMLChild( self, CPLCloneXMLTree(psChild) );
@@ -1207,10 +1253,10 @@ SWIGINTERN CPLXMLNode *CPLXMLNode_Clone(CPLXMLNode *self){
         return CPLCloneXMLTree( self );
     }
 SWIGINTERN int CPLXMLNode_SetXMLValue(CPLXMLNode *self,char const *pszPath,char const *pszValue){
-        return CPLSetXMLValue( self,  pszPath, pszValue );           
+        return CPLSetXMLValue( self,  pszPath, pszValue );
     }
 SWIGINTERN void CPLXMLNode_StripXMLNamespace(CPLXMLNode *self,char const *pszNamespace,int bRecurse){
-        CPLStripXMLNamespace( self, pszNamespace, bRecurse );                  
+        CPLStripXMLNamespace( self, pszNamespace, bRecurse );
     }
 SWIGINTERN char const *GDALMajorObjectShadow_GetDescription(GDALMajorObjectShadow *self){
     return GDALGetDescription( self );
@@ -1244,33 +1290,33 @@ SWIGINTERN CPLErr GDALMajorObjectShadow_SetMetadataItem__SWIG_0(GDALMajorObjectS
   }
 SWIGINTERN GDALDatasetShadow *GDALDriverShadow_Create__SWIG_0(GDALDriverShadow *self,char const *utf8_path,int xsize,int ysize,int bands=1,GDALDataType eType=GDT_Byte,char **options=0){
 
-    GDALDatasetShadow* ds = (GDALDatasetShadow*) GDALCreate(    self, 
-                                                                utf8_path, 
-                                                                xsize, 
-                                                                ysize, 
-                                                                bands, 
-                                                                eType, 
+    GDALDatasetShadow* ds = (GDALDatasetShadow*) GDALCreate(    self,
+                                                                utf8_path,
+                                                                xsize,
+                                                                ysize,
+                                                                bands,
+                                                                eType,
                                                                 options );
     return ds;
   }
 SWIGINTERN GDALDatasetShadow *GDALDriverShadow_CreateCopy__SWIG_0(GDALDriverShadow *self,char const *utf8_path,GDALDatasetShadow *src,int strict=1,char **options=0,GDALProgressFunc callback=NULL,void *callback_data=NULL){
 
-    GDALDatasetShadow *ds = (GDALDatasetShadow*) GDALCreateCopy(    self, 
-                                                                    utf8_path, 
-                                                                    src, 
-                                                                    strict, 
-                                                                    options, 
-                                                                    callback, 
+    GDALDatasetShadow *ds = (GDALDatasetShadow*) GDALCreateCopy(    self,
+                                                                    utf8_path,
+                                                                    src,
+                                                                    strict,
+                                                                    options,
+                                                                    callback,
                                                                     callback_data );
     return ds;
   }
-SWIGINTERN int GDALDriverShadow_Delete(GDALDriverShadow *self,char const *utf8_path){
+SWIGINTERN CPLErr GDALDriverShadow_Delete(GDALDriverShadow *self,char const *utf8_path){
     return GDALDeleteDataset( self, utf8_path );
   }
-SWIGINTERN int GDALDriverShadow_Rename(GDALDriverShadow *self,char const *newName,char const *oldName){
+SWIGINTERN CPLErr GDALDriverShadow_Rename(GDALDriverShadow *self,char const *newName,char const *oldName){
     return GDALRenameDataset( self, newName, oldName );
   }
-SWIGINTERN int GDALDriverShadow_CopyFiles(GDALDriverShadow *self,char const *newName,char const *oldName){
+SWIGINTERN CPLErr GDALDriverShadow_CopyFiles(GDALDriverShadow *self,char const *newName,char const *oldName){
     return GDALCopyDatasetFiles( self, newName, oldName );
   }
 SWIGINTERN int GDALDriverShadow_Register(GDALDriverShadow *self){
@@ -1349,7 +1395,7 @@ const char * GDAL_GCP_Info_get( GDAL_GCP *gcp ) {
   return gcp->pszInfo;
 }
 void GDAL_GCP_Info_set( GDAL_GCP *gcp, const char * pszInfo ) {
-  if ( gcp->pszInfo ) 
+  if ( gcp->pszInfo )
     CPLFree( gcp->pszInfo );
   gcp->pszInfo = CPLStrdup(pszInfo);
 }
@@ -1357,85 +1403,26 @@ const char * GDAL_GCP_Id_get( GDAL_GCP *gcp ) {
   return gcp->pszId;
 }
 void GDAL_GCP_Id_set( GDAL_GCP *gcp, const char * pszId ) {
-  if ( gcp->pszId ) 
+  if ( gcp->pszId )
     CPLFree( gcp->pszId );
   gcp->pszId = CPLStrdup(pszId);
 }
 
 
-
-/* Duplicate, but transposed names for C# because 
-*  the C# module outputs backwards names
-*/
-double GDAL_GCP_get_GCPX( GDAL_GCP *gcp ) {
-  return gcp->dfGCPX;
-}
-void GDAL_GCP_set_GCPX( GDAL_GCP *gcp, double dfGCPX ) {
-  gcp->dfGCPX = dfGCPX;
-}
-double GDAL_GCP_get_GCPY( GDAL_GCP *gcp ) {
-  return gcp->dfGCPY;
-}
-void GDAL_GCP_set_GCPY( GDAL_GCP *gcp, double dfGCPY ) {
-  gcp->dfGCPY = dfGCPY;
-}
-double GDAL_GCP_get_GCPZ( GDAL_GCP *gcp ) {
-  return gcp->dfGCPZ;
-}
-void GDAL_GCP_set_GCPZ( GDAL_GCP *gcp, double dfGCPZ ) {
-  gcp->dfGCPZ = dfGCPZ;
-}
-double GDAL_GCP_get_GCPPixel( GDAL_GCP *gcp ) {
-  return gcp->dfGCPPixel;
-}
-void GDAL_GCP_set_GCPPixel( GDAL_GCP *gcp, double dfGCPPixel ) {
-  gcp->dfGCPPixel = dfGCPPixel;
-}
-double GDAL_GCP_get_GCPLine( GDAL_GCP *gcp ) {
-  return gcp->dfGCPLine;
-}
-void GDAL_GCP_set_GCPLine( GDAL_GCP *gcp, double dfGCPLine ) {
-  gcp->dfGCPLine = dfGCPLine;
-}
-const char * GDAL_GCP_get_Info( GDAL_GCP *gcp ) {
-  return gcp->pszInfo;
-}
-void GDAL_GCP_set_Info( GDAL_GCP *gcp, const char * pszInfo ) {
-  if ( gcp->pszInfo ) 
-    CPLFree( gcp->pszInfo );
-  gcp->pszInfo = CPLStrdup(pszInfo);
-}
-const char * GDAL_GCP_get_Id( GDAL_GCP *gcp ) {
-  return gcp->pszId;
-}
-void GDAL_GCP_set_Id( GDAL_GCP *gcp, const char * pszId ) {
-  if ( gcp->pszId ) 
-    CPLFree( gcp->pszId );
-  gcp->pszId = CPLStrdup(pszId);
-}
-
-
-
-int wrapper_GDALGCPsToGeoTransform( int nGCPs, GDAL_GCP const * pGCPs, 
+int wrapper_GDALGCPsToGeoTransform( int nGCPs, GDAL_GCP const * pGCPs,
     	                             double argout[6], int bApproxOK = 1 )
 {
     return GDALGCPsToGeoTransform(nGCPs, pGCPs, argout, bApproxOK);
 }
 
 
-/* Returned size is in bytes or 0 if an error occured */
+/* Returned size is in bytes or 0 if an error occurred. */
 static
 GIntBig ComputeDatasetRasterIOSize (int buf_xsize, int buf_ysize, int nPixelSize,
                                 int nBands, int* bandMap, int nBandMapArrayLength,
-                                int nPixelSpace, int nLineSpace, int nBandSpace,
+                                GIntBig nPixelSpace, GIntBig nLineSpace, GIntBig nBandSpace,
                                 int bSpacingShouldBeMultipleOfPixelSize )
 {
-#if SIZEOF_VOIDP == 8
-    const GIntBig MAX_INT = (((GIntBig)0x7fffffff) << 32) | 0xffffffff;
-#else
-    const GIntBig MAX_INT = 0x7fffffff;
-#endif
-    const GIntBig MAX_INT32 = 0x7fffffff;
     if (buf_xsize <= 0 || buf_ysize <= 0)
     {
         CPLError(CE_Failure, CPLE_IllegalArg, "Illegal values for buffer size");
@@ -1464,11 +1451,6 @@ GIntBig ComputeDatasetRasterIOSize (int buf_xsize, int buf_ysize, int nPixelSize
 
     if( nLineSpace == 0 )
     {
-        if (nPixelSpace > MAX_INT32 / buf_xsize)
-        {
-            CPLError(CE_Failure, CPLE_IllegalArg, "Integer overflow for nLineSpace");
-            return 0;
-        }
         nLineSpace = nPixelSpace * buf_xsize;
     }
     else if ( bSpacingShouldBeMultipleOfPixelSize && (nLineSpace % nPixelSize) != 0 )
@@ -1479,11 +1461,6 @@ GIntBig ComputeDatasetRasterIOSize (int buf_xsize, int buf_ysize, int nPixelSize
 
     if( nBandSpace == 0 )
     {
-        if (nLineSpace > MAX_INT32 / buf_ysize)
-        {
-            CPLError(CE_Failure, CPLE_IllegalArg, "Integer overflow for nBandSpace");
-            return 0;
-        }
         nBandSpace = nLineSpace * buf_ysize;
     }
     else if ( bSpacingShouldBeMultipleOfPixelSize && (nBandSpace % nPixelSize) != 0 )
@@ -1499,11 +1476,13 @@ GIntBig ComputeDatasetRasterIOSize (int buf_xsize, int buf_ysize, int nPixelSize
     }
 
     GIntBig nRet = (GIntBig)(buf_ysize - 1) * nLineSpace + (GIntBig)(buf_xsize - 1) * nPixelSpace + (GIntBig)(nBands - 1) * nBandSpace + nPixelSize;
-    if (nRet > MAX_INT)
+#if SIZEOF_VOIDP == 4
+    if (nRet > INT_MAX)
     {
         CPLError(CE_Failure, CPLE_IllegalArg, "Integer overflow");
         return 0;
     }
+#endif
 
     return nRet;
 }
@@ -1618,13 +1597,13 @@ SWIGINTERN int GDALDatasetShadow_BuildOverviews__SWIG_0(GDALDatasetShadow *self,
 
 
 
-    return GDALBuildOverviews(  self, 
-                                resampling ? resampling : "NEAREST", 
-                                overviewlist, 
-                                pOverviews, 
-                                0, 
-                                0, 
-                                callback, 
+    return GDALBuildOverviews(  self,
+                                resampling ? resampling : "NEAREST",
+                                overviewlist,
+                                pOverviews,
+                                0,
+                                0,
+                                callback,
                                 callback_data);
   }
 SWIGINTERN int GDALDatasetShadow_GetGCPCount(GDALDatasetShadow *self){
@@ -1651,6 +1630,98 @@ SWIGINTERN CPLErr GDALDatasetShadow_CreateMaskBand(GDALDatasetShadow *self,int n
   }
 SWIGINTERN char **GDALDatasetShadow_GetFileList(GDALDatasetShadow *self){
     return GDALGetFileList( self );
+  }
+SWIGINTERN OGRLayerShadow *GDALDatasetShadow_CreateLayer__SWIG_0(GDALDatasetShadow *self,char const *name,OSRSpatialReferenceShadow *srs=NULL,OGRwkbGeometryType geom_type=wkbUnknown,char **options=0){
+    OGRLayerShadow* layer = (OGRLayerShadow*) GDALDatasetCreateLayer( self,
+                                  name,
+                                  srs,
+                                  geom_type,
+                                  options);
+    return layer;
+  }
+SWIGINTERN OGRLayerShadow *GDALDatasetShadow_CopyLayer__SWIG_0(GDALDatasetShadow *self,OGRLayerShadow *src_layer,char const *new_name,char **options=0){
+    OGRLayerShadow* layer = (OGRLayerShadow*) GDALDatasetCopyLayer( self,
+                                                      src_layer,
+                                                      new_name,
+                                                      options);
+    return layer;
+  }
+SWIGINTERN OGRErr GDALDatasetShadow_DeleteLayer(GDALDatasetShadow *self,int index){
+    return GDALDatasetDeleteLayer(self, index);
+  }
+
+
+#include "ogr_core.h"
+static char const *
+OGRErrMessages( int rc ) {
+  switch( rc ) {
+  case OGRERR_NONE:
+    return "OGR Error: None";
+  case OGRERR_NOT_ENOUGH_DATA:
+    return "OGR Error: Not enough data to deserialize";
+  case OGRERR_NOT_ENOUGH_MEMORY:
+    return "OGR Error: Not enough memory";
+  case OGRERR_UNSUPPORTED_GEOMETRY_TYPE:
+    return "OGR Error: Unsupported geometry type";
+  case OGRERR_UNSUPPORTED_OPERATION:
+    return "OGR Error: Unsupported operation";
+  case OGRERR_CORRUPT_DATA:
+    return "OGR Error: Corrupt data";
+  case OGRERR_FAILURE:
+    return "OGR Error: General Error";
+  case OGRERR_UNSUPPORTED_SRS:
+    return "OGR Error: Unsupported SRS";
+  case OGRERR_INVALID_HANDLE:
+    return "OGR Error: Invalid handle";
+  case OGRERR_NON_EXISTING_FEATURE:
+    return "OGR Error: Non existing feature";
+  default:
+    return "OGR Error: Unknown";
+  }
+}
+
+SWIGINTERN int GDALDatasetShadow_GetLayerCount(GDALDatasetShadow *self){
+    return GDALDatasetGetLayerCount(self);
+  }
+SWIGINTERN OGRLayerShadow *GDALDatasetShadow_GetLayerByIndex(GDALDatasetShadow *self,int index){
+
+
+
+    OGRLayerShadow* layer = (OGRLayerShadow*) GDALDatasetGetLayer(self, index);
+    return layer;
+  }
+SWIGINTERN OGRLayerShadow *GDALDatasetShadow_GetLayerByName(GDALDatasetShadow *self,char const *layer_name){
+    OGRLayerShadow* layer = (OGRLayerShadow*) GDALDatasetGetLayerByName(self, layer_name);
+    return layer;
+  }
+SWIGINTERN bool GDALDatasetShadow_TestCapability(GDALDatasetShadow *self,char const *cap){
+    return (GDALDatasetTestCapability(self, cap) > 0);
+  }
+SWIGINTERN OGRLayerShadow *GDALDatasetShadow_ExecuteSQL__SWIG_0(GDALDatasetShadow *self,char const *statement,OGRGeometryShadow *spatialFilter=NULL,char const *dialect=""){
+    OGRLayerShadow* layer = (OGRLayerShadow*) GDALDatasetExecuteSQL(self,
+                                                      statement,
+                                                      spatialFilter,
+                                                      dialect);
+    return layer;
+  }
+SWIGINTERN void GDALDatasetShadow_ReleaseResultSet(GDALDatasetShadow *self,OGRLayerShadow *layer){
+    GDALDatasetReleaseResultSet(self, layer);
+  }
+SWIGINTERN OGRStyleTableShadow *GDALDatasetShadow_GetStyleTable(GDALDatasetShadow *self){
+    return (OGRStyleTableShadow*) GDALDatasetGetStyleTable(self);
+  }
+SWIGINTERN void GDALDatasetShadow_SetStyleTable(GDALDatasetShadow *self,OGRStyleTableShadow *table){
+    if( table != NULL )
+        GDALDatasetSetStyleTable(self, (OGRStyleTableH) table);
+  }
+SWIGINTERN OGRErr GDALDatasetShadow_StartTransaction__SWIG_0(GDALDatasetShadow *self,int force=FALSE){
+    return GDALDatasetStartTransaction(self, force);
+  }
+SWIGINTERN OGRErr GDALDatasetShadow_CommitTransaction(GDALDatasetShadow *self){
+    return GDALDatasetCommitTransaction(self);
+  }
+SWIGINTERN OGRErr GDALDatasetShadow_RollbackTransaction(GDALDatasetShadow *self){
+    return GDALDatasetRollbackTransaction(self);
   }
 SWIGINTERN CPLErr GDALDatasetShadow_ReadRaster_Direct__SWIG_0(GDALDatasetShadow *self,int xoff,int yoff,int xsize,int ysize,int buf_xsize,int buf_ysize,GDALDataType buf_type,void *nioBuffer,long nioBufferSize,int band_list,int *pband_list,int nPixelSpace=0,int nLineSpace=0,int nBandSpace=0){
     return DatasetRasterIO( (GDALDatasetH)self, GF_Read,
@@ -1784,18 +1855,12 @@ int GDALDatasetShadow_RasterCount_get( GDALDatasetShadow *h ) {
 }
 
 
-/* Returned size is in bytes or 0 if an error occured */
+/* Returned size is in bytes or 0 if an error occurred. */
 static
 GIntBig ComputeBandRasterIOSize (int buf_xsize, int buf_ysize, int nPixelSize,
-                             int nPixelSpace, int nLineSpace,
-                             int bSpacingShouldBeMultipleOfPixelSize )
+                                 GIntBig nPixelSpace, GIntBig nLineSpace,
+                                 int bSpacingShouldBeMultipleOfPixelSize )
 {
-#if SIZEOF_VOIDP == 8
-    const GIntBig MAX_INT = (((GIntBig)0x7fffffff) << 32) | 0xffffffff;
-#else
-    const GIntBig MAX_INT = 0x7fffffff;
-#endif
-    const GIntBig MAX_INT32 = 0x7fffffff;
     if (buf_xsize <= 0 || buf_ysize <= 0)
     {
         CPLError(CE_Failure, CPLE_IllegalArg, "Illegal values for buffer size");
@@ -1824,11 +1889,6 @@ GIntBig ComputeBandRasterIOSize (int buf_xsize, int buf_ysize, int nPixelSize,
 
     if( nLineSpace == 0 )
     {
-        if (nPixelSpace > MAX_INT32 / buf_xsize)
-        {
-            CPLError(CE_Failure, CPLE_IllegalArg, "Integer overflow for nLineSpace");
-            return 0;
-        }
         nLineSpace = nPixelSpace * buf_xsize;
     }
     else if ( bSpacingShouldBeMultipleOfPixelSize && (nLineSpace % nPixelSize) != 0 )
@@ -1838,15 +1898,20 @@ GIntBig ComputeBandRasterIOSize (int buf_xsize, int buf_ysize, int nPixelSize,
     }
 
     GIntBig nRet = (GIntBig)(buf_ysize - 1) * nLineSpace + (GIntBig)(buf_xsize - 1) * nPixelSpace + nPixelSize;
-    if (nRet > MAX_INT)
+#if SIZEOF_VOIDP == 4
+    if (nRet > INT_MAX)
     {
         CPLError(CE_Failure, CPLE_IllegalArg, "Integer overflow");
         return 0;
     }
+#endif
 
     return nRet;
 }
 
+SWIGINTERN GDALDatasetShadow *GDALRasterBandShadow_GetDataset(GDALRasterBandShadow *self){
+    return (GDALDatasetShadow*) GDALGetBandDataset(self);
+  }
 SWIGINTERN int GDALRasterBandShadow_GetBand(GDALRasterBandShadow *self){
     return GDALGetBandNumber(self);
   }
@@ -1870,6 +1935,9 @@ SWIGINTERN void GDALRasterBandShadow_GetNoDataValue(GDALRasterBandShadow *self,d
   }
 SWIGINTERN CPLErr GDALRasterBandShadow_SetNoDataValue(GDALRasterBandShadow *self,double d){
     return GDALSetRasterNoDataValue( self, d );
+  }
+SWIGINTERN CPLErr GDALRasterBandShadow_DeleteNoDataValue(GDALRasterBandShadow *self){
+    return GDALDeleteRasterNoDataValue( self );
   }
 SWIGINTERN char const *GDALRasterBandShadow_GetUnitType(GDALRasterBandShadow *self){
       return GDALGetRasterUnitType( self );
@@ -1906,7 +1974,7 @@ SWIGINTERN CPLErr GDALRasterBandShadow_GetStatistics(GDALRasterBandShadow *self,
     if (max) *max = 0;
     if (mean) *mean = 0;
     if (stddev) *stddev = -1; /* This is the only way to recognize from Python if GetRasterStatistics() has updated the values */
-    return GDALGetRasterStatistics( self, approx_ok, force, 
+    return GDALGetRasterStatistics( self, approx_ok, force,
 				    min, max, mean, stddev );
   }
 SWIGINTERN CPLErr GDALRasterBandShadow_ComputeStatistics__SWIG_0(GDALRasterBandShadow *self,bool approx_ok,double *min=NULL,double *max=NULL,double *mean=NULL,double *stddev=NULL,GDALProgressFunc callback=NULL,void *callback_data=NULL){
@@ -1928,7 +1996,7 @@ SWIGINTERN void GDALRasterBandShadow_ComputeRasterMinMax__SWIG_0(GDALRasterBandS
     GDALComputeRasterMinMax( self, approx_ok, argout );
   }
 SWIGINTERN void GDALRasterBandShadow_ComputeBandStats__SWIG_0(GDALRasterBandShadow *self,double argout[2],int samplestep=1){
-    GDALComputeBandStats( self, samplestep, argout+0, argout+1, 
+    GDALComputeBandStats( self, samplestep, argout+0, argout+1,
                           NULL, NULL );
   }
 SWIGINTERN CPLErr GDALRasterBandShadow_Fill__SWIG_0(GDALRasterBandShadow *self,double real_fill,double imag_fill=0.0){
@@ -1949,7 +2017,7 @@ SWIGINTERN int GDALRasterBandShadow_SetRasterColorTable(GDALRasterBandShadow *se
 SWIGINTERN int GDALRasterBandShadow_SetColorTable(GDALRasterBandShadow *self,GDALColorTableShadow *arg){
     return GDALSetRasterColorTable( self, arg );
   }
-SWIGINTERN GDALRasterAttributeTableShadow *GDALRasterBandShadow_GetDefaultRAT(GDALRasterBandShadow *self){ 
+SWIGINTERN GDALRasterAttributeTableShadow *GDALRasterBandShadow_GetDefaultRAT(GDALRasterBandShadow *self){
       return (GDALRasterAttributeTableShadow*) GDALGetDefaultRAT(self);
   }
 SWIGINTERN int GDALRasterBandShadow_SetDefaultRAT(GDALRasterBandShadow *self,GDALRasterAttributeTableShadow *table){
@@ -1965,7 +2033,7 @@ SWIGINTERN CPLErr GDALRasterBandShadow_CreateMaskBand(GDALRasterBandShadow *self
       return GDALCreateMaskBand( self, nFlags );
   }
 SWIGINTERN CPLErr GDALRasterBandShadow_SetDefaultHistogram(GDALRasterBandShadow *self,double min,double max,int buckets_in,int *panHistogram_in){
-    return GDALSetDefaultHistogram( self, min, max, 
+    return GDALSetDefaultHistogram( self, min, max,
     	   			    buckets_in, panHistogram_in );
 }
 SWIGINTERN bool GDALRasterBandShadow_HasArbitraryOverviews(GDALRasterBandShadow *self){
@@ -2098,28 +2166,28 @@ SWIGINTERN CPLErr GDALRasterBandShadow_WriteBlock_Direct(GDALRasterBandShadow *s
     return GDALWriteBlock(self, nXBlockOff, nYBlockOff, nioBuffer);
   }
 SWIGINTERN CPLErr GDALRasterBandShadow_GetHistogram__SWIG_0(GDALRasterBandShadow *self,double min,double max,int buckets,int *panHistogram,bool include_out_of_range,bool approx_ok,GDALProgressFunc callback,void *callback_data){
-    CPLErrorReset(); 
+    CPLErrorReset();
     CPLErr err = GDALGetRasterHistogram( self, min, max, buckets, panHistogram,
                                          include_out_of_range, approx_ok,
                                          callback, callback_data );
     return err;
   }
 SWIGINTERN CPLErr GDALRasterBandShadow_GetHistogram__SWIG_1(GDALRasterBandShadow *self,double min,double max,int buckets,int *panHistogram,bool include_out_of_range,bool approx_ok){
-    CPLErrorReset(); 
+    CPLErrorReset();
     CPLErr err = GDALGetRasterHistogram( self, min, max, buckets, panHistogram,
                                          include_out_of_range, approx_ok,
                                          NULL, NULL);
     return err;
   }
 SWIGINTERN CPLErr GDALRasterBandShadow_GetHistogram__SWIG_2(GDALRasterBandShadow *self,double min,double max,int buckets,int *panHistogram){
-    CPLErrorReset(); 
+    CPLErrorReset();
     CPLErr err = GDALGetRasterHistogram( self, min, max, buckets, panHistogram,
                                          0, 1,
                                          NULL, NULL);
     return err;
   }
 SWIGINTERN CPLErr GDALRasterBandShadow_GetHistogram__SWIG_3(GDALRasterBandShadow *self,int buckets,int *panHistogram){
-    CPLErrorReset(); 
+    CPLErrorReset();
     CPLErr err = GDALGetRasterHistogram( self, -0.5, 255.5, buckets, panHistogram,
                                          0, 1,
                                          NULL, NULL);
@@ -2127,7 +2195,7 @@ SWIGINTERN CPLErr GDALRasterBandShadow_GetHistogram__SWIG_3(GDALRasterBandShadow
   }
 SWIGINTERN CPLErr GDALRasterBandShadow_GetDefaultHistogram__SWIG_0(GDALRasterBandShadow *self,double *min_ret,double *max_ret,int *buckets_ret,int **ppanHistogram,bool force=1,GDALProgressFunc callback=NULL,void *callback_data=NULL){
       return GDALGetDefaultHistogram( self, min_ret, max_ret, buckets_ret,
-                                      ppanHistogram, force, 
+                                      ppanHistogram, force,
                                       callback, callback_data );
   }
 
@@ -2166,7 +2234,7 @@ SWIGINTERN void GDALColorTableShadow_CreateColorRamp(GDALColorTableShadow *self,
         GDALCreateColorRamp(self, nStartIndex, startcolor, nEndIndex, endcolor);
     }
 SWIGINTERN GDALRasterAttributeTableShadow *new_GDALRasterAttributeTableShadow(){
-        return (GDALRasterAttributeTableShadow*) 
+        return (GDALRasterAttributeTableShadow*)
 		GDALCreateRasterAttributeTable();
     }
 SWIGINTERN void delete_GDALRasterAttributeTableShadow(GDALRasterAttributeTableShadow *self){
@@ -2175,10 +2243,10 @@ SWIGINTERN void delete_GDALRasterAttributeTableShadow(GDALRasterAttributeTableSh
 SWIGINTERN GDALRasterAttributeTableShadow *GDALRasterAttributeTableShadow_Clone(GDALRasterAttributeTableShadow *self){
         return (GDALRasterAttributeTableShadow*) GDALRATClone(self);
     }
-SWIGINTERN int GDALRasterAttributeTableShadow_GetColumnCount(GDALRasterAttributeTableShadow *self){ 
+SWIGINTERN int GDALRasterAttributeTableShadow_GetColumnCount(GDALRasterAttributeTableShadow *self){
         return GDALRATGetColumnCount( self );
     }
-SWIGINTERN char const *GDALRasterAttributeTableShadow_GetNameOfCol(GDALRasterAttributeTableShadow *self,int iCol){ 
+SWIGINTERN char const *GDALRasterAttributeTableShadow_GetNameOfCol(GDALRasterAttributeTableShadow *self,int iCol){
         return GDALRATGetNameOfCol( self, iCol );
     }
 SWIGINTERN GDALRATFieldUsage GDALRasterAttributeTableShadow_GetUsageOfCol(GDALRasterAttributeTableShadow *self,int iCol){
@@ -2190,25 +2258,25 @@ SWIGINTERN GDALRATFieldType GDALRasterAttributeTableShadow_GetTypeOfCol(GDALRast
 SWIGINTERN int GDALRasterAttributeTableShadow_GetColOfUsage(GDALRasterAttributeTableShadow *self,GDALRATFieldUsage eUsage){
         return GDALRATGetColOfUsage( self, eUsage );
     }
-SWIGINTERN int GDALRasterAttributeTableShadow_GetRowCount(GDALRasterAttributeTableShadow *self){ 
+SWIGINTERN int GDALRasterAttributeTableShadow_GetRowCount(GDALRasterAttributeTableShadow *self){
         return GDALRATGetRowCount( self );
     }
-SWIGINTERN char const *GDALRasterAttributeTableShadow_GetValueAsString(GDALRasterAttributeTableShadow *self,int iRow,int iCol){ 
+SWIGINTERN char const *GDALRasterAttributeTableShadow_GetValueAsString(GDALRasterAttributeTableShadow *self,int iRow,int iCol){
         return GDALRATGetValueAsString( self, iRow, iCol );
     }
-SWIGINTERN int GDALRasterAttributeTableShadow_GetValueAsInt(GDALRasterAttributeTableShadow *self,int iRow,int iCol){ 
+SWIGINTERN int GDALRasterAttributeTableShadow_GetValueAsInt(GDALRasterAttributeTableShadow *self,int iRow,int iCol){
         return GDALRATGetValueAsInt( self, iRow, iCol );
     }
-SWIGINTERN double GDALRasterAttributeTableShadow_GetValueAsDouble(GDALRasterAttributeTableShadow *self,int iRow,int iCol){ 
+SWIGINTERN double GDALRasterAttributeTableShadow_GetValueAsDouble(GDALRasterAttributeTableShadow *self,int iRow,int iCol){
         return GDALRATGetValueAsDouble( self, iRow, iCol );
     }
-SWIGINTERN void GDALRasterAttributeTableShadow_SetValueAsString(GDALRasterAttributeTableShadow *self,int iRow,int iCol,char const *pszValue){ 
+SWIGINTERN void GDALRasterAttributeTableShadow_SetValueAsString(GDALRasterAttributeTableShadow *self,int iRow,int iCol,char const *pszValue){
         GDALRATSetValueAsString( self, iRow, iCol, pszValue );
     }
-SWIGINTERN void GDALRasterAttributeTableShadow_SetValueAsInt(GDALRasterAttributeTableShadow *self,int iRow,int iCol,int nValue){ 
+SWIGINTERN void GDALRasterAttributeTableShadow_SetValueAsInt(GDALRasterAttributeTableShadow *self,int iRow,int iCol,int nValue){
         GDALRATSetValueAsInt( self, iRow, iCol, nValue );
     }
-SWIGINTERN void GDALRasterAttributeTableShadow_SetValueAsDouble(GDALRasterAttributeTableShadow *self,int iRow,int iCol,double dfValue){ 
+SWIGINTERN void GDALRasterAttributeTableShadow_SetValueAsDouble(GDALRasterAttributeTableShadow *self,int iRow,int iCol,double dfValue){
         GDALRATSetValueAsDouble( self, iRow, iCol, dfValue );
     }
 SWIGINTERN void GDALRasterAttributeTableShadow_SetRowCount(GDALRasterAttributeTableShadow *self,int nCount){
@@ -2229,10 +2297,13 @@ SWIGINTERN int GDALRasterAttributeTableShadow_GetRowOfValue(GDALRasterAttributeT
 SWIGINTERN int GDALRasterAttributeTableShadow_ChangesAreWrittenToFile(GDALRasterAttributeTableShadow *self){
         return GDALRATChangesAreWrittenToFile( self );
     }
+SWIGINTERN void GDALRasterAttributeTableShadow_DumpReadable(GDALRasterAttributeTableShadow *self){
+        GDALRATDumpReadable( self, NULL );
+    }
 
 #include "gdalgrid.h"
 
-#ifdef DEBUG 
+#ifdef DEBUG
 typedef struct OGRLayerHS OGRLayerShadow;
 typedef struct OGRGeometryHS OGRGeometryShadow;
 #else
@@ -2259,7 +2330,7 @@ int  ComputeMedianCutPCT ( GDALRasterBandShadow *red,
                                           colors,
                                           callback,
                                           callback_data);
-    
+
     return err;
 }
 
@@ -2281,7 +2352,7 @@ int  DitherRGB2PCT ( GDALRasterBandShadow *red,
                                   colors,
                                   callback,
                                   callback_data);
-    
+
     return err;
 }
 
@@ -2294,9 +2365,17 @@ CPLErr  ReprojectImage ( GDALDatasetShadow *src_ds,
                          double WarpMemoryLimit=0.0,
                          double maxerror = 0.0,
 			 GDALProgressFunc callback = NULL,
-                     	 void* callback_data=NULL) {
+                     	 void* callback_data=NULL,
+                         char** options = NULL ) {
 
     CPLErrorReset();
+
+    GDALWarpOptions* psOptions = NULL;
+    if( options != NULL )
+    {
+        psOptions = GDALCreateWarpOptions();
+        psOptions->papszWarpOptions = CSLDuplicate(options);
+    }
 
     CPLErr err = GDALReprojectImage( src_ds,
                                      src_wkt,
@@ -2307,8 +2386,11 @@ CPLErr  ReprojectImage ( GDALDatasetShadow *src_ds,
                                      maxerror,
                                      callback,
                                      callback_data,
-                                     NULL);
-    
+                                     psOptions);
+
+    if( psOptions != NULL )
+        GDALDestroyWarpOptions(psOptions);
+
     return err;
 }
 
@@ -2329,7 +2411,7 @@ int  ComputeProximity( GDALRasterBandShadow *srcBand,
 int  RasterizeLayer( GDALDatasetShadow *dataset,
                  int bands, int *band_list,
                  OGRLayerShadow *layer,
-		 int burn_values = 0, double *burn_values_list = NULL, 
+		 int burn_values = 0, double *burn_values_list = NULL,
                  char **options = NULL,
                  GDALProgressFunc callback=NULL,
                  void* callback_data=NULL) {
@@ -2346,15 +2428,15 @@ int  RasterizeLayer( GDALDatasetShadow *dataset,
     }
     else if( burn_values != bands )
     {
-        CPLError( CE_Failure, CPLE_AppDefined, 
+        CPLError( CE_Failure, CPLE_AppDefined,
                   "Did not get the expected number of burn values in RasterizeLayer()" );
         return CE_Failure;
     }
 
     eErr = GDALRasterizeLayers( dataset, bands, band_list,
-                                1, &layer, 
+                                1, &layer,
                                 NULL, NULL,
-                                burn_values_list, options, 
+                                burn_values_list, options,
                                 callback, callback_data );
 
     if( burn_values == 0 )
@@ -2366,7 +2448,7 @@ int  RasterizeLayer( GDALDatasetShadow *dataset,
 
 int  Polygonize( GDALRasterBandShadow *srcBand,
      		 GDALRasterBandShadow *maskBand,
-  	         OGRLayerShadow *outLayer, 
+  	         OGRLayerShadow *outLayer,
                  int iPixValField,
                  char **options = NULL,
                  GDALProgressFunc callback=NULL,
@@ -2375,6 +2457,21 @@ int  Polygonize( GDALRasterBandShadow *srcBand,
     CPLErrorReset();
 
     return GDALPolygonize( srcBand, maskBand, outLayer, iPixValField,
+                           options, callback, callback_data );
+}
+
+
+int  FPolygonize( GDALRasterBandShadow *srcBand,
+                 GDALRasterBandShadow *maskBand,
+                 OGRLayerShadow *outLayer,
+                 int iPixValField,
+                 char **options = NULL,
+                 GDALProgressFunc callback=NULL,
+                 void* callback_data=NULL) {
+
+    CPLErrorReset();
+
+    return GDALFPolygonize( srcBand, maskBand, outLayer, iPixValField,
                            options, callback, callback_data );
 }
 
@@ -2389,8 +2486,8 @@ int  FillNodata( GDALRasterBandShadow *targetBand,
 
     CPLErrorReset();
 
-    return GDALFillNodata( targetBand, maskBand, maxSearchDist, 
-    	   		   0, smoothingIterations, options, 
+    return GDALFillNodata( targetBand, maskBand, maxSearchDist,
+    	   		   0, smoothingIterations, options,
 			   callback, callback_data );
 }
 
@@ -2405,7 +2502,7 @@ int  SieveFilter( GDALRasterBandShadow *srcBand,
 
     CPLErrorReset();
 
-    return GDALSieveFilter( srcBand, maskBand, dstBand, 
+    return GDALSieveFilter( srcBand, maskBand, dstBand,
                             threshold, connectedness,
                             options, callback, callback_data );
 }
@@ -2467,10 +2564,10 @@ int wrapper_GridCreate( char* algorithmOptions,
     {
         eErr = ParseAlgorithmAndOptions( szAlgNameInvDist, &eAlgorithm, &pOptions );
     }
-    
+
     if ( eErr != CE_None )
     {
-        CPLError( eErr, CPLE_AppDefined, "Failed to process algoritm name and parameters.\n" );
+        CPLError( eErr, CPLE_AppDefined, "Failed to process algorithm name and parameters.\n" );
         return eErr;
     }
 
@@ -2491,7 +2588,7 @@ int ContourGenerate( GDALRasterBandShadow *srcBand,
                      double *fixedLevels,
                      int useNoData,
                      double noDataValue,
-                     OGRLayerShadow* dstLayer, 
+                     OGRLayerShadow* dstLayer,
                      int idField,
                      int elevField,
                      GDALProgressFunc callback = NULL,
@@ -2532,12 +2629,24 @@ GDALDatasetShadow *AutoCreateWarpedVRT( GDALDatasetShadow *src_ds,
     /*throw CPLGetLastErrorMsg(); causes a SWIG_exception later*/
   }
   return ds;
-  
+
+}
+
+
+GDALDatasetShadow*  CreatePansharpenedVRT( const char* pszXML,
+                            GDALRasterBandShadow* panchroBand,
+                            int nInputSpectralBands,
+                            GDALRasterBandShadow** ahInputSpectralBands )
+{
+    CPLErrorReset();
+
+    return (GDALDatasetShadow*)GDALCreatePansharpenedVRT( pszXML, panchroBand,
+                                      nInputSpectralBands, ahInputSpectralBands );
 }
 
 SWIGINTERN GDALTransformerInfoShadow *new_GDALTransformerInfoShadow(GDALDatasetShadow *src,GDALDatasetShadow *dst,char **options){
-    GDALTransformerInfoShadow *obj = (GDALTransformerInfoShadow*) 
-       GDALCreateGenImgProjTransformer2( (GDALDatasetH)src, (GDALDatasetH)dst, 
+    GDALTransformerInfoShadow *obj = (GDALTransformerInfoShadow*)
+       GDALCreateGenImgProjTransformer2( (GDALDatasetH)src, (GDALDatasetH)dst,
                                          options );
     return obj;
   }
@@ -2547,20 +2656,20 @@ SWIGINTERN void delete_GDALTransformerInfoShadow(GDALTransformerInfoShadow *self
 SWIGINTERN int GDALTransformerInfoShadow_TransformPoint__SWIG_0(GDALTransformerInfoShadow *self,int bDstToSrc,double inout[3]){
     int nRet, nSuccess = TRUE;
 
-    nRet = GDALUseTransformer( self, bDstToSrc, 
-                               1, &inout[0], &inout[1], &inout[2], 
+    nRet = GDALUseTransformer( self, bDstToSrc,
+                               1, &inout[0], &inout[1], &inout[2],
                                &nSuccess );
 
     return nRet && nSuccess;
   }
 SWIGINTERN int GDALTransformerInfoShadow_TransformPoint__SWIG_1(GDALTransformerInfoShadow *self,double argout[3],int bDstToSrc,double x,double y,double z=0.0){
     int nRet, nSuccess = TRUE;
-    
+
     argout[0] = x;
     argout[1] = y;
     argout[2] = z;
-    nRet = GDALUseTransformer( self, bDstToSrc, 
-                               1, &argout[0], &argout[1], &argout[2], 
+    nRet = GDALUseTransformer( self, bDstToSrc,
+                               1, &argout[0], &argout[1], &argout[2],
                                &nSuccess );
 
     return nRet && nSuccess;
@@ -2576,7 +2685,7 @@ SWIGINTERN int GDALTransformerInfoShadow_TransformGeolocations__SWIG_0(GDALTrans
 
     CPLErrorReset();
 
-    return GDALTransformGeolocations( xBand, yBand, zBand, 
+    return GDALTransformGeolocations( xBand, yBand, zBand,
                                       GDALUseTransformer, self,
                             	      callback, callback_data, options );
   }
@@ -2612,11 +2721,23 @@ const char *wrapper_GDALDecToDMS( double dfAngle, const char * pszAxis,
 }
 
 
+retStringAndCPLFree *GetJPEG2000StructureAsString( const char* pszFilename, char** options = NULL )
+{
+    CPLXMLNode* psNode = GDALGetJPEG2000Structure(pszFilename, options);
+    if( psNode == NULL )
+        return NULL;
+    char* pszXML = CPLSerializeXMLTree(psNode);
+    CPLDestroyXMLNode(psNode);
+    return pszXML;
+}
+
+
 int GetDriverCount() {
   return GDALGetDriverCount();
 }
 
 
+static
 GDALDriverShadow* GetDriverByName( char const *name ) {
   return (GDALDriverShadow*) GDALGetDriverByName( name );
 }
@@ -2627,6 +2748,7 @@ GDALDriverShadow* GetDriver( int i ) {
 }
 
 
+static
 GDALDatasetShadow* Open( char const* utf8_path, GDALAccess eAccess) {
   CPLErrorReset();
   GDALDatasetShadow *ds = GDALOpen( utf8_path, eAccess );
@@ -2645,6 +2767,26 @@ GDALDatasetShadow* Open( char const* name ) {
 }
 
 
+GDALDatasetShadow* OpenEx( char const* utf8_path, unsigned int nOpenFlags = 0,
+                           char** allowed_drivers = NULL, char** open_options = NULL,
+                           char** sibling_files = NULL ) {
+  CPLErrorReset();
+#ifdef SWIGPYTHON
+  if( GetUseExceptions() )
+      nOpenFlags |= GDAL_OF_VERBOSE_ERROR;
+#endif
+  GDALDatasetShadow *ds = GDALOpenEx( utf8_path, nOpenFlags, allowed_drivers,
+                                      open_options, sibling_files );
+  if( ds != NULL && CPLGetLastErrorType() == CE_Failure )
+  {
+      if ( GDALDereferenceDataset( ds ) <= 0 )
+          GDALClose(ds);
+      ds = NULL;
+  }
+  return (GDALDatasetShadow*) ds;
+}
+
+
 GDALDatasetShadow* OpenShared( char const* utf8_path, GDALAccess eAccess = GA_ReadOnly ) {
   CPLErrorReset();
   GDALDatasetShadow *ds = GDALOpenShared( utf8_path, eAccess );
@@ -2658,24 +2800,25 @@ GDALDatasetShadow* OpenShared( char const* utf8_path, GDALAccess eAccess = GA_Re
 }
 
 
-GDALDriverShadow *IdentifyDriver( const char *utf8_path, 
+GDALDriverShadow *IdentifyDriver( const char *utf8_path,
                                   char **papszSiblings = NULL ) {
-    return (GDALDriverShadow *) GDALIdentifyDriver( utf8_path, 
+    return (GDALDriverShadow *) GDALIdentifyDriver( utf8_path,
 	                                            papszSiblings );
 }
 
 
+  static
   char **GeneralCmdLineProcessor( char **papszArgv, int nOptions = 0 ) {
     int nResArgCount;
-    
+
     /* We must add a 'dummy' element in front of the real argument list */
     /* as Java doesn't include the binary name as the first */
     /* argument, as C does... */
     char** papszArgvModBefore = CSLInsertString(CSLDuplicate(papszArgv), 0, "dummy");
     char** papszArgvModAfter = papszArgvModBefore;
 
-    nResArgCount = 
-      GDALGeneralCmdLineProcessor( CSLCount(papszArgvModBefore), &papszArgvModAfter, nOptions ); 
+    nResArgCount =
+      GDALGeneralCmdLineProcessor( CSLCount(papszArgvModBefore), &papszArgvModAfter, nOptions );
 
     CSLDestroy(papszArgvModBefore);
 
@@ -2693,9 +2836,394 @@ GDALDriverShadow *IdentifyDriver( const char *utf8_path,
   }
 
 
+#include "gdal_utils.h"
+
+SWIGINTERN GDALInfoOptions *new_GDALInfoOptions(char **options){
+        return GDALInfoOptionsNew(options, NULL);
+    }
+SWIGINTERN void delete_GDALInfoOptions(GDALInfoOptions *self){
+        GDALInfoOptionsFree( self );
+    }
+SWIGINTERN GDALTranslateOptions *new_GDALTranslateOptions(char **options){
+        return GDALTranslateOptionsNew(options, NULL);
+    }
+SWIGINTERN void delete_GDALTranslateOptions(GDALTranslateOptions *self){
+        GDALTranslateOptionsFree( self );
+    }
+
+GDALDatasetShadow* wrapper_GDALTranslate( const char* dest,
+                                      GDALDatasetShadow* dataset,
+                                      GDALTranslateOptions* translateOptions,
+                                      GDALProgressFunc callback=NULL,
+                                      void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( translateOptions == NULL )
+        {
+            bFreeOptions = true;
+            translateOptions = GDALTranslateOptionsNew(NULL, NULL);
+        }
+        GDALTranslateOptionsSetProgress(translateOptions, callback, callback_data);
+    }
+    GDALDatasetH hDSRet = GDALTranslate(dest, dataset, translateOptions, &usageError);
+    if( bFreeOptions )
+        GDALTranslateOptionsFree(translateOptions);
+    return hDSRet;
+}
+
+SWIGINTERN GDALWarpAppOptions *new_GDALWarpAppOptions(char **options){
+        return GDALWarpAppOptionsNew(options, NULL);
+    }
+SWIGINTERN void delete_GDALWarpAppOptions(GDALWarpAppOptions *self){
+        GDALWarpAppOptionsFree( self );
+    }
+
+int wrapper_GDALWarpDestDS( GDALDatasetShadow* dstDS,
+                            int object_list_count, GDALDatasetShadow** poObjects,
+                            GDALWarpAppOptions* warpAppOptions,
+                            GDALProgressFunc callback=NULL,
+                            void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( warpAppOptions == NULL )
+        {
+            bFreeOptions = true;
+            warpAppOptions = GDALWarpAppOptionsNew(NULL, NULL);
+        }
+        GDALWarpAppOptionsSetProgress(warpAppOptions, callback, callback_data);
+    }
+    int bRet = (GDALWarp(NULL, dstDS, object_list_count, poObjects, warpAppOptions, &usageError) != NULL);
+    if( bFreeOptions )
+        GDALWarpAppOptionsFree(warpAppOptions);
+    return bRet;
+}
+
+
+GDALDatasetShadow* wrapper_GDALWarpDestName( const char* dest,
+                                             int object_list_count, GDALDatasetShadow** poObjects,
+                                             GDALWarpAppOptions* warpAppOptions,
+                                             GDALProgressFunc callback=NULL,
+                                             void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( warpAppOptions == NULL )
+        {
+            bFreeOptions = true;
+            warpAppOptions = GDALWarpAppOptionsNew(NULL, NULL);
+        }
+        GDALWarpAppOptionsSetProgress(warpAppOptions, callback, callback_data);
+    }
+    GDALDatasetH hDSRet = GDALWarp(dest, NULL, object_list_count, poObjects, warpAppOptions, &usageError);
+    if( bFreeOptions )
+        GDALWarpAppOptionsFree(warpAppOptions);
+    return hDSRet;
+}
+
+SWIGINTERN GDALVectorTranslateOptions *new_GDALVectorTranslateOptions(char **options){
+        return GDALVectorTranslateOptionsNew(options, NULL);
+    }
+SWIGINTERN void delete_GDALVectorTranslateOptions(GDALVectorTranslateOptions *self){
+        GDALVectorTranslateOptionsFree( self );
+    }
+
+int wrapper_GDALVectorTranslateDestDS( GDALDatasetShadow* dstDS,
+                                       GDALDatasetShadow* srcDS,
+                            GDALVectorTranslateOptions* options,
+                            GDALProgressFunc callback=NULL,
+                            void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( options == NULL )
+        {
+            bFreeOptions = true;
+            options = GDALVectorTranslateOptionsNew(NULL, NULL);
+        }
+        GDALVectorTranslateOptionsSetProgress(options, callback, callback_data);
+    }
+    int bRet = (GDALVectorTranslate(NULL, dstDS, 1, &srcDS, options, &usageError) != NULL);
+    if( bFreeOptions )
+        GDALVectorTranslateOptionsFree(options);
+    return bRet;
+}
+
+
+GDALDatasetShadow* wrapper_GDALVectorTranslateDestName( const char* dest,
+                                             GDALDatasetShadow* srcDS,
+                                             GDALVectorTranslateOptions* options,
+                                             GDALProgressFunc callback=NULL,
+                                             void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( options == NULL )
+        {
+            bFreeOptions = true;
+            options = GDALVectorTranslateOptionsNew(NULL, NULL);
+        }
+        GDALVectorTranslateOptionsSetProgress(options, callback, callback_data);
+    }
+    GDALDatasetH hDSRet = GDALVectorTranslate(dest, NULL, 1, &srcDS, options, &usageError);
+    if( bFreeOptions )
+        GDALVectorTranslateOptionsFree(options);
+    return hDSRet;
+}
+
+SWIGINTERN GDALDEMProcessingOptions *new_GDALDEMProcessingOptions(char **options){
+        return GDALDEMProcessingOptionsNew(options, NULL);
+    }
+SWIGINTERN void delete_GDALDEMProcessingOptions(GDALDEMProcessingOptions *self){
+        GDALDEMProcessingOptionsFree( self );
+    }
+
+GDALDatasetShadow* wrapper_GDALDEMProcessing( const char* dest,
+                                      GDALDatasetShadow* dataset,
+                                      const char* pszProcessing,
+                                      const char* pszColorFilename,
+                                      GDALDEMProcessingOptions* options,
+                                      GDALProgressFunc callback=NULL,
+                                      void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( options == NULL )
+        {
+            bFreeOptions = true;
+            options = GDALDEMProcessingOptionsNew(NULL, NULL);
+        }
+        GDALDEMProcessingOptionsSetProgress(options, callback, callback_data);
+    }
+    GDALDatasetH hDSRet = GDALDEMProcessing(dest, dataset, pszProcessing, pszColorFilename, options, &usageError);
+    if( bFreeOptions )
+        GDALDEMProcessingOptionsFree(options);
+    return hDSRet;
+}
+
+SWIGINTERN GDALNearblackOptions *new_GDALNearblackOptions(char **options){
+        return GDALNearblackOptionsNew(options, NULL);
+    }
+SWIGINTERN void delete_GDALNearblackOptions(GDALNearblackOptions *self){
+        GDALNearblackOptionsFree( self );
+    }
+
+int wrapper_GDALNearblackDestDS( GDALDatasetShadow* dstDS,
+                            GDALDatasetShadow* srcDS,
+                            GDALNearblackOptions* options,
+                            GDALProgressFunc callback=NULL,
+                            void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( options == NULL )
+        {
+            bFreeOptions = true;
+            options = GDALNearblackOptionsNew(NULL, NULL);
+        }
+        GDALNearblackOptionsSetProgress(options, callback, callback_data);
+    }
+    int bRet = (GDALNearblack(NULL, dstDS, srcDS, options, &usageError) != NULL);
+    if( bFreeOptions )
+        GDALNearblackOptionsFree(options);
+    return bRet;
+}
+
+
+GDALDatasetShadow* wrapper_GDALNearblackDestName( const char* dest,
+                                             GDALDatasetShadow* srcDS,
+                                             GDALNearblackOptions* options,
+                                             GDALProgressFunc callback=NULL,
+                                             void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( options == NULL )
+        {
+            bFreeOptions = true;
+            options = GDALNearblackOptionsNew(NULL, NULL);
+        }
+        GDALNearblackOptionsSetProgress(options, callback, callback_data);
+    }
+    GDALDatasetH hDSRet = GDALNearblack(dest, NULL, srcDS, options, &usageError);
+    if( bFreeOptions )
+        GDALNearblackOptionsFree(options);
+    return hDSRet;
+}
+
+SWIGINTERN GDALGridOptions *new_GDALGridOptions(char **options){
+        return GDALGridOptionsNew(options, NULL);
+    }
+SWIGINTERN void delete_GDALGridOptions(GDALGridOptions *self){
+        GDALGridOptionsFree( self );
+    }
+
+GDALDatasetShadow* wrapper_GDALGrid( const char* dest,
+                                      GDALDatasetShadow* dataset,
+                                      GDALGridOptions* options,
+                                      GDALProgressFunc callback=NULL,
+                                      void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( options == NULL )
+        {
+            bFreeOptions = true;
+            options = GDALGridOptionsNew(NULL, NULL);
+        }
+        GDALGridOptionsSetProgress(options, callback, callback_data);
+    }
+    GDALDatasetH hDSRet = GDALGrid(dest, dataset, options, &usageError);
+    if( bFreeOptions )
+        GDALGridOptionsFree(options);
+    return hDSRet;
+}
+
+SWIGINTERN GDALRasterizeOptions *new_GDALRasterizeOptions(char **options){
+        return GDALRasterizeOptionsNew(options, NULL);
+    }
+SWIGINTERN void delete_GDALRasterizeOptions(GDALRasterizeOptions *self){
+        GDALRasterizeOptionsFree( self );
+    }
+
+int wrapper_GDALRasterizeDestDS( GDALDatasetShadow* dstDS,
+                            GDALDatasetShadow* srcDS,
+                            GDALRasterizeOptions* options,
+                            GDALProgressFunc callback=NULL,
+                            void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( options == NULL )
+        {
+            bFreeOptions = true;
+            options = GDALRasterizeOptionsNew(NULL, NULL);
+        }
+        GDALRasterizeOptionsSetProgress(options, callback, callback_data);
+    }
+    int bRet = (GDALRasterize(NULL, dstDS, srcDS, options, &usageError) != NULL);
+    if( bFreeOptions )
+        GDALRasterizeOptionsFree(options);
+    return bRet;
+}
+
+
+GDALDatasetShadow* wrapper_GDALRasterizeDestName( const char* dest,
+                                             GDALDatasetShadow* srcDS,
+                                             GDALRasterizeOptions* options,
+                                             GDALProgressFunc callback=NULL,
+                                             void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( options == NULL )
+        {
+            bFreeOptions = true;
+            options = GDALRasterizeOptionsNew(NULL, NULL);
+        }
+        GDALRasterizeOptionsSetProgress(options, callback, callback_data);
+    }
+    GDALDatasetH hDSRet = GDALRasterize(dest, NULL, srcDS, options, &usageError);
+    if( bFreeOptions )
+        GDALRasterizeOptionsFree(options);
+    return hDSRet;
+}
+
+SWIGINTERN GDALBuildVRTOptions *new_GDALBuildVRTOptions(char **options){
+        return GDALBuildVRTOptionsNew(options, NULL);
+    }
+SWIGINTERN void delete_GDALBuildVRTOptions(GDALBuildVRTOptions *self){
+        GDALBuildVRTOptionsFree( self );
+    }
+
+GDALDatasetShadow* wrapper_GDALBuildVRT_objects( const char* dest,
+                                             int object_list_count, GDALDatasetShadow** poObjects,
+                                             GDALBuildVRTOptions* options,
+                                             GDALProgressFunc callback=NULL,
+                                             void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( options == NULL )
+        {
+            bFreeOptions = true;
+            options = GDALBuildVRTOptionsNew(NULL, NULL);
+        }
+        GDALBuildVRTOptionsSetProgress(options, callback, callback_data);
+    }
+    GDALDatasetH hDSRet = GDALBuildVRT(dest, object_list_count, poObjects, NULL, options, &usageError);
+    if( bFreeOptions )
+        GDALBuildVRTOptionsFree(options);
+    return hDSRet;
+}
+
+
+GDALDatasetShadow* wrapper_GDALBuildVRT_names( const char* dest,
+                                         char ** source_filenames,
+                                         GDALBuildVRTOptions* options,
+                                         GDALProgressFunc callback=NULL,
+                                         void* callback_data=NULL)
+{
+    int usageError; /* ignored */
+    bool bFreeOptions = false;
+    if( callback )
+    {
+        if( options == NULL )
+        {
+            bFreeOptions = true;
+            options = GDALBuildVRTOptionsNew(NULL, NULL);
+        }
+        GDALBuildVRTOptionsSetProgress(options, callback, callback_data);
+    }
+    GDALDatasetH hDSRet = GDALBuildVRT(dest, CSLCount(source_filenames), NULL, source_filenames, options, &usageError);
+    if( bFreeOptions )
+        GDALBuildVRTOptionsFree(options);
+    return hDSRet;
+}
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_UseExceptions(JNIEnv *jenv, jclass jcls) {
+  (void)jenv;
+  (void)jcls;
+  UseExceptions();
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_DontUseExceptions(JNIEnv *jenv, jclass jcls) {
+  (void)jenv;
+  (void)jcls;
+  DontUseExceptions();
+}
+
 
 SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_delete_1ProgressCallback(JNIEnv *jenv, jclass jcls, jlong jarg1) {
   ProgressCallback *arg1 = (ProgressCallback *) 0 ;
@@ -3107,6 +3635,30 @@ SWIGEXPORT jstring JNICALL Java_org_gdal_gdal_gdalJNI_GetLastErrorMsg(JNIEnv *je
 }
 
 
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_VSIGetLastErrorNo(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)VSIGetLastErrorNo();
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdal_gdalJNI_VSIGetLastErrorMsg(JNIEnv *jenv, jclass jcls) {
+  jstring jresult = 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (char *)VSIGetLastErrorMsg();
+  if (result) jresult = jenv->NewStringUTF((const char *)result);
+  return jresult;
+}
+
+
 SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_PushFinderLocation(JNIEnv *jenv, jclass jcls, jstring jarg1) {
   char *arg1 = (char *) 0 ;
   
@@ -3176,7 +3728,53 @@ SWIGEXPORT jstring JNICALL Java_org_gdal_gdal_gdalJNI_FindFile(JNIEnv *jenv, jcl
 }
 
 
-SWIGEXPORT jobject JNICALL Java_org_gdal_gdal_gdalJNI_ReadDir(JNIEnv *jenv, jclass jcls, jstring jarg1) {
+SWIGEXPORT jobject JNICALL Java_org_gdal_gdal_gdalJNI_ReadDir_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jstring jarg1, jint jarg2) {
+  jobject jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  int arg2 ;
+  char **result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = (int)jarg2; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (char **)wrapper_VSIReadDirEx((char const *)arg1,arg2);
+  {
+    /* %typemap(out) char **CSL -> vector of strings */
+    char **stringarray = result;
+    const jclass vector = jenv->FindClass("java/util/Vector");
+    const jmethodID constructor = jenv->GetMethodID(vector, "<init>", "()V");
+    const jmethodID add = jenv->GetMethodID(vector, "add", "(Ljava/lang/Object;)Z");
+    
+    jresult = jenv->NewObject(vector, constructor);
+    if ( stringarray != NULL ) {
+      while(*stringarray != NULL) {
+        /*printf("working on string %s\n", *stringarray);*/
+        jstring value = (jstring)jenv->NewStringUTF(*stringarray);
+        jenv->CallBooleanMethod(jresult, add, value);
+        jenv->DeleteLocalRef(value);
+        stringarray++;
+      }
+    }
+    CSLDestroy(result);
+  }
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jobject JNICALL Java_org_gdal_gdal_gdalJNI_ReadDir_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jstring jarg1) {
   jobject jresult = 0 ;
   char *arg1 = (char *) 0 ;
   char **result = 0 ;
@@ -3195,7 +3793,7 @@ SWIGEXPORT jobject JNICALL Java_org_gdal_gdal_gdalJNI_ReadDir(JNIEnv *jenv, jcla
       };
     }
   }
-  result = (char **)VSIReadDir((char const *)arg1);
+  result = (char **)wrapper_VSIReadDirEx((char const *)arg1);
   {
     /* %typemap(out) char **CSL -> vector of strings */
     char **stringarray = result;
@@ -3412,7 +4010,7 @@ SWIGEXPORT jbyteArray JNICALL Java_org_gdal_gdal_gdalJNI_CPLHexToBinary(JNIEnv *
     }
     else
     {
-      SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0;
     }
     arg2 = &nBytes1;
   }
@@ -3483,7 +4081,7 @@ SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_FileFromMemBuffer(JNIEnv *jen
 SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Unlink(JNIEnv *jenv, jclass jcls, jstring jarg1) {
   jint jresult = 0 ;
   char *arg1 = (char *) 0 ;
-  int result;
+  VSI_RETVAL result;
   
   (void)jenv;
   (void)jcls;
@@ -3499,7 +4097,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Unlink(JNIEnv *jenv, jclass j
       };
     }
   }
-  result = (int)VSIUnlink((char const *)arg1);
+  result = VSIUnlink((char const *)arg1);
   jresult = (jint)result; 
   if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
   return jresult;
@@ -3522,7 +4120,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Mkdir(JNIEnv *jenv, jclass jc
   jint jresult = 0 ;
   char *arg1 = (char *) 0 ;
   int arg2 ;
-  int result;
+  VSI_RETVAL result;
   
   (void)jenv;
   (void)jcls;
@@ -3539,7 +4137,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Mkdir(JNIEnv *jenv, jclass jc
       };
     }
   }
-  result = (int)VSIMkdir((char const *)arg1,arg2);
+  result = VSIMkdir((char const *)arg1,arg2);
   jresult = (jint)result; 
   if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
   return jresult;
@@ -3549,7 +4147,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Mkdir(JNIEnv *jenv, jclass jc
 SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Rmdir(JNIEnv *jenv, jclass jcls, jstring jarg1) {
   jint jresult = 0 ;
   char *arg1 = (char *) 0 ;
-  int result;
+  VSI_RETVAL result;
   
   (void)jenv;
   (void)jcls;
@@ -3565,7 +4163,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Rmdir(JNIEnv *jenv, jclass jc
       };
     }
   }
-  result = (int)VSIRmdir((char const *)arg1);
+  result = VSIRmdir((char const *)arg1);
   jresult = (jint)result; 
   if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
   return jresult;
@@ -3576,7 +4174,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Rename(JNIEnv *jenv, jclass j
   jint jresult = 0 ;
   char *arg1 = (char *) 0 ;
   char *arg2 = (char *) 0 ;
-  int result;
+  VSI_RETVAL result;
   
   (void)jenv;
   (void)jcls;
@@ -3590,10 +4188,68 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Rename(JNIEnv *jenv, jclass j
     arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
     if (!arg2) return 0;
   }
-  result = (int)VSIRename((char const *)arg1,(char const *)arg2);
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = VSIRename((char const *)arg1,(char const *)arg2);
   jresult = (jint)result; 
   if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
   if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  return jresult;
+}
+
+
+SWIGEXPORT jobject JNICALL Java_org_gdal_gdal_gdalJNI_ParseCommandLine(JNIEnv *jenv, jclass jcls, jstring jarg1) {
+  jobject jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  char **result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (char **)CSLParseCommandLine((char const *)arg1);
+  {
+    /* %typemap(out) char **CSL -> vector of strings */
+    char **stringarray = result;
+    const jclass vector = jenv->FindClass("java/util/Vector");
+    const jmethodID constructor = jenv->GetMethodID(vector, "<init>", "()V");
+    const jmethodID add = jenv->GetMethodID(vector, "add", "(Ljava/lang/Object;)Z");
+    
+    jresult = jenv->NewObject(vector, constructor);
+    if ( stringarray != NULL ) {
+      while(*stringarray != NULL) {
+        /*printf("working on string %s\n", *stringarray);*/
+        jstring value = (jstring)jenv->NewStringUTF(*stringarray);
+        jenv->CallBooleanMethod(jresult, add, value);
+        jenv->DeleteLocalRef(value);
+        stringarray++;
+      }
+    }
+    CSLDestroy(result);
+  }
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
   return jresult;
 }
 
@@ -4274,7 +4930,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_MajorObject_1SetMetadata_1_1S
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -4333,7 +4989,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_MajorObject_1SetMetadata_1_1S
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -4640,7 +5296,7 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Driver_1Create_1_1SWIG_10(JN
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -4822,7 +5478,7 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Driver_1CreateCopy_1_1SWIG_1
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -4913,7 +5569,7 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Driver_1CreateCopy_1_1SWIG_1
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -5046,7 +5702,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Driver_1Delete(JNIEnv *jenv, 
   jint jresult = 0 ;
   GDALDriverShadow *arg1 = (GDALDriverShadow *) 0 ;
   char *arg2 = (char *) 0 ;
-  int result;
+  CPLErr result;
   
   (void)jenv;
   (void)jcls;
@@ -5064,7 +5720,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Driver_1Delete(JNIEnv *jenv, 
       };
     }
   }
-  result = (int)GDALDriverShadow_Delete(arg1,(char const *)arg2);
+  result = (CPLErr)GDALDriverShadow_Delete(arg1,(char const *)arg2);
   jresult = (jint)result; 
   if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
   return jresult;
@@ -5076,7 +5732,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Driver_1Rename(JNIEnv *jenv, 
   GDALDriverShadow *arg1 = (GDALDriverShadow *) 0 ;
   char *arg2 = (char *) 0 ;
   char *arg3 = (char *) 0 ;
-  int result;
+  CPLErr result;
   
   (void)jenv;
   (void)jcls;
@@ -5106,7 +5762,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Driver_1Rename(JNIEnv *jenv, 
       };
     }
   }
-  result = (int)GDALDriverShadow_Rename(arg1,(char const *)arg2,(char const *)arg3);
+  result = (CPLErr)GDALDriverShadow_Rename(arg1,(char const *)arg2,(char const *)arg3);
   jresult = (jint)result; 
   if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
   if (arg3) jenv->ReleaseStringUTFChars(jarg3, (const char *)arg3);
@@ -5119,7 +5775,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Driver_1CopyFiles(JNIEnv *jen
   GDALDriverShadow *arg1 = (GDALDriverShadow *) 0 ;
   char *arg2 = (char *) 0 ;
   char *arg3 = (char *) 0 ;
-  int result;
+  CPLErr result;
   
   (void)jenv;
   (void)jcls;
@@ -5149,7 +5805,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Driver_1CopyFiles(JNIEnv *jen
       };
     }
   }
-  result = (int)GDALDriverShadow_CopyFiles(arg1,(char const *)arg2,(char const *)arg3);
+  result = (CPLErr)GDALDriverShadow_CopyFiles(arg1,(char const *)arg2,(char const *)arg3);
   jresult = (jint)result; 
   if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
   if (arg3) jenv->ReleaseStringUTFChars(jarg3, (const char *)arg3);
@@ -5735,310 +6391,6 @@ SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1Id_1set(JNIEnv *je
     }
   }
   GDAL_GCP_Id_set(arg1,(char const *)arg2);
-  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
-}
-
-
-SWIGEXPORT jdouble JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1get_1GCPX(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
-  jdouble jresult = 0 ;
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  double result;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
-      };
-    }
-  }
-  result = (double)GDAL_GCP_get_GCPX(arg1);
-  jresult = (jdouble)result; 
-  return jresult;
-}
-
-
-SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1set_1GCPX(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2) {
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  double arg2 ;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  arg2 = (double)jarg2; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return ; 
-      };
-    }
-  }
-  GDAL_GCP_set_GCPX(arg1,arg2);
-}
-
-
-SWIGEXPORT jdouble JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1get_1GCPY(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
-  jdouble jresult = 0 ;
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  double result;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
-      };
-    }
-  }
-  result = (double)GDAL_GCP_get_GCPY(arg1);
-  jresult = (jdouble)result; 
-  return jresult;
-}
-
-
-SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1set_1GCPY(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2) {
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  double arg2 ;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  arg2 = (double)jarg2; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return ; 
-      };
-    }
-  }
-  GDAL_GCP_set_GCPY(arg1,arg2);
-}
-
-
-SWIGEXPORT jdouble JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1get_1GCPZ(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
-  jdouble jresult = 0 ;
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  double result;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
-      };
-    }
-  }
-  result = (double)GDAL_GCP_get_GCPZ(arg1);
-  jresult = (jdouble)result; 
-  return jresult;
-}
-
-
-SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1set_1GCPZ(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2) {
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  double arg2 ;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  arg2 = (double)jarg2; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return ; 
-      };
-    }
-  }
-  GDAL_GCP_set_GCPZ(arg1,arg2);
-}
-
-
-SWIGEXPORT jdouble JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1get_1GCPPixel(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
-  jdouble jresult = 0 ;
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  double result;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
-      };
-    }
-  }
-  result = (double)GDAL_GCP_get_GCPPixel(arg1);
-  jresult = (jdouble)result; 
-  return jresult;
-}
-
-
-SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1set_1GCPPixel(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2) {
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  double arg2 ;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  arg2 = (double)jarg2; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return ; 
-      };
-    }
-  }
-  GDAL_GCP_set_GCPPixel(arg1,arg2);
-}
-
-
-SWIGEXPORT jdouble JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1get_1GCPLine(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
-  jdouble jresult = 0 ;
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  double result;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
-      };
-    }
-  }
-  result = (double)GDAL_GCP_get_GCPLine(arg1);
-  jresult = (jdouble)result; 
-  return jresult;
-}
-
-
-SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1set_1GCPLine(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2) {
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  double arg2 ;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  arg2 = (double)jarg2; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return ; 
-      };
-    }
-  }
-  GDAL_GCP_set_GCPLine(arg1,arg2);
-}
-
-
-SWIGEXPORT jstring JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1get_1Info(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
-  jstring jresult = 0 ;
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  char *result = 0 ;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
-      };
-    }
-  }
-  result = (char *)GDAL_GCP_get_Info(arg1);
-  if (result) jresult = jenv->NewStringUTF((const char *)result);
-  return jresult;
-}
-
-
-SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1set_1Info(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2) {
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  char *arg2 = (char *) 0 ;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  arg2 = 0;
-  if (jarg2) {
-    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
-    if (!arg2) return ;
-  }
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return ; 
-      };
-    }
-  }
-  GDAL_GCP_set_Info(arg1,(char const *)arg2);
-  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
-}
-
-
-SWIGEXPORT jstring JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1get_1Id(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
-  jstring jresult = 0 ;
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  char *result = 0 ;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
-      };
-    }
-  }
-  result = (char *)GDAL_GCP_get_Id(arg1);
-  if (result) jresult = jenv->NewStringUTF((const char *)result);
-  return jresult;
-}
-
-
-SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_GDAL_1GCP_1set_1Id(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2) {
-  GDAL_GCP *arg1 = (GDAL_GCP *) 0 ;
-  char *arg2 = (char *) 0 ;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(GDAL_GCP **)&jarg1; 
-  arg2 = 0;
-  if (jarg2) {
-    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
-    if (!arg2) return ;
-  }
-  {
-    if (!arg1) {
-      {
-        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return ; 
-      };
-    }
-  }
-  GDAL_GCP_set_Id(arg1,(char const *)arg2);
   if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
 }
 
@@ -6715,7 +7067,7 @@ SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1GetGCPs(JNIEnv *jenv
     for( int i = 0; i < *arg2; i++ ) {
       jstring stringInfo = jenv->NewStringUTF((*arg3)[i].pszInfo);
       jstring stringId = jenv->NewStringUTF((*arg3)[i].pszId);
-      jobject GCPobj = jenv->NewObject(GCPClass, GCPcon, 
+      jobject GCPobj = jenv->NewObject(GCPClass, GCPcon,
         (*arg3)[i].dfGCPX,
         (*arg3)[i].dfGCPY,
         (*arg3)[i].dfGCPZ,
@@ -6824,7 +7176,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1AddBand_1_1SWIG_10(J
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -6940,6 +7292,633 @@ SWIGEXPORT jobject JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1GetFileList(JNIEn
 }
 
 
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1CreateLayer_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2, jlong jarg3, jobject jarg3_, jint jarg4, jobject jarg5) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  OSRSpatialReferenceShadow *arg3 = (OSRSpatialReferenceShadow *) 0 ;
+  OGRwkbGeometryType arg4 ;
+  char **arg5 = (char **) 0 ;
+  OGRLayerShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg3_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return 0;
+  }
+  arg3 = *(OSRSpatialReferenceShadow **)&jarg3; 
+  arg4 = (OGRwkbGeometryType)jarg4; 
+  {
+    /* %typemap(in) char **options */
+    arg5 = NULL;
+    if(jarg5 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg5, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg5);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg5 = CSLAddString(arg5,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (OGRLayerShadow *)GDALDatasetShadow_CreateLayer__SWIG_0(arg1,(char const *)arg2,arg3,arg4,arg5);
+  *(OGRLayerShadow **)&jresult = result; 
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg5 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1CreateLayer_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2, jlong jarg3, jobject jarg3_, jint jarg4) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  OSRSpatialReferenceShadow *arg3 = (OSRSpatialReferenceShadow *) 0 ;
+  OGRwkbGeometryType arg4 ;
+  OGRLayerShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg3_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return 0;
+  }
+  arg3 = *(OSRSpatialReferenceShadow **)&jarg3; 
+  arg4 = (OGRwkbGeometryType)jarg4; 
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (OGRLayerShadow *)GDALDatasetShadow_CreateLayer__SWIG_0(arg1,(char const *)arg2,arg3,arg4);
+  *(OGRLayerShadow **)&jresult = result; 
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1CreateLayer_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2, jlong jarg3, jobject jarg3_) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  OSRSpatialReferenceShadow *arg3 = (OSRSpatialReferenceShadow *) 0 ;
+  OGRLayerShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg3_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return 0;
+  }
+  arg3 = *(OSRSpatialReferenceShadow **)&jarg3; 
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (OGRLayerShadow *)GDALDatasetShadow_CreateLayer__SWIG_0(arg1,(char const *)arg2,arg3);
+  *(OGRLayerShadow **)&jresult = result; 
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1CreateLayer_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  OGRLayerShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return 0;
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (OGRLayerShadow *)GDALDatasetShadow_CreateLayer__SWIG_0(arg1,(char const *)arg2);
+  *(OGRLayerShadow **)&jresult = result; 
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1CopyLayer_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jobject jarg4) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  OGRLayerShadow *arg2 = (OGRLayerShadow *) 0 ;
+  char *arg3 = (char *) 0 ;
+  char **arg4 = (char **) 0 ;
+  OGRLayerShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg2_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(OGRLayerShadow **)&jarg2; 
+  arg3 = 0;
+  if (jarg3) {
+    arg3 = (char *)jenv->GetStringUTFChars(jarg3, 0);
+    if (!arg3) return 0;
+  }
+  {
+    /* %typemap(in) char **options */
+    arg4 = NULL;
+    if(jarg4 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg4, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg4);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg4 = CSLAddString(arg4,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (OGRLayerShadow *)GDALDatasetShadow_CopyLayer__SWIG_0(arg1,arg2,(char const *)arg3,arg4);
+  *(OGRLayerShadow **)&jresult = result; 
+  if (arg3) jenv->ReleaseStringUTFChars(jarg3, (const char *)arg3);
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg4 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1CopyLayer_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  OGRLayerShadow *arg2 = (OGRLayerShadow *) 0 ;
+  char *arg3 = (char *) 0 ;
+  OGRLayerShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg2_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(OGRLayerShadow **)&jarg2; 
+  arg3 = 0;
+  if (jarg3) {
+    arg3 = (char *)jenv->GetStringUTFChars(jarg3, 0);
+    if (!arg3) return 0;
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (OGRLayerShadow *)GDALDatasetShadow_CopyLayer__SWIG_0(arg1,arg2,(char const *)arg3);
+  *(OGRLayerShadow **)&jresult = result; 
+  if (arg3) jenv->ReleaseStringUTFChars(jarg3, (const char *)arg3);
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1DeleteLayer(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  int arg2 ;
+  OGRErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  result = (OGRErr)GDALDatasetShadow_DeleteLayer(arg1,arg2);
+  {
+    /* %typemap(out) OGRErr */
+    if (result != 0 && bUseExceptions) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
+        OGRErrMessages(result));
+      return 0;
+    }
+    jresult = (jint)result;
+  }
+  {
+    /* %typemap(ret) OGRErr */
+    
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1GetLayerCount(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  result = (int)GDALDatasetShadow_GetLayerCount(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1GetLayerByIndex(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  int arg2 ;
+  OGRLayerShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  result = (OGRLayerShadow *)GDALDatasetShadow_GetLayerByIndex(arg1,arg2);
+  *(OGRLayerShadow **)&jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1GetLayerByName(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  OGRLayerShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return 0;
+  }
+  result = (OGRLayerShadow *)GDALDatasetShadow_GetLayerByName(arg1,(char const *)arg2);
+  *(OGRLayerShadow **)&jresult = result; 
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  return jresult;
+}
+
+
+SWIGEXPORT jboolean JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1TestCapability(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2) {
+  jboolean jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  bool result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return 0;
+  }
+  result = (bool)GDALDatasetShadow_TestCapability(arg1,(char const *)arg2);
+  jresult = (jboolean)result; 
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ExecuteSQL_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2, jlong jarg3, jobject jarg3_, jstring jarg4) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  OGRGeometryShadow *arg3 = (OGRGeometryShadow *) 0 ;
+  char *arg4 = (char *) 0 ;
+  OGRLayerShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg3_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return 0;
+  }
+  arg3 = *(OGRGeometryShadow **)&jarg3; 
+  arg4 = 0;
+  if (jarg4) {
+    arg4 = (char *)jenv->GetStringUTFChars(jarg4, 0);
+    if (!arg4) return 0;
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (OGRLayerShadow *)GDALDatasetShadow_ExecuteSQL__SWIG_0(arg1,(char const *)arg2,arg3,(char const *)arg4);
+  *(OGRLayerShadow **)&jresult = result; 
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  if (arg4) jenv->ReleaseStringUTFChars(jarg4, (const char *)arg4);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ExecuteSQL_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2, jlong jarg3, jobject jarg3_) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  OGRGeometryShadow *arg3 = (OGRGeometryShadow *) 0 ;
+  OGRLayerShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg3_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return 0;
+  }
+  arg3 = *(OGRGeometryShadow **)&jarg3; 
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (OGRLayerShadow *)GDALDatasetShadow_ExecuteSQL__SWIG_0(arg1,(char const *)arg2,arg3);
+  *(OGRLayerShadow **)&jresult = result; 
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ExecuteSQL_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  OGRLayerShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return 0;
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (OGRLayerShadow *)GDALDatasetShadow_ExecuteSQL__SWIG_0(arg1,(char const *)arg2);
+  *(OGRLayerShadow **)&jresult = result; 
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReleaseResultSet(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_) {
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  OGRLayerShadow *arg2 = (OGRLayerShadow *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg2_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(OGRLayerShadow **)&jarg2; 
+  GDALDatasetShadow_ReleaseResultSet(arg1,arg2);
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1GetStyleTable(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jlong jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  OGRStyleTableShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  result = (OGRStyleTableShadow *)GDALDatasetShadow_GetStyleTable(arg1);
+  *(OGRStyleTableShadow **)&jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1SetStyleTable(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_) {
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  OGRStyleTableShadow *arg2 = (OGRStyleTableShadow *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg2_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(OGRStyleTableShadow **)&jarg2; 
+  GDALDatasetShadow_SetStyleTable(arg1,arg2);
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1StartTransaction_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  int arg2 ;
+  OGRErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  result = (OGRErr)GDALDatasetShadow_StartTransaction__SWIG_0(arg1,arg2);
+  {
+    /* %typemap(out) OGRErr */
+    if (result != 0 && bUseExceptions) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
+        OGRErrMessages(result));
+      return 0;
+    }
+    jresult = (jint)result;
+  }
+  {
+    /* %typemap(ret) OGRErr */
+    
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1StartTransaction_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  OGRErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  result = (OGRErr)GDALDatasetShadow_StartTransaction__SWIG_0(arg1);
+  {
+    /* %typemap(out) OGRErr */
+    if (result != 0 && bUseExceptions) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
+        OGRErrMessages(result));
+      return 0;
+    }
+    jresult = (jint)result;
+  }
+  {
+    /* %typemap(ret) OGRErr */
+    
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1CommitTransaction(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  OGRErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  result = (OGRErr)GDALDatasetShadow_CommitTransaction(arg1);
+  {
+    /* %typemap(out) OGRErr */
+    if (result != 0 && bUseExceptions) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
+        OGRErrMessages(result));
+      return 0;
+    }
+    jresult = (jint)result;
+  }
+  {
+    /* %typemap(ret) OGRErr */
+    
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1RollbackTransaction(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  OGRErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  result = (OGRErr)GDALDatasetShadow_RollbackTransaction(arg1);
+  {
+    /* %typemap(out) OGRErr */
+    if (result != 0 && bUseExceptions) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
+        OGRErrMessages(result));
+      return 0;
+    }
+    jresult = (jint)result;
+  }
+  {
+    /* %typemap(ret) OGRErr */
+    
+  }
+  return jresult;
+}
+
+
 SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1Direct_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jint jarg3, jint jarg4, jint jarg5, jint jarg6, jint jarg7, jint jarg8, jobject jarg9, jintArray jarg11, jint jarg13, jint jarg14, jint jarg15) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
@@ -6980,7 +7959,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1Direct_1
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -7064,7 +8043,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1Direct_1
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -7146,7 +8125,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1Direct_1
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -7226,7 +8205,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1Direct_1
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -7311,7 +8290,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (char*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -7401,7 +8380,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (char*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -7489,7 +8468,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (char*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -7575,7 +8554,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (char*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -7663,7 +8642,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (short*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -7753,7 +8732,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (short*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -7841,7 +8820,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (short*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -7927,7 +8906,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (short*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8015,7 +8994,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (int*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8105,7 +9084,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (int*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8193,7 +9172,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (int*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8279,7 +9258,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (int*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8367,7 +9346,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (float*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8457,7 +9436,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (float*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8545,7 +9524,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (float*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8631,7 +9610,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (float*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8719,7 +9698,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (double*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8809,7 +9788,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (double*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8897,7 +9876,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (double*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -8983,7 +9962,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1ReadRaster_1_1SWIG_1
     //arg9 = (double*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -9068,7 +10047,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1Direct_
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -9152,7 +10131,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1Direct_
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -9234,7 +10213,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1Direct_
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -9314,7 +10293,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1Direct_
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -9398,7 +10377,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (char*) jenv->GetByteArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -9483,7 +10462,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (char*) jenv->GetByteArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -9566,7 +10545,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (char*) jenv->GetByteArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -9647,7 +10626,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (char*) jenv->GetByteArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -9730,7 +10709,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (short*) jenv->GetShortArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -9815,7 +10794,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (short*) jenv->GetShortArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -9898,7 +10877,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (short*) jenv->GetShortArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -9979,7 +10958,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (short*) jenv->GetShortArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10062,7 +11041,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (int*) jenv->GetIntArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10147,7 +11126,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (int*) jenv->GetIntArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10230,7 +11209,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (int*) jenv->GetIntArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10311,7 +11290,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (int*) jenv->GetIntArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10394,7 +11373,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (float*) jenv->GetFloatArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10479,7 +11458,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (float*) jenv->GetFloatArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10562,7 +11541,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (float*) jenv->GetFloatArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10643,7 +11622,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (float*) jenv->GetFloatArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10726,7 +11705,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (double*) jenv->GetDoubleArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10811,7 +11790,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (double*) jenv->GetDoubleArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10894,7 +11873,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (double*) jenv->GetDoubleArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -10975,7 +11954,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Dataset_1WriteRaster_1_1SWIG_
     arg9 = (double*) jenv->GetDoubleArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -11057,6 +12036,21 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1DataType_1get(JNIEnv *j
   arg1 = *(GDALRasterBandShadow **)&jarg1; 
   result = (GDALDataType)GDALRasterBandShadow_DataType_get(arg1);
   jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Band_1GetDataset(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jlong jresult = 0 ;
+  GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALRasterBandShadow **)&jarg1; 
+  result = (GDALDatasetShadow *)GDALRasterBandShadow_GetDataset(arg1);
+  *(GDALDatasetShadow **)&jresult = result; 
   return jresult;
 }
 
@@ -11242,6 +12236,21 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1SetNoDataValue(JNIEnv *
 }
 
 
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1DeleteNoDataValue(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
+  CPLErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALRasterBandShadow **)&jarg1; 
+  result = (CPLErr)GDALRasterBandShadow_DeleteNoDataValue(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
 SWIGEXPORT jstring JNICALL Java_org_gdal_gdal_gdalJNI_Band_1GetUnitType(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
   jstring jresult = 0 ;
   GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
@@ -11330,7 +12339,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1SetRasterCategoryNames(
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -12526,7 +13535,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1SetCategoryNames(JNIEnv
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -12597,7 +13606,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1Direct_1_1S
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -12651,7 +13660,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1Direct_1_1S
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -12703,7 +13712,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1Direct_1_1S
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -12759,7 +13768,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_10(J
     //arg9 = (char*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -12819,7 +13828,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_11(J
     //arg9 = (char*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -12877,7 +13886,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_12(J
     //arg9 = (char*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -12936,7 +13945,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_13(J
     //arg9 = (short*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -12996,7 +14005,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_14(J
     //arg9 = (short*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -13054,7 +14063,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_15(J
     //arg9 = (short*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -13113,7 +14122,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_16(J
     //arg9 = (int*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -13173,7 +14182,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_17(J
     //arg9 = (int*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -13231,7 +14240,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_18(J
     //arg9 = (int*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -13290,7 +14299,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_19(J
     //arg9 = (float*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -13350,7 +14359,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_110(
     //arg9 = (float*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -13408,7 +14417,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_111(
     //arg9 = (float*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -13467,7 +14476,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_112(
     //arg9 = (double*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -13527,7 +14536,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_113(
     //arg9 = (double*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -13585,7 +14594,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadRaster_1_1SWIG_114(
     //arg9 = (double*) jenv->GetPrimitiveArrayCritical(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to allocate temporary buffer.");
       return 0;
     }
@@ -13641,7 +14650,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1Direct_1_1
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -13695,7 +14704,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1Direct_1_1
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -13747,7 +14756,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1Direct_1_1
     arg9 = jenv->GetDirectBufferAddress(jarg9);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -13802,7 +14811,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_10(
     arg9 = (char*) jenv->GetByteArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -13857,7 +14866,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_11(
     arg9 = (char*) jenv->GetByteArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -13910,7 +14919,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_12(
     arg9 = (char*) jenv->GetByteArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -13964,7 +14973,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_13(
     arg9 = (short*) jenv->GetShortArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14019,7 +15028,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_14(
     arg9 = (short*) jenv->GetShortArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14072,7 +15081,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_15(
     arg9 = (short*) jenv->GetShortArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14126,7 +15135,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_16(
     arg9 = (int*) jenv->GetIntArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14181,7 +15190,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_17(
     arg9 = (int*) jenv->GetIntArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14234,7 +15243,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_18(
     arg9 = (int*) jenv->GetIntArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14288,7 +15297,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_19(
     arg9 = (float*) jenv->GetFloatArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14343,7 +15352,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_110
     arg9 = (float*) jenv->GetFloatArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14396,7 +15405,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_111
     arg9 = (float*) jenv->GetFloatArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14450,7 +15459,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_112
     arg9 = (double*) jenv->GetDoubleArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14505,7 +15514,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_113
     arg9 = (double*) jenv->GetDoubleArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14558,7 +15567,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteRaster_1_1SWIG_114
     arg9 = (double*) jenv->GetDoubleArrayElements(jarg9, 0);
     if (arg9 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get buffer.");
       return 0;
     }
@@ -14598,7 +15607,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1ReadBlock_1Direct(JNIEn
     arg4 = jenv->GetDirectBufferAddress(jarg4);
     if (arg4 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -14639,7 +15648,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Band_1WriteBlock_1Direct(JNIE
     arg4 = jenv->GetDirectBufferAddress(jarg4);
     if (arg4 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -15688,6 +16697,17 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterAttributeTable_1Changes
 }
 
 
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_RasterAttributeTable_1DumpReadable(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  GDALRasterAttributeTableShadow *arg1 = (GDALRasterAttributeTableShadow *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(GDALRasterAttributeTableShadow **)&jarg1; 
+  GDALRasterAttributeTableShadow_DumpReadable(arg1);
+}
+
+
 SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ComputeMedianCutPCT_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jint jarg4, jlong jarg5, jobject jarg5_, jobject jarg6) {
   jint jresult = 0 ;
   GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
@@ -15954,7 +16974,114 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_DitherRGB2PCT_1_1SWIG_12(JNIE
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4, jint jarg5, jdouble jarg6, jdouble jarg7, jobject jarg8) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4, jint jarg5, jdouble jarg6, jdouble jarg7, jobject jarg8, jobject jarg10) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  char *arg3 = (char *) 0 ;
+  char *arg4 = (char *) 0 ;
+  GDALResampleAlg arg5 ;
+  double arg6 ;
+  double arg7 ;
+  GDALProgressFunc arg8 ;
+  void *arg9 = (void *) 0 ;
+  char **arg10 = (char **) 0 ;
+  CPLErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg1_;
+  (void)jarg2_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = 0;
+  if (jarg3) {
+    arg3 = (char *)jenv->GetStringUTFChars(jarg3, 0);
+    if (!arg3) return 0;
+  }
+  arg4 = 0;
+  if (jarg4) {
+    arg4 = (char *)jenv->GetStringUTFChars(jarg4, 0);
+    if (!arg4) return 0;
+  }
+  arg5 = (GDALResampleAlg)jarg5; 
+  arg6 = (double)jarg6; 
+  arg7 = (double)jarg7; 
+  {
+    if ( jarg8 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg8;
+      arg8 = JavaProgressProxy;
+      arg9 = &sProgressInfo;
+    }
+    else
+    {
+      arg8 = NULL;
+      arg9 = NULL;
+    }
+  }
+  {
+    /* %typemap(in) char **options */
+    arg10 = NULL;
+    if(jarg10 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg10, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg10);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg10 = CSLAddString(arg10,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (CPLErr)ReprojectImage(arg1,arg2,(char const *)arg3,(char const *)arg4,arg5,arg6,arg7,arg8,arg9,arg10);
+  jresult = (jint)result; 
+  if (arg3) jenv->ReleaseStringUTFChars(jarg3, (const char *)arg3);
+  if (arg4) jenv->ReleaseStringUTFChars(jarg4, (const char *)arg4);
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg10 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4, jint jarg5, jdouble jarg6, jdouble jarg7, jobject jarg8) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
   GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
@@ -16023,7 +17150,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_10(JNI
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4, jint jarg5, jdouble jarg6, jdouble jarg7) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4, jint jarg5, jdouble jarg6, jdouble jarg7) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
   GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
@@ -16075,7 +17202,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_12(JNI
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4, jint jarg5, jdouble jarg6) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_14(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4, jint jarg5, jdouble jarg6) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
   GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
@@ -16125,7 +17252,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_13(JNI
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_14(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4, jint jarg5) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_15(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4, jint jarg5) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
   GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
@@ -16173,7 +17300,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_14(JNI
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_15(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_16(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
   GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
@@ -16219,7 +17346,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_15(JNI
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_16(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_17(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jstring jarg3) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
   GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
@@ -16258,7 +17385,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_16(JNI
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_17(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ReprojectImage_1_1SWIG_18(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
   GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
@@ -16317,7 +17444,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ComputeProximity_1_1SWIG_10(J
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -16399,7 +17526,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ComputeProximity_1_1SWIG_12(J
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -16479,7 +17606,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ComputeProximity_1_1SWIG_13(J
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jintArray jarg2, jobject jarg4, jdoubleArray jarg5, jobject jarg7, jobject jarg8) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jintArray jarg2, jlong jarg4, jobject jarg4_, jdoubleArray jarg5, jobject jarg7, jobject jarg8) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
   int arg2 ;
@@ -16498,6 +17625,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_10(JNI
   sProgressInfo.jenv = jenv;
   sProgressInfo.pJavaCallback = NULL;
   (void)jarg1_;
+  (void)jarg4_;
   arg1 = *(GDALDatasetShadow **)&jarg1; 
   {
     /* %typemap(in) (int nList, int* pList) */
@@ -16516,14 +17644,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_10(JNI
       arg3 = NULL;
     }
   }
-  {
-    if (jarg4 != NULL)
-    {
-      const jclass klass = jenv->FindClass("org/gdal/ogr/Layer");
-      const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/ogr/Layer;)J");
-      arg4 = (OGRLayerShadow*) jenv->CallStaticLongMethod(klass, getCPtr, jarg4);
-    }
-  }
+  arg4 = *(OGRLayerShadow **)&jarg4; 
   {
     /* %typemap(in) (int nList, double* pList) */
     /* check if is List */
@@ -16550,7 +17671,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_10(JNI
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -16628,7 +17749,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_10(JNI
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jintArray jarg2, jobject jarg4, jdoubleArray jarg5, jobject jarg7) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jintArray jarg2, jlong jarg4, jobject jarg4_, jdoubleArray jarg5, jobject jarg7) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
   int arg2 ;
@@ -16642,6 +17763,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_12(JNI
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
+  (void)jarg4_;
   arg1 = *(GDALDatasetShadow **)&jarg1; 
   {
     /* %typemap(in) (int nList, int* pList) */
@@ -16660,14 +17782,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_12(JNI
       arg3 = NULL;
     }
   }
-  {
-    if (jarg4 != NULL)
-    {
-      const jclass klass = jenv->FindClass("org/gdal/ogr/Layer");
-      const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/ogr/Layer;)J");
-      arg4 = (OGRLayerShadow*) jenv->CallStaticLongMethod(klass, getCPtr, jarg4);
-    }
-  }
+  arg4 = *(OGRLayerShadow **)&jarg4; 
   {
     /* %typemap(in) (int nList, double* pList) */
     /* check if is List */
@@ -16694,7 +17809,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_12(JNI
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -16760,7 +17875,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_12(JNI
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jintArray jarg2, jobject jarg4, jdoubleArray jarg5) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jintArray jarg2, jlong jarg4, jobject jarg4_, jdoubleArray jarg5) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
   int arg2 ;
@@ -16773,6 +17888,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_13(JNI
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
+  (void)jarg4_;
   arg1 = *(GDALDatasetShadow **)&jarg1; 
   {
     /* %typemap(in) (int nList, int* pList) */
@@ -16791,14 +17907,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_13(JNI
       arg3 = NULL;
     }
   }
-  {
-    if (jarg4 != NULL)
-    {
-      const jclass klass = jenv->FindClass("org/gdal/ogr/Layer");
-      const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/ogr/Layer;)J");
-      arg4 = (OGRLayerShadow*) jenv->CallStaticLongMethod(klass, getCPtr, jarg4);
-    }
-  }
+  arg4 = *(OGRLayerShadow **)&jarg4; 
   {
     /* %typemap(in) (int nList, double* pList) */
     /* check if is List */
@@ -16854,7 +17963,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_13(JNI
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_15(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jintArray jarg2, jobject jarg4) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_15(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jintArray jarg2, jlong jarg4, jobject jarg4_) {
   jint jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
   int arg2 ;
@@ -16865,6 +17974,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_15(JNI
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
+  (void)jarg4_;
   arg1 = *(GDALDatasetShadow **)&jarg1; 
   {
     /* %typemap(in) (int nList, int* pList) */
@@ -16883,14 +17993,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_15(JNI
       arg3 = NULL;
     }
   }
-  {
-    if (jarg4 != NULL)
-    {
-      const jclass klass = jenv->FindClass("org/gdal/ogr/Layer");
-      const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/ogr/Layer;)J");
-      arg4 = (OGRLayerShadow*) jenv->CallStaticLongMethod(klass, getCPtr, jarg4);
-    }
-  }
+  arg4 = *(OGRLayerShadow **)&jarg4; 
   {
     if (!arg1) {
       {
@@ -16920,7 +18023,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_RasterizeLayer_1_1SWIG_15(JNI
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jobject jarg3, jint jarg4, jobject jarg5, jobject jarg6) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jint jarg4, jobject jarg5, jobject jarg6) {
   jint jresult = 0 ;
   GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
   GDALRasterBandShadow *arg2 = (GDALRasterBandShadow *) 0 ;
@@ -16938,16 +18041,10 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_10(JNIEnv 
   sProgressInfo.pJavaCallback = NULL;
   (void)jarg1_;
   (void)jarg2_;
+  (void)jarg3_;
   arg1 = *(GDALRasterBandShadow **)&jarg1; 
   arg2 = *(GDALRasterBandShadow **)&jarg2; 
-  {
-    if (jarg3 != NULL)
-    {
-      const jclass klass = jenv->FindClass("org/gdal/ogr/Layer");
-      const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/ogr/Layer;)J");
-      arg3 = (OGRLayerShadow*) jenv->CallStaticLongMethod(klass, getCPtr, jarg3);
-    }
-  }
+  arg3 = *(OGRLayerShadow **)&jarg3; 
   arg4 = (int)jarg4; 
   {
     /* %typemap(in) char **options */
@@ -16958,7 +18055,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_10(JNIEnv 
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -17018,7 +18115,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_10(JNIEnv 
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jobject jarg3, jint jarg4, jobject jarg5) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jint jarg4, jobject jarg5) {
   jint jresult = 0 ;
   GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
   GDALRasterBandShadow *arg2 = (GDALRasterBandShadow *) 0 ;
@@ -17031,16 +18128,10 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_12(JNIEnv 
   (void)jcls;
   (void)jarg1_;
   (void)jarg2_;
+  (void)jarg3_;
   arg1 = *(GDALRasterBandShadow **)&jarg1; 
   arg2 = *(GDALRasterBandShadow **)&jarg2; 
-  {
-    if (jarg3 != NULL)
-    {
-      const jclass klass = jenv->FindClass("org/gdal/ogr/Layer");
-      const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/ogr/Layer;)J");
-      arg3 = (OGRLayerShadow*) jenv->CallStaticLongMethod(klass, getCPtr, jarg3);
-    }
-  }
+  arg3 = *(OGRLayerShadow **)&jarg3; 
   arg4 = (int)jarg4; 
   {
     /* %typemap(in) char **options */
@@ -17051,7 +18142,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_12(JNIEnv 
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -17099,7 +18190,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_12(JNIEnv 
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jobject jarg3, jint jarg4) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jint jarg4) {
   jint jresult = 0 ;
   GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
   GDALRasterBandShadow *arg2 = (GDALRasterBandShadow *) 0 ;
@@ -17111,16 +18202,10 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_13(JNIEnv 
   (void)jcls;
   (void)jarg1_;
   (void)jarg2_;
+  (void)jarg3_;
   arg1 = *(GDALRasterBandShadow **)&jarg1; 
   arg2 = *(GDALRasterBandShadow **)&jarg2; 
-  {
-    if (jarg3 != NULL)
-    {
-      const jclass klass = jenv->FindClass("org/gdal/ogr/Layer");
-      const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/ogr/Layer;)J");
-      arg3 = (OGRLayerShadow*) jenv->CallStaticLongMethod(klass, getCPtr, jarg3);
-    }
-  }
+  arg3 = *(OGRLayerShadow **)&jarg3; 
   arg4 = (int)jarg4; 
   {
     if (!arg1) {
@@ -17137,6 +18222,210 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Polygonize_1_1SWIG_13(JNIEnv 
     }
   }
   result = (int)Polygonize(arg1,arg2,arg3,arg4);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_FPolygonize_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jint jarg4, jobject jarg5, jobject jarg6) {
+  jint jresult = 0 ;
+  GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
+  GDALRasterBandShadow *arg2 = (GDALRasterBandShadow *) 0 ;
+  OGRLayerShadow *arg3 = (OGRLayerShadow *) 0 ;
+  int arg4 ;
+  char **arg5 = (char **) 0 ;
+  GDALProgressFunc arg6 ;
+  void *arg7 = (void *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg1_;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = *(GDALRasterBandShadow **)&jarg1; 
+  arg2 = *(GDALRasterBandShadow **)&jarg2; 
+  arg3 = *(OGRLayerShadow **)&jarg3; 
+  arg4 = (int)jarg4; 
+  {
+    /* %typemap(in) char **options */
+    arg5 = NULL;
+    if(jarg5 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg5, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg5);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg5 = CSLAddString(arg5,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    if ( jarg6 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg6;
+      arg6 = JavaProgressProxy;
+      arg7 = &sProgressInfo;
+    }
+    else
+    {
+      arg6 = NULL;
+      arg7 = NULL;
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg3) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (int)FPolygonize(arg1,arg2,arg3,arg4,arg5,arg6,arg7);
+  jresult = (jint)result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg5 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_FPolygonize_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jint jarg4, jobject jarg5) {
+  jint jresult = 0 ;
+  GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
+  GDALRasterBandShadow *arg2 = (GDALRasterBandShadow *) 0 ;
+  OGRLayerShadow *arg3 = (OGRLayerShadow *) 0 ;
+  int arg4 ;
+  char **arg5 = (char **) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = *(GDALRasterBandShadow **)&jarg1; 
+  arg2 = *(GDALRasterBandShadow **)&jarg2; 
+  arg3 = *(OGRLayerShadow **)&jarg3; 
+  arg4 = (int)jarg4; 
+  {
+    /* %typemap(in) char **options */
+    arg5 = NULL;
+    if(jarg5 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg5, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg5);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg5 = CSLAddString(arg5,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg3) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (int)FPolygonize(arg1,arg2,arg3,arg4,arg5);
+  jresult = (jint)result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg5 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_FPolygonize_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jint jarg4) {
+  jint jresult = 0 ;
+  GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
+  GDALRasterBandShadow *arg2 = (GDALRasterBandShadow *) 0 ;
+  OGRLayerShadow *arg3 = (OGRLayerShadow *) 0 ;
+  int arg4 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = *(GDALRasterBandShadow **)&jarg1; 
+  arg2 = *(GDALRasterBandShadow **)&jarg2; 
+  arg3 = *(OGRLayerShadow **)&jarg3; 
+  arg4 = (int)jarg4; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg3) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (int)FPolygonize(arg1,arg2,arg3,arg4);
   jresult = (jint)result; 
   return jresult;
 }
@@ -17173,7 +18462,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_FillNodata_1_1SWIG_10(JNIEnv 
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -17252,7 +18541,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_FillNodata_1_1SWIG_12(JNIEnv 
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -17356,7 +18645,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_SieveFilter_1_1SWIG_10(JNIEnv
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -17445,7 +18734,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_SieveFilter_1_1SWIG_12(JNIEnv
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -18023,7 +19312,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_GridCreate_1_1SWIG_10(JNIEnv 
     arg13 = jenv->GetDirectBufferAddress(jarg13);
     if (arg13 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -18147,7 +19436,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_GridCreate_1_1SWIG_12(JNIEnv 
     arg13 = jenv->GetDirectBufferAddress(jarg13);
     if (arg13 == NULL)
     {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, 
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
         "Unable to get address of direct buffer. Buffer must be allocated direct.");
       return 0;
     }
@@ -18179,7 +19468,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_GridCreate_1_1SWIG_12(JNIEnv 
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ContourGenerate_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2, jdouble jarg3, jdoubleArray jarg4, jint jarg6, jdouble jarg7, jobject jarg8, jint jarg9, jint jarg10, jobject jarg11) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ContourGenerate_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2, jdouble jarg3, jdoubleArray jarg4, jint jarg6, jdouble jarg7, jlong jarg8, jobject jarg8_, jint jarg9, jint jarg10, jobject jarg11) {
   jint jresult = 0 ;
   GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
   double arg2 ;
@@ -18201,6 +19490,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ContourGenerate_1_1SWIG_10(JN
   sProgressInfo.jenv = jenv;
   sProgressInfo.pJavaCallback = NULL;
   (void)jarg1_;
+  (void)jarg8_;
   arg1 = *(GDALRasterBandShadow **)&jarg1; 
   arg2 = (double)jarg2; 
   arg3 = (double)jarg3; 
@@ -18223,14 +19513,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ContourGenerate_1_1SWIG_10(JN
   }
   arg6 = (int)jarg6; 
   arg7 = (double)jarg7; 
-  {
-    if (jarg8 != NULL)
-    {
-      const jclass klass = jenv->FindClass("org/gdal/ogr/Layer");
-      const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/ogr/Layer;)J");
-      arg8 = (OGRLayerShadow*) jenv->CallStaticLongMethod(klass, getCPtr, jarg8);
-    }
-  }
+  arg8 = *(OGRLayerShadow **)&jarg8; 
   arg9 = (int)jarg9; 
   arg10 = (int)jarg10; 
   {
@@ -18274,7 +19557,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ContourGenerate_1_1SWIG_10(JN
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ContourGenerate_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2, jdouble jarg3, jdoubleArray jarg4, jint jarg6, jdouble jarg7, jobject jarg8, jint jarg9, jint jarg10) {
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ContourGenerate_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2, jdouble jarg3, jdoubleArray jarg4, jint jarg6, jdouble jarg7, jlong jarg8, jobject jarg8_, jint jarg9, jint jarg10) {
   jint jresult = 0 ;
   GDALRasterBandShadow *arg1 = (GDALRasterBandShadow *) 0 ;
   double arg2 ;
@@ -18291,6 +19574,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ContourGenerate_1_1SWIG_12(JN
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
+  (void)jarg8_;
   arg1 = *(GDALRasterBandShadow **)&jarg1; 
   arg2 = (double)jarg2; 
   arg3 = (double)jarg3; 
@@ -18313,14 +19597,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_ContourGenerate_1_1SWIG_12(JN
   }
   arg6 = (int)jarg6; 
   arg7 = (double)jarg7; 
-  {
-    if (jarg8 != NULL)
-    {
-      const jclass klass = jenv->FindClass("org/gdal/ogr/Layer");
-      const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/ogr/Layer;)J");
-      arg8 = (OGRLayerShadow*) jenv->CallStaticLongMethod(klass, getCPtr, jarg8);
-    }
-  }
+  arg8 = *(OGRLayerShadow **)&jarg8; 
   arg9 = (int)jarg9; 
   arg10 = (int)jarg10; 
   {
@@ -18517,6 +19794,78 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_AutoCreateWarpedVRT_1_1SWIG_
 }
 
 
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_CreatePansharpenedVRT(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jobjectArray jarg3) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALRasterBandShadow *arg2 = (GDALRasterBandShadow *) 0 ;
+  int arg3 ;
+  GDALRasterBandShadow **arg4 = (GDALRasterBandShadow **) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg2_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALRasterBandShadow **)&jarg2; 
+  {
+    /* %typemap(in)(int object_list_count, GDALRasterBandShadow **poObjects) */
+    /* check if is List */
+    if (jarg3)
+    {
+      arg3 = jenv->GetArrayLength(jarg3);
+      if (arg3 == 0)
+      arg4 = NULL;
+      else
+      {
+        arg4 = (GDALRasterBandShadow**) malloc(sizeof(GDALRasterBandShadow*) * arg3);
+        int i;
+        for (i = 0; i<arg3; i++) {
+          jobject obj = (jobject)jenv->GetObjectArrayElement(jarg3, i);
+          if (obj == NULL)
+          {
+            free (arg4 );
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null object in array");
+            return 0;
+          }
+          const jclass klass = jenv->FindClass("org/gdal/gdal/Band");
+          const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/gdal/Band;)J");
+          arg4[i] = (GDALRasterBandShadow*) jenv->CallStaticLongMethod(klass, getCPtr, obj);
+        }
+      }
+    }
+    else
+    {
+      arg3 = 0;
+      arg4 = NULL;
+    }
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)CreatePansharpenedVRT((char const *)arg1,arg2,arg3,arg4);
+  *(GDALDatasetShadow **)&jresult = result; 
+  {
+    /* %typemap(argout) (int object_list_count, GDALRasterBandShadow **poObjects) */
+  }
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  {
+    /* %typemap(freearg) (int object_list_count, GDALRasterBandShadow **poObjects) */
+    if (arg4) {
+      free((void*) arg4);
+    }
+  }
+  return jresult;
+}
+
+
 SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_new_1Transformer(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jobject jarg3) {
   jlong jresult = 0 ;
   GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
@@ -18539,7 +19888,7 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_new_1Transformer(JNIEnv *jen
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -18842,7 +20191,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Transformer_1TransformGeoloca
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -19413,6 +20762,110 @@ SWIGEXPORT jstring JNICALL Java_org_gdal_gdal_gdalJNI_SerializeXMLTree(JNIEnv *j
 }
 
 
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdal_gdalJNI_GetJPEG2000StructureAsString_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jstring jarg1, jobject jarg2) {
+  jstring jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  char **arg2 = (char **) 0 ;
+  retStringAndCPLFree *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  {
+    /* %typemap(in) char **options */
+    arg2 = NULL;
+    if(jarg2 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg2, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg2);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg2 = CSLAddString(arg2,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (retStringAndCPLFree *)GetJPEG2000StructureAsString((char const *)arg1,arg2);
+  {
+    /* %typemap(out) (retStringAndCPLFree*) */
+    if(result)
+    {
+      jresult = jenv->NewStringUTF((const char *)result);
+      CPLFree(result);
+    }
+  }
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg2 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdal_gdalJNI_GetJPEG2000StructureAsString_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jstring jarg1) {
+  jstring jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  retStringAndCPLFree *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (retStringAndCPLFree *)GetJPEG2000StructureAsString((char const *)arg1);
+  {
+    /* %typemap(out) (retStringAndCPLFree*) */
+    if(result)
+    {
+      jresult = jenv->NewStringUTF((const char *)result);
+      CPLFree(result);
+    }
+  }
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
 SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_GetDriverCount(JNIEnv *jenv, jclass jcls) {
   jint jresult = 0 ;
   int result;
@@ -19519,6 +20972,372 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Open_1_1SWIG_11(JNIEnv *jenv
 }
 
 
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_OpenEx_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg3, jobject jarg4, jobject jarg5) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  unsigned int arg2 ;
+  char **arg3 = (char **) 0 ;
+  char **arg4 = (char **) 0 ;
+  char **arg5 = (char **) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = (unsigned int)jarg2; 
+  {
+    /* %typemap(in) char **options */
+    arg3 = NULL;
+    if(jarg3 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg3, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg3);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg3 = CSLAddString(arg3,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    /* %typemap(in) char **options */
+    arg4 = NULL;
+    if(jarg4 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg4, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg4);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg4 = CSLAddString(arg4,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    /* %typemap(in) char **options */
+    arg5 = NULL;
+    if(jarg5 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg5, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg5);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg5 = CSLAddString(arg5,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)OpenEx((char const *)arg1,arg2,arg3,arg4,arg5);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg3 );
+  }
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg4 );
+  }
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg5 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_OpenEx_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg3, jobject jarg4) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  unsigned int arg2 ;
+  char **arg3 = (char **) 0 ;
+  char **arg4 = (char **) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = (unsigned int)jarg2; 
+  {
+    /* %typemap(in) char **options */
+    arg3 = NULL;
+    if(jarg3 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg3, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg3);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg3 = CSLAddString(arg3,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    /* %typemap(in) char **options */
+    arg4 = NULL;
+    if(jarg4 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg4, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg4);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg4 = CSLAddString(arg4,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)OpenEx((char const *)arg1,arg2,arg3,arg4);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg3 );
+  }
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg4 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_OpenEx_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg3) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  unsigned int arg2 ;
+  char **arg3 = (char **) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = (unsigned int)jarg2; 
+  {
+    /* %typemap(in) char **options */
+    arg3 = NULL;
+    if(jarg3 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg3, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg3);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg3 = CSLAddString(arg3,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)OpenEx((char const *)arg1,arg2,arg3);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg3 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_OpenEx_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  unsigned int arg2 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = (unsigned int)jarg2; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)OpenEx((char const *)arg1,arg2);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_OpenEx_1_1SWIG_14(JNIEnv *jenv, jclass jcls, jstring jarg1) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)OpenEx((char const *)arg1);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
 SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_OpenShared_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jstring jarg1, jint jarg2) {
   jlong jresult = 0 ;
   char *arg1 = (char *) 0 ;
@@ -19595,7 +21414,7 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_IdentifyDriver_1_1SWIG_10(JN
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -19680,7 +21499,7 @@ SWIGEXPORT jobject JNICALL Java_org_gdal_gdal_gdalJNI_GeneralCmdLineProcessor_1_
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -19749,7 +21568,7 @@ SWIGEXPORT jobject JNICALL Java_org_gdal_gdal_gdalJNI_GeneralCmdLineProcessor_1_
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -19796,6 +21615,1930 @@ SWIGEXPORT jobject JNICALL Java_org_gdal_gdal_gdalJNI_GeneralCmdLineProcessor_1_
   {
     /* %typemap(freearg) char **options */
     CSLDestroy( arg1 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_new_1InfoOptions(JNIEnv *jenv, jclass jcls, jobject jarg1) {
+  jlong jresult = 0 ;
+  char **arg1 = (char **) 0 ;
+  GDALInfoOptions *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) char **options */
+    arg1 = NULL;
+    if(jarg1 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg1, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg1);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg1 = CSLAddString(arg1,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (GDALInfoOptions *)new_GDALInfoOptions(arg1);
+  *(GDALInfoOptions **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg1 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_delete_1InfoOptions(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+  GDALInfoOptions *arg1 = (GDALInfoOptions *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(GDALInfoOptions **)&jarg1; 
+  delete_GDALInfoOptions(arg1);
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdal_gdalJNI_GDALInfo(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_) {
+  jstring jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  GDALInfoOptions *arg2 = (GDALInfoOptions *) 0 ;
+  retStringAndCPLFree *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg2_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(GDALInfoOptions **)&jarg2; 
+  result = (retStringAndCPLFree *)GDALInfo(arg1,arg2);
+  {
+    /* %typemap(out) (retStringAndCPLFree*) */
+    if(result)
+    {
+      jresult = jenv->NewStringUTF((const char *)result);
+      CPLFree(result);
+    }
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_new_1TranslateOptions(JNIEnv *jenv, jclass jcls, jobject jarg1) {
+  jlong jresult = 0 ;
+  char **arg1 = (char **) 0 ;
+  GDALTranslateOptions *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) char **options */
+    arg1 = NULL;
+    if(jarg1 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg1, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg1);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg1 = CSLAddString(arg1,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (GDALTranslateOptions *)new_GDALTranslateOptions(arg1);
+  *(GDALTranslateOptions **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg1 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_delete_1TranslateOptions(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+  GDALTranslateOptions *arg1 = (GDALTranslateOptions *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(GDALTranslateOptions **)&jarg1; 
+  delete_GDALTranslateOptions(arg1);
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Translate_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jobject jarg4) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALTranslateOptions *arg3 = (GDALTranslateOptions *) 0 ;
+  GDALProgressFunc arg4 ;
+  void *arg5 = (void *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALTranslateOptions **)&jarg3; 
+  {
+    if ( jarg4 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg4;
+      arg4 = JavaProgressProxy;
+      arg5 = &sProgressInfo;
+    }
+    else
+    {
+      arg4 = NULL;
+      arg5 = NULL;
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALTranslate((char const *)arg1,arg2,arg3,arg4,arg5);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Translate_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALTranslateOptions *arg3 = (GDALTranslateOptions *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALTranslateOptions **)&jarg3; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALTranslate((char const *)arg1,arg2,arg3);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_new_1WarpOptions(JNIEnv *jenv, jclass jcls, jobject jarg1) {
+  jlong jresult = 0 ;
+  char **arg1 = (char **) 0 ;
+  GDALWarpAppOptions *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) char **options */
+    arg1 = NULL;
+    if(jarg1 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg1, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg1);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg1 = CSLAddString(arg1,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (GDALWarpAppOptions *)new_GDALWarpAppOptions(arg1);
+  *(GDALWarpAppOptions **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg1 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_delete_1WarpOptions(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+  GDALWarpAppOptions *arg1 = (GDALWarpAppOptions *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(GDALWarpAppOptions **)&jarg1; 
+  delete_GDALWarpAppOptions(arg1);
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Warp_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jobjectArray jarg2, jlong jarg4, jobject jarg4_, jobject jarg5) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  int arg2 ;
+  GDALDatasetShadow **arg3 = (GDALDatasetShadow **) 0 ;
+  GDALWarpAppOptions *arg4 = (GDALWarpAppOptions *) 0 ;
+  GDALProgressFunc arg5 ;
+  void *arg6 = (void *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg1_;
+  (void)jarg4_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  {
+    /* %typemap(in)(int object_list_count, GDALDatasetShadow **poObjects) */
+    /* check if is List */
+    if (jarg2)
+    {
+      arg2 = jenv->GetArrayLength(jarg2);
+      if (arg2 == 0)
+      arg3 = NULL;
+      else
+      {
+        arg3 = (GDALDatasetShadow**) malloc(sizeof(GDALDatasetShadow*) * arg2);
+        int i;
+        for (i = 0; i<arg2; i++) {
+          jobject obj = (jobject)jenv->GetObjectArrayElement(jarg2, i);
+          if (obj == NULL)
+          {
+            free (arg3 );
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null object in array");
+            return 0;
+          }
+          const jclass klass = jenv->FindClass("org/gdal/gdal/Dataset");
+          const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/gdal/Dataset;)J");
+          arg3[i] = (GDALDatasetShadow*) jenv->CallStaticLongMethod(klass, getCPtr, obj);
+        }
+      }
+    }
+    else
+    {
+      arg2 = 0;
+      arg3 = NULL;
+    }
+  }
+  arg4 = *(GDALWarpAppOptions **)&jarg4; 
+  {
+    if ( jarg5 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg5;
+      arg5 = JavaProgressProxy;
+      arg6 = &sProgressInfo;
+    }
+    else
+    {
+      arg5 = NULL;
+      arg6 = NULL;
+    }
+  }
+  result = (int)wrapper_GDALWarpDestDS(arg1,arg2,arg3,arg4,arg5,arg6);
+  jresult = (jint)result; 
+  {
+    /* %typemap(argout) (int object_list_count, GDALDatasetShadow **poObjects) */
+  }
+  {
+    /* %typemap(freearg) (int object_list_count, GDALDatasetShadow **poObjects) */
+    if (arg3) {
+      free((void*) arg3);
+    }
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Warp_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jobjectArray jarg2, jlong jarg4, jobject jarg4_) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  int arg2 ;
+  GDALDatasetShadow **arg3 = (GDALDatasetShadow **) 0 ;
+  GDALWarpAppOptions *arg4 = (GDALWarpAppOptions *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg4_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  {
+    /* %typemap(in)(int object_list_count, GDALDatasetShadow **poObjects) */
+    /* check if is List */
+    if (jarg2)
+    {
+      arg2 = jenv->GetArrayLength(jarg2);
+      if (arg2 == 0)
+      arg3 = NULL;
+      else
+      {
+        arg3 = (GDALDatasetShadow**) malloc(sizeof(GDALDatasetShadow*) * arg2);
+        int i;
+        for (i = 0; i<arg2; i++) {
+          jobject obj = (jobject)jenv->GetObjectArrayElement(jarg2, i);
+          if (obj == NULL)
+          {
+            free (arg3 );
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null object in array");
+            return 0;
+          }
+          const jclass klass = jenv->FindClass("org/gdal/gdal/Dataset");
+          const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/gdal/Dataset;)J");
+          arg3[i] = (GDALDatasetShadow*) jenv->CallStaticLongMethod(klass, getCPtr, obj);
+        }
+      }
+    }
+    else
+    {
+      arg2 = 0;
+      arg3 = NULL;
+    }
+  }
+  arg4 = *(GDALWarpAppOptions **)&jarg4; 
+  result = (int)wrapper_GDALWarpDestDS(arg1,arg2,arg3,arg4);
+  jresult = (jint)result; 
+  {
+    /* %typemap(argout) (int object_list_count, GDALDatasetShadow **poObjects) */
+  }
+  {
+    /* %typemap(freearg) (int object_list_count, GDALDatasetShadow **poObjects) */
+    if (arg3) {
+      free((void*) arg3);
+    }
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Warp_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jstring jarg1, jobjectArray jarg2, jlong jarg4, jobject jarg4_, jobject jarg5) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  int arg2 ;
+  GDALDatasetShadow **arg3 = (GDALDatasetShadow **) 0 ;
+  GDALWarpAppOptions *arg4 = (GDALWarpAppOptions *) 0 ;
+  GDALProgressFunc arg5 ;
+  void *arg6 = (void *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg4_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  {
+    /* %typemap(in)(int object_list_count, GDALDatasetShadow **poObjects) */
+    /* check if is List */
+    if (jarg2)
+    {
+      arg2 = jenv->GetArrayLength(jarg2);
+      if (arg2 == 0)
+      arg3 = NULL;
+      else
+      {
+        arg3 = (GDALDatasetShadow**) malloc(sizeof(GDALDatasetShadow*) * arg2);
+        int i;
+        for (i = 0; i<arg2; i++) {
+          jobject obj = (jobject)jenv->GetObjectArrayElement(jarg2, i);
+          if (obj == NULL)
+          {
+            free (arg3 );
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null object in array");
+            return 0;
+          }
+          const jclass klass = jenv->FindClass("org/gdal/gdal/Dataset");
+          const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/gdal/Dataset;)J");
+          arg3[i] = (GDALDatasetShadow*) jenv->CallStaticLongMethod(klass, getCPtr, obj);
+        }
+      }
+    }
+    else
+    {
+      arg2 = 0;
+      arg3 = NULL;
+    }
+  }
+  arg4 = *(GDALWarpAppOptions **)&jarg4; 
+  {
+    if ( jarg5 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg5;
+      arg5 = JavaProgressProxy;
+      arg6 = &sProgressInfo;
+    }
+    else
+    {
+      arg5 = NULL;
+      arg6 = NULL;
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALWarpDestName((char const *)arg1,arg2,arg3,arg4,arg5,arg6);
+  *(GDALDatasetShadow **)&jresult = result; 
+  {
+    /* %typemap(argout) (int object_list_count, GDALDatasetShadow **poObjects) */
+  }
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  {
+    /* %typemap(freearg) (int object_list_count, GDALDatasetShadow **poObjects) */
+    if (arg3) {
+      free((void*) arg3);
+    }
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Warp_1_1SWIG_15(JNIEnv *jenv, jclass jcls, jstring jarg1, jobjectArray jarg2, jlong jarg4, jobject jarg4_) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  int arg2 ;
+  GDALDatasetShadow **arg3 = (GDALDatasetShadow **) 0 ;
+  GDALWarpAppOptions *arg4 = (GDALWarpAppOptions *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg4_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  {
+    /* %typemap(in)(int object_list_count, GDALDatasetShadow **poObjects) */
+    /* check if is List */
+    if (jarg2)
+    {
+      arg2 = jenv->GetArrayLength(jarg2);
+      if (arg2 == 0)
+      arg3 = NULL;
+      else
+      {
+        arg3 = (GDALDatasetShadow**) malloc(sizeof(GDALDatasetShadow*) * arg2);
+        int i;
+        for (i = 0; i<arg2; i++) {
+          jobject obj = (jobject)jenv->GetObjectArrayElement(jarg2, i);
+          if (obj == NULL)
+          {
+            free (arg3 );
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null object in array");
+            return 0;
+          }
+          const jclass klass = jenv->FindClass("org/gdal/gdal/Dataset");
+          const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/gdal/Dataset;)J");
+          arg3[i] = (GDALDatasetShadow*) jenv->CallStaticLongMethod(klass, getCPtr, obj);
+        }
+      }
+    }
+    else
+    {
+      arg2 = 0;
+      arg3 = NULL;
+    }
+  }
+  arg4 = *(GDALWarpAppOptions **)&jarg4; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALWarpDestName((char const *)arg1,arg2,arg3,arg4);
+  *(GDALDatasetShadow **)&jresult = result; 
+  {
+    /* %typemap(argout) (int object_list_count, GDALDatasetShadow **poObjects) */
+  }
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  {
+    /* %typemap(freearg) (int object_list_count, GDALDatasetShadow **poObjects) */
+    if (arg3) {
+      free((void*) arg3);
+    }
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_new_1VectorTranslateOptions(JNIEnv *jenv, jclass jcls, jobject jarg1) {
+  jlong jresult = 0 ;
+  char **arg1 = (char **) 0 ;
+  GDALVectorTranslateOptions *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) char **options */
+    arg1 = NULL;
+    if(jarg1 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg1, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg1);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg1 = CSLAddString(arg1,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (GDALVectorTranslateOptions *)new_GDALVectorTranslateOptions(arg1);
+  *(GDALVectorTranslateOptions **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg1 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_delete_1VectorTranslateOptions(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+  GDALVectorTranslateOptions *arg1 = (GDALVectorTranslateOptions *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(GDALVectorTranslateOptions **)&jarg1; 
+  delete_GDALVectorTranslateOptions(arg1);
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_VectorTranslate_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jobject jarg4) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALVectorTranslateOptions *arg3 = (GDALVectorTranslateOptions *) 0 ;
+  GDALProgressFunc arg4 ;
+  void *arg5 = (void *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg1_;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALVectorTranslateOptions **)&jarg3; 
+  {
+    if ( jarg4 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg4;
+      arg4 = JavaProgressProxy;
+      arg5 = &sProgressInfo;
+    }
+    else
+    {
+      arg4 = NULL;
+      arg5 = NULL;
+    }
+  }
+  result = (int)wrapper_GDALVectorTranslateDestDS(arg1,arg2,arg3,arg4,arg5);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_VectorTranslate_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALVectorTranslateOptions *arg3 = (GDALVectorTranslateOptions *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALVectorTranslateOptions **)&jarg3; 
+  result = (int)wrapper_GDALVectorTranslateDestDS(arg1,arg2,arg3);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_VectorTranslate_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jobject jarg4) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALVectorTranslateOptions *arg3 = (GDALVectorTranslateOptions *) 0 ;
+  GDALProgressFunc arg4 ;
+  void *arg5 = (void *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALVectorTranslateOptions **)&jarg3; 
+  {
+    if ( jarg4 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg4;
+      arg4 = JavaProgressProxy;
+      arg5 = &sProgressInfo;
+    }
+    else
+    {
+      arg4 = NULL;
+      arg5 = NULL;
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALVectorTranslateDestName((char const *)arg1,arg2,arg3,arg4,arg5);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_VectorTranslate_1_1SWIG_15(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALVectorTranslateOptions *arg3 = (GDALVectorTranslateOptions *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALVectorTranslateOptions **)&jarg3; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALVectorTranslateDestName((char const *)arg1,arg2,arg3);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_new_1DEMProcessingOptions(JNIEnv *jenv, jclass jcls, jobject jarg1) {
+  jlong jresult = 0 ;
+  char **arg1 = (char **) 0 ;
+  GDALDEMProcessingOptions *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) char **options */
+    arg1 = NULL;
+    if(jarg1 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg1, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg1);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg1 = CSLAddString(arg1,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (GDALDEMProcessingOptions *)new_GDALDEMProcessingOptions(arg1);
+  *(GDALDEMProcessingOptions **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg1 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_delete_1DEMProcessingOptions(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+  GDALDEMProcessingOptions *arg1 = (GDALDEMProcessingOptions *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(GDALDEMProcessingOptions **)&jarg1; 
+  delete_GDALDEMProcessingOptions(arg1);
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_DEMProcessing_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4, jlong jarg5, jobject jarg5_, jobject jarg6) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  char *arg3 = (char *) 0 ;
+  char *arg4 = (char *) 0 ;
+  GDALDEMProcessingOptions *arg5 = (GDALDEMProcessingOptions *) 0 ;
+  GDALProgressFunc arg6 ;
+  void *arg7 = (void *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg2_;
+  (void)jarg5_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = 0;
+  if (jarg3) {
+    arg3 = (char *)jenv->GetStringUTFChars(jarg3, 0);
+    if (!arg3) return 0;
+  }
+  arg4 = 0;
+  if (jarg4) {
+    arg4 = (char *)jenv->GetStringUTFChars(jarg4, 0);
+    if (!arg4) return 0;
+  }
+  arg5 = *(GDALDEMProcessingOptions **)&jarg5; 
+  {
+    if ( jarg6 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg6;
+      arg6 = JavaProgressProxy;
+      arg7 = &sProgressInfo;
+    }
+    else
+    {
+      arg6 = NULL;
+      arg7 = NULL;
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg3) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALDEMProcessing((char const *)arg1,arg2,(char const *)arg3,(char const *)arg4,arg5,arg6,arg7);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  if (arg3) jenv->ReleaseStringUTFChars(jarg3, (const char *)arg3);
+  if (arg4) jenv->ReleaseStringUTFChars(jarg4, (const char *)arg4);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_DEMProcessing_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jstring jarg3, jstring jarg4, jlong jarg5, jobject jarg5_) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  char *arg3 = (char *) 0 ;
+  char *arg4 = (char *) 0 ;
+  GDALDEMProcessingOptions *arg5 = (GDALDEMProcessingOptions *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg2_;
+  (void)jarg5_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = 0;
+  if (jarg3) {
+    arg3 = (char *)jenv->GetStringUTFChars(jarg3, 0);
+    if (!arg3) return 0;
+  }
+  arg4 = 0;
+  if (jarg4) {
+    arg4 = (char *)jenv->GetStringUTFChars(jarg4, 0);
+    if (!arg4) return 0;
+  }
+  arg5 = *(GDALDEMProcessingOptions **)&jarg5; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg3) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALDEMProcessing((char const *)arg1,arg2,(char const *)arg3,(char const *)arg4,arg5);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  if (arg3) jenv->ReleaseStringUTFChars(jarg3, (const char *)arg3);
+  if (arg4) jenv->ReleaseStringUTFChars(jarg4, (const char *)arg4);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_new_1NearblackOptions(JNIEnv *jenv, jclass jcls, jobject jarg1) {
+  jlong jresult = 0 ;
+  char **arg1 = (char **) 0 ;
+  GDALNearblackOptions *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) char **options */
+    arg1 = NULL;
+    if(jarg1 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg1, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg1);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg1 = CSLAddString(arg1,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (GDALNearblackOptions *)new_GDALNearblackOptions(arg1);
+  *(GDALNearblackOptions **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg1 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_delete_1NearblackOptions(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+  GDALNearblackOptions *arg1 = (GDALNearblackOptions *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(GDALNearblackOptions **)&jarg1; 
+  delete_GDALNearblackOptions(arg1);
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Nearblack_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jobject jarg4) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALNearblackOptions *arg3 = (GDALNearblackOptions *) 0 ;
+  GDALProgressFunc arg4 ;
+  void *arg5 = (void *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg1_;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALNearblackOptions **)&jarg3; 
+  {
+    if ( jarg4 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg4;
+      arg4 = JavaProgressProxy;
+      arg5 = &sProgressInfo;
+    }
+    else
+    {
+      arg4 = NULL;
+      arg5 = NULL;
+    }
+  }
+  result = (int)wrapper_GDALNearblackDestDS(arg1,arg2,arg3,arg4,arg5);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Nearblack_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALNearblackOptions *arg3 = (GDALNearblackOptions *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALNearblackOptions **)&jarg3; 
+  result = (int)wrapper_GDALNearblackDestDS(arg1,arg2,arg3);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Nearblack_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jobject jarg4) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALNearblackOptions *arg3 = (GDALNearblackOptions *) 0 ;
+  GDALProgressFunc arg4 ;
+  void *arg5 = (void *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALNearblackOptions **)&jarg3; 
+  {
+    if ( jarg4 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg4;
+      arg4 = JavaProgressProxy;
+      arg5 = &sProgressInfo;
+    }
+    else
+    {
+      arg4 = NULL;
+      arg5 = NULL;
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALNearblackDestName((char const *)arg1,arg2,arg3,arg4,arg5);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Nearblack_1_1SWIG_15(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALNearblackOptions *arg3 = (GDALNearblackOptions *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALNearblackOptions **)&jarg3; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALNearblackDestName((char const *)arg1,arg2,arg3);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_new_1GridOptions(JNIEnv *jenv, jclass jcls, jobject jarg1) {
+  jlong jresult = 0 ;
+  char **arg1 = (char **) 0 ;
+  GDALGridOptions *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) char **options */
+    arg1 = NULL;
+    if(jarg1 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg1, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg1);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg1 = CSLAddString(arg1,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (GDALGridOptions *)new_GDALGridOptions(arg1);
+  *(GDALGridOptions **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg1 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_delete_1GridOptions(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+  GDALGridOptions *arg1 = (GDALGridOptions *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(GDALGridOptions **)&jarg1; 
+  delete_GDALGridOptions(arg1);
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Grid_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jobject jarg4) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALGridOptions *arg3 = (GDALGridOptions *) 0 ;
+  GDALProgressFunc arg4 ;
+  void *arg5 = (void *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALGridOptions **)&jarg3; 
+  {
+    if ( jarg4 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg4;
+      arg4 = JavaProgressProxy;
+      arg5 = &sProgressInfo;
+    }
+    else
+    {
+      arg4 = NULL;
+      arg5 = NULL;
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALGrid((char const *)arg1,arg2,arg3,arg4,arg5);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Grid_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALGridOptions *arg3 = (GDALGridOptions *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALGridOptions **)&jarg3; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALGrid((char const *)arg1,arg2,arg3);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_new_1RasterizeOptions(JNIEnv *jenv, jclass jcls, jobject jarg1) {
+  jlong jresult = 0 ;
+  char **arg1 = (char **) 0 ;
+  GDALRasterizeOptions *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) char **options */
+    arg1 = NULL;
+    if(jarg1 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg1, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg1);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg1 = CSLAddString(arg1,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (GDALRasterizeOptions *)new_GDALRasterizeOptions(arg1);
+  *(GDALRasterizeOptions **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg1 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_delete_1RasterizeOptions(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+  GDALRasterizeOptions *arg1 = (GDALRasterizeOptions *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(GDALRasterizeOptions **)&jarg1; 
+  delete_GDALRasterizeOptions(arg1);
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Rasterize_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jobject jarg4) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALRasterizeOptions *arg3 = (GDALRasterizeOptions *) 0 ;
+  GDALProgressFunc arg4 ;
+  void *arg5 = (void *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg1_;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALRasterizeOptions **)&jarg3; 
+  {
+    if ( jarg4 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg4;
+      arg4 = JavaProgressProxy;
+      arg5 = &sProgressInfo;
+    }
+    else
+    {
+      arg4 = NULL;
+      arg5 = NULL;
+    }
+  }
+  result = (int)wrapper_GDALRasterizeDestDS(arg1,arg2,arg3,arg4,arg5);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdal_gdalJNI_Rasterize_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_) {
+  jint jresult = 0 ;
+  GDALDatasetShadow *arg1 = (GDALDatasetShadow *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALRasterizeOptions *arg3 = (GDALRasterizeOptions *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = *(GDALDatasetShadow **)&jarg1; 
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALRasterizeOptions **)&jarg3; 
+  result = (int)wrapper_GDALRasterizeDestDS(arg1,arg2,arg3);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Rasterize_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_, jobject jarg4) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALRasterizeOptions *arg3 = (GDALRasterizeOptions *) 0 ;
+  GDALProgressFunc arg4 ;
+  void *arg5 = (void *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALRasterizeOptions **)&jarg3; 
+  {
+    if ( jarg4 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg4;
+      arg4 = JavaProgressProxy;
+      arg5 = &sProgressInfo;
+    }
+    else
+    {
+      arg4 = NULL;
+      arg5 = NULL;
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALRasterizeDestName((char const *)arg1,arg2,arg3,arg4,arg5);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_Rasterize_1_1SWIG_15(JNIEnv *jenv, jclass jcls, jstring jarg1, jlong jarg2, jobject jarg2_, jlong jarg3, jobject jarg3_) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  GDALDatasetShadow *arg2 = (GDALDatasetShadow *) 0 ;
+  GDALRasterizeOptions *arg3 = (GDALRasterizeOptions *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg2_;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  arg2 = *(GDALDatasetShadow **)&jarg2; 
+  arg3 = *(GDALRasterizeOptions **)&jarg3; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALRasterizeDestName((char const *)arg1,arg2,arg3);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_new_1BuildVRTOptions(JNIEnv *jenv, jclass jcls, jobject jarg1) {
+  jlong jresult = 0 ;
+  char **arg1 = (char **) 0 ;
+  GDALBuildVRTOptions *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) char **options */
+    arg1 = NULL;
+    if(jarg1 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg1, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg1);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg1 = CSLAddString(arg1,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (GDALBuildVRTOptions *)new_GDALBuildVRTOptions(arg1);
+  *(GDALBuildVRTOptions **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg1 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_gdal_gdalJNI_delete_1BuildVRTOptions(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+  GDALBuildVRTOptions *arg1 = (GDALBuildVRTOptions *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(GDALBuildVRTOptions **)&jarg1; 
+  delete_GDALBuildVRTOptions(arg1);
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_BuildVRT_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jstring jarg1, jobjectArray jarg2, jlong jarg4, jobject jarg4_, jobject jarg5) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  int arg2 ;
+  GDALDatasetShadow **arg3 = (GDALDatasetShadow **) 0 ;
+  GDALBuildVRTOptions *arg4 = (GDALBuildVRTOptions *) 0 ;
+  GDALProgressFunc arg5 ;
+  void *arg6 = (void *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg4_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  {
+    /* %typemap(in)(int object_list_count, GDALDatasetShadow **poObjects) */
+    /* check if is List */
+    if (jarg2)
+    {
+      arg2 = jenv->GetArrayLength(jarg2);
+      if (arg2 == 0)
+      arg3 = NULL;
+      else
+      {
+        arg3 = (GDALDatasetShadow**) malloc(sizeof(GDALDatasetShadow*) * arg2);
+        int i;
+        for (i = 0; i<arg2; i++) {
+          jobject obj = (jobject)jenv->GetObjectArrayElement(jarg2, i);
+          if (obj == NULL)
+          {
+            free (arg3 );
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null object in array");
+            return 0;
+          }
+          const jclass klass = jenv->FindClass("org/gdal/gdal/Dataset");
+          const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/gdal/Dataset;)J");
+          arg3[i] = (GDALDatasetShadow*) jenv->CallStaticLongMethod(klass, getCPtr, obj);
+        }
+      }
+    }
+    else
+    {
+      arg2 = 0;
+      arg3 = NULL;
+    }
+  }
+  arg4 = *(GDALBuildVRTOptions **)&jarg4; 
+  {
+    if ( jarg5 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg5;
+      arg5 = JavaProgressProxy;
+      arg6 = &sProgressInfo;
+    }
+    else
+    {
+      arg5 = NULL;
+      arg6 = NULL;
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALBuildVRT_objects((char const *)arg1,arg2,arg3,arg4,arg5,arg6);
+  *(GDALDatasetShadow **)&jresult = result; 
+  {
+    /* %typemap(argout) (int object_list_count, GDALDatasetShadow **poObjects) */
+  }
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  {
+    /* %typemap(freearg) (int object_list_count, GDALDatasetShadow **poObjects) */
+    if (arg3) {
+      free((void*) arg3);
+    }
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_BuildVRT_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jstring jarg1, jobjectArray jarg2, jlong jarg4, jobject jarg4_) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  int arg2 ;
+  GDALDatasetShadow **arg3 = (GDALDatasetShadow **) 0 ;
+  GDALBuildVRTOptions *arg4 = (GDALBuildVRTOptions *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg4_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  {
+    /* %typemap(in)(int object_list_count, GDALDatasetShadow **poObjects) */
+    /* check if is List */
+    if (jarg2)
+    {
+      arg2 = jenv->GetArrayLength(jarg2);
+      if (arg2 == 0)
+      arg3 = NULL;
+      else
+      {
+        arg3 = (GDALDatasetShadow**) malloc(sizeof(GDALDatasetShadow*) * arg2);
+        int i;
+        for (i = 0; i<arg2; i++) {
+          jobject obj = (jobject)jenv->GetObjectArrayElement(jarg2, i);
+          if (obj == NULL)
+          {
+            free (arg3 );
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null object in array");
+            return 0;
+          }
+          const jclass klass = jenv->FindClass("org/gdal/gdal/Dataset");
+          const jmethodID getCPtr = jenv->GetStaticMethodID(klass, "getCPtr", "(Lorg/gdal/gdal/Dataset;)J");
+          arg3[i] = (GDALDatasetShadow*) jenv->CallStaticLongMethod(klass, getCPtr, obj);
+        }
+      }
+    }
+    else
+    {
+      arg2 = 0;
+      arg3 = NULL;
+    }
+  }
+  arg4 = *(GDALBuildVRTOptions **)&jarg4; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALBuildVRT_objects((char const *)arg1,arg2,arg3,arg4);
+  *(GDALDatasetShadow **)&jresult = result; 
+  {
+    /* %typemap(argout) (int object_list_count, GDALDatasetShadow **poObjects) */
+  }
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  {
+    /* %typemap(freearg) (int object_list_count, GDALDatasetShadow **poObjects) */
+    if (arg3) {
+      free((void*) arg3);
+    }
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_BuildVRT_1_1SWIG_13(JNIEnv *jenv, jclass jcls, jstring jarg1, jobject jarg2, jlong jarg3, jobject jarg3_, jobject jarg4) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  char **arg2 = (char **) 0 ;
+  GDALBuildVRTOptions *arg3 = (GDALBuildVRTOptions *) 0 ;
+  GDALProgressFunc arg4 ;
+  void *arg5 = (void *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  JavaProgressData sProgressInfo;
+  sProgressInfo.jenv = jenv;
+  sProgressInfo.pJavaCallback = NULL;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  {
+    /* %typemap(in) char **options */
+    arg2 = NULL;
+    if(jarg2 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg2, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg2);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg2 = CSLAddString(arg2,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  arg3 = *(GDALBuildVRTOptions **)&jarg3; 
+  {
+    if ( jarg4 != 0 ) {
+      sProgressInfo.pJavaCallback = jarg4;
+      arg4 = JavaProgressProxy;
+      arg5 = &sProgressInfo;
+    }
+    else
+    {
+      arg4 = NULL;
+      arg5 = NULL;
+    }
+  }
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALBuildVRT_names((char const *)arg1,arg2,arg3,arg4,arg5);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg2 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_gdal_gdalJNI_BuildVRT_1_1SWIG_15(JNIEnv *jenv, jclass jcls, jstring jarg1, jobject jarg2, jlong jarg3, jobject jarg3_) {
+  jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
+  char **arg2 = (char **) 0 ;
+  GDALBuildVRTOptions *arg3 = (GDALBuildVRTOptions *) 0 ;
+  GDALDatasetShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg3_;
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)jenv->GetStringUTFChars(jarg1, 0);
+    if (!arg1) return 0;
+  }
+  {
+    /* %typemap(in) char **options */
+    arg2 = NULL;
+    if(jarg2 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg2, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg2);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg2 = CSLAddString(arg2,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  arg3 = *(GDALBuildVRTOptions **)&jarg3; 
+  {
+    if (!arg1) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GDALDatasetShadow *)wrapper_GDALBuildVRT_names((char const *)arg1,arg2,arg3);
+  *(GDALDatasetShadow **)&jresult = result; 
+  if (arg1) jenv->ReleaseStringUTFChars(jarg1, (const char *)arg1);
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg2 );
   }
   return jresult;
 }

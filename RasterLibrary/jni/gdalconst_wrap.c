@@ -971,6 +971,102 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GF_1Write_1get(JNIE
 }
 
 
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GRIORA_1NearestNeighbour_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GRIORA_NearestNeighbour);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GRIORA_1Bilinear_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GRIORA_Bilinear);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GRIORA_1Cubic_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GRIORA_Cubic);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GRIORA_1CubicSpline_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GRIORA_CubicSpline);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GRIORA_1Lanczos_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GRIORA_Lanczos);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GRIORA_1Average_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GRIORA_Average);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GRIORA_1Mode_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GRIORA_Mode);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GRIORA_1Gauss_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GRIORA_Gauss);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
 SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GCI_1Undefined_1get(JNIEnv *jenv, jclass jcls) {
   jint jresult = 0 ;
   int result;
@@ -1547,6 +1643,102 @@ SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_CPLE_1UserInterrupt
 }
 
 
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_OF_1ALL_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GDAL_OF_ALL);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_OF_1RASTER_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GDAL_OF_RASTER);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_OF_1VECTOR_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GDAL_OF_VECTOR);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_OF_1GNM_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GDAL_OF_GNM);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_OF_1READONLY_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GDAL_OF_READONLY);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_OF_1UPDATE_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GDAL_OF_UPDATE);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_OF_1SHARED_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GDAL_OF_SHARED);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_gdalconst_gdalconstJNI_OF_1VERBOSE_1ERROR_1get(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)(GDAL_OF_VERBOSE_ERROR);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
 SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GDAL_1DMD_1LONGNAME_1get(JNIEnv *jenv, jclass jcls) {
   jstring jresult = 0 ;
   char *result = 0 ;
@@ -1595,6 +1787,30 @@ SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GDAL_1DMD_1EXTEN
 }
 
 
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GDAL_1DMD_1EXTENSIONS_1get(JNIEnv *jenv, jclass jcls) {
+  jstring jresult = 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (char *)("DMD_EXTENSIONS");
+  if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_DMD_1CONNECTION_1PREFIX_1get(JNIEnv *jenv, jclass jcls) {
+  jstring jresult = 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (char *)("DMD_CONNECTION_PREFIX");
+  if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  return jresult;
+}
+
+
 SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GDAL_1DMD_1CREATIONOPTIONLIST_1get(JNIEnv *jenv, jclass jcls) {
   jstring jresult = 0 ;
   char *result = 0 ;
@@ -1619,6 +1835,18 @@ SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GDAL_1DMD_1CREAT
 }
 
 
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GDAL_1DMD_1CREATIONFIELDDATATYPES_1get(JNIEnv *jenv, jclass jcls) {
+  jstring jresult = 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (char *)("DMD_CREATIONFIELDDATATYPES");
+  if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  return jresult;
+}
+
+
 SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GDAL_1DMD_1SUBDATASETS_1get(JNIEnv *jenv, jclass jcls) {
   jstring jresult = 0 ;
   char *result = 0 ;
@@ -1626,6 +1854,18 @@ SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GDAL_1DMD_1SUBDA
   (void)jenv;
   (void)jcls;
   result = (char *)("DMD_SUBDATASETS");
+  if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GDAL_1DCAP_1OPEN_1get(JNIEnv *jenv, jclass jcls) {
+  jstring jresult = 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (char *)("DCAP_OPEN");
   if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
   return jresult;
 }
@@ -1662,6 +1902,66 @@ SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_GDAL_1DCAP_1VIRT
   (void)jenv;
   (void)jcls;
   result = (char *)("DCAP_VIRTUALIO");
+  if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_DCAP_1RASTER_1get(JNIEnv *jenv, jclass jcls) {
+  jstring jresult = 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (char *)("GDAL_DCAP_RASTER");
+  if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_DCAP_1VECTOR_1get(JNIEnv *jenv, jclass jcls) {
+  jstring jresult = 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (char *)("GDAL_DCAP_VECTOR");
+  if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_DCAP_1NOTNULL_1FIELDS_1get(JNIEnv *jenv, jclass jcls) {
+  jstring jresult = 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (char *)("GDAL_DCAP_NOTNULL_FIELDS");
+  if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_DCAP_1DEFAULT_1FIELDS_1get(JNIEnv *jenv, jclass jcls) {
+  jstring jresult = 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (char *)("GDAL_DCAP_DEFAULT_FIELDS");
+  if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_gdalconst_gdalconstJNI_DCAP_1NOTNULL_1GEOMFIELDS_1get(JNIEnv *jenv, jclass jcls) {
+  jstring jresult = 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (char *)("GDAL_DCAP_NOTNULL_GEOMFIELDS");
   if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
   return jresult;
 }

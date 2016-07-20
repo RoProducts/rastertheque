@@ -6,7 +6,7 @@ include $(CLEAR_VARS)
 # OpenCV
 OPENCV_CAMERA_MODULES:=off
 OPENCV_INSTALL_MODULES:=on
-include /Users/robertoehler/Downloads/OpenCV-2.4.10-android-sdk/sdk/native/jni/OpenCV.mk
+include /Users/robertoehler/Documents/MyLibraries/OpenCV-3.1.0-android-sdk/sdk/native/jni/OpenCV.mk
 
 TARGET_PLATFORM := android-14
 #TARGET_ARCH_ABI := armeabi armeabi-v7a

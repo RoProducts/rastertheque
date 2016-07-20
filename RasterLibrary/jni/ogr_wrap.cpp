@@ -271,6 +271,7 @@ typedef char retStringAndCPLFree;
 #include <iostream>
 using namespace std;
 
+#include "gdal.h"
 #include "ogr_api.h"
 #include "ogr_p.h"
 #include "ogr_core.h"
@@ -278,10 +279,17 @@ using namespace std;
 #include "cpl_string.h"
 #include "ogr_srs_api.h"
 
-#ifdef DEBUG 
+#define FIELD_INDEX_ERROR_TMPL "Invalid field index: '%i'"
+#define FIELD_NAME_ERROR_TMPL "Invalid field name: '%s'"
+
+typedef void GDALMajorObjectShadow;
+
+#ifdef DEBUG
 typedef struct OGRSpatialReferenceHS OSRSpatialReferenceShadow;
+#ifndef SWIGPERL
 typedef struct OGRDriverHS OGRDriverShadow;
 typedef struct OGRDataSourceHS OGRDataSourceShadow;
+#endif
 typedef struct OGRLayerHS OGRLayerShadow;
 typedef struct OGRFeatureHS OGRFeatureShadow;
 typedef struct OGRFeatureDefnHS OGRFeatureDefnShadow;
@@ -291,8 +299,10 @@ typedef struct OGRCoordinateTransformationHS OGRCoordinateTransformationShadow;
 typedef struct OGRFieldDefnHS OGRFieldDefnShadow;
 #else
 typedef void OSRSpatialReferenceShadow;
+#ifndef SWIGPERL
 typedef void OGRDriverShadow;
 typedef void OGRDataSourceShadow;
+#endif
 typedef void OGRLayerShadow;
 typedef void OGRFeatureShadow;
 typedef void OGRFeatureDefnShadow;
@@ -309,8 +319,8 @@ typedef void retGetPoints;
 
 static int bUseExceptions=1;
 
-void CPL_STDCALL 
-VeryQuietErrorHandler(CPLErr eclass, int code, const char *msg ) 
+void CPL_STDCALL
+VeryQuietErrorHandler(CPLErr eclass, int code, const char *msg )
 {
   /* If the error class is CE_Fatal, we want to have a message issued
      because the CPL support code does an abort() before any exception
@@ -1081,6 +1091,8 @@ OGRErrMessages( int rc ) {
     return "OGR Error: Unsupported SRS";
   case OGRERR_INVALID_HANDLE:
     return "OGR Error: Invalid handle";
+  case OGRERR_NON_EXISTING_FEATURE:
+    return "OGR Error: Non existing feature";
   default:
     return "OGR Error: Unknown";
   }
@@ -1121,6 +1133,9 @@ SWIGINTERN OGRErr OGRDataSourceShadow_DeleteLayer(OGRDataSourceShadow *self,int 
   }
 SWIGINTERN OGRErr OGRDataSourceShadow_SyncToDisk(OGRDataSourceShadow *self){
     return OGR_DS_SyncToDisk(self);
+  }
+SWIGINTERN void OGRDataSourceShadow_FlushCache(OGRDataSourceShadow *self){
+    GDALFlushCache( self );
   }
 SWIGINTERN OGRLayerShadow *OGRDataSourceShadow_CreateLayer__SWIG_0(OGRDataSourceShadow *self,char const *name,OSRSpatialReferenceShadow *srs=NULL,OGRwkbGeometryType geom_type=wkbUnknown,char **options=0){
     OGRLayerShadow* layer = (OGRLayerShadow*) OGR_DS_CreateLayer( self,
@@ -1168,6 +1183,15 @@ SWIGINTERN void OGRDataSourceShadow_SetStyleTable(OGRDataSourceShadow *self,OGRS
     if( table != NULL )
         OGR_DS_SetStyleTable(self, (OGRStyleTableH) table);
   }
+SWIGINTERN OGRErr OGRDataSourceShadow_StartTransaction__SWIG_0(OGRDataSourceShadow *self,int force=FALSE){
+    return GDALDatasetStartTransaction(self, force);
+  }
+SWIGINTERN OGRErr OGRDataSourceShadow_CommitTransaction(OGRDataSourceShadow *self){
+    return GDALDatasetCommitTransaction(self);
+  }
+SWIGINTERN OGRErr OGRDataSourceShadow_RollbackTransaction(OGRDataSourceShadow *self){
+    return GDALDatasetRollbackTransaction(self);
+  }
 SWIGINTERN int OGRLayerShadow_GetRefCount(OGRLayerShadow *self){
     return OGR_L_GetRefCount(self);
   }
@@ -1204,13 +1228,13 @@ SWIGINTERN char const *OGRLayerShadow_GetGeometryColumn(OGRLayerShadow *self){
 SWIGINTERN char const *OGRLayerShadow_GetFIDColumn(OGRLayerShadow *self){
     return OGR_L_GetFIDColumn(self);
   }
-SWIGINTERN OGRFeatureShadow *OGRLayerShadow_GetFeature(OGRLayerShadow *self,long fid){
+SWIGINTERN OGRFeatureShadow *OGRLayerShadow_GetFeature(OGRLayerShadow *self,GIntBig fid){
     return (OGRFeatureShadow*) OGR_L_GetFeature(self, fid);
   }
 SWIGINTERN OGRFeatureShadow *OGRLayerShadow_GetNextFeature(OGRLayerShadow *self){
     return (OGRFeatureShadow*) OGR_L_GetNextFeature(self);
   }
-SWIGINTERN OGRErr OGRLayerShadow_SetNextByIndex(OGRLayerShadow *self,long new_index){
+SWIGINTERN OGRErr OGRLayerShadow_SetNextByIndex(OGRLayerShadow *self,GIntBig new_index){
     return OGR_L_SetNextByIndex(self, new_index);
   }
 SWIGINTERN OGRErr OGRLayerShadow_SetFeature(OGRLayerShadow *self,OGRFeatureShadow *feature){
@@ -1219,7 +1243,7 @@ SWIGINTERN OGRErr OGRLayerShadow_SetFeature(OGRLayerShadow *self,OGRFeatureShado
 SWIGINTERN OGRErr OGRLayerShadow_CreateFeature(OGRLayerShadow *self,OGRFeatureShadow *feature){
     return OGR_L_CreateFeature(self, feature);
   }
-SWIGINTERN OGRErr OGRLayerShadow_DeleteFeature(OGRLayerShadow *self,long fid){
+SWIGINTERN OGRErr OGRLayerShadow_DeleteFeature(OGRLayerShadow *self,GIntBig fid){
     return OGR_L_DeleteFeature(self, fid);
   }
 SWIGINTERN OGRErr OGRLayerShadow_SyncToDisk(OGRLayerShadow *self){
@@ -1228,7 +1252,7 @@ SWIGINTERN OGRErr OGRLayerShadow_SyncToDisk(OGRLayerShadow *self){
 SWIGINTERN OGRFeatureDefnShadow *OGRLayerShadow_GetLayerDefn(OGRLayerShadow *self){
     return (OGRFeatureDefnShadow*) OGR_L_GetLayerDefn(self);
   }
-SWIGINTERN int OGRLayerShadow_GetFeatureCount__SWIG_0(OGRLayerShadow *self,int force=1){
+SWIGINTERN GIntBig OGRLayerShadow_GetFeatureCount__SWIG_0(OGRLayerShadow *self,int force=1){
     return OGR_L_GetFeatureCount(self, force);
   }
 SWIGINTERN OGRErr OGRLayerShadow_GetExtent(OGRLayerShadow *self,double argout[4],int force){
@@ -1344,11 +1368,11 @@ SWIGINTERN OGRErr OGRFeatureShadow_SetGeomField__SWIG_1(OGRFeatureShadow *self,c
       int iField = OGR_F_GetGeomFieldIndex(self, name);
       if (iField == -1)
       {
-        CPLError(CE_Failure, 1, "No such field: '%s'", name);
-        return 6;
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
+          return 6;
       }
       else
-        return OGR_F_SetGeomField(self, iField, geom);
+          return OGR_F_SetGeomField(self, iField, geom);
   }
 SWIGINTERN OGRErr OGRFeatureShadow_SetGeomFieldDirectly__SWIG_0(OGRFeatureShadow *self,int iField,OGRGeometryShadow *geom){
     return OGR_F_SetGeomFieldDirectly(self, iField, geom);
@@ -1357,24 +1381,24 @@ SWIGINTERN OGRErr OGRFeatureShadow_SetGeomFieldDirectly__SWIG_1(OGRFeatureShadow
       int iField = OGR_F_GetGeomFieldIndex(self, name);
       if (iField == -1)
       {
-        CPLError(CE_Failure, 1, "No such field: '%s'", name);
-        return 6;
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
+          return 6;
       }
       else
-        return OGR_F_SetGeomFieldDirectly(self, iField, geom);
+          return OGR_F_SetGeomFieldDirectly(self, iField, geom);
   }
 SWIGINTERN OGRGeometryShadow *OGRFeatureShadow_GetGeomFieldRef__SWIG_0(OGRFeatureShadow *self,int iField){
     return (OGRGeometryShadow*) OGR_F_GetGeomFieldRef(self, iField);
   }
 SWIGINTERN OGRGeometryShadow *OGRFeatureShadow_GetGeomFieldRef__SWIG_1(OGRFeatureShadow *self,char const *name){
-    int i = OGR_F_GetGeomFieldIndex(self, name);
-    if (i == -1)
-    {
-      CPLError(CE_Failure, 1, "No such field: '%s'", name);
-      return NULL;
-    }
-    else
-      return (OGRGeometryShadow*) OGR_F_GetGeomFieldRef(self, i);
+      int i = OGR_F_GetGeomFieldIndex(self, name);
+      if (i == -1)
+      {
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
+          return NULL;
+      }
+      else
+          return (OGRGeometryShadow*) OGR_F_GetGeomFieldRef(self, i);
   }
 SWIGINTERN OGRFeatureShadow *OGRFeatureShadow_Clone(OGRFeatureShadow *self){
     return (OGRFeatureShadow*) OGR_F_Clone(self);
@@ -1391,23 +1415,23 @@ SWIGINTERN OGRFieldDefnShadow *OGRFeatureShadow_GetFieldDefnRef__SWIG_0(OGRFeatu
 SWIGINTERN OGRFieldDefnShadow *OGRFeatureShadow_GetFieldDefnRef__SWIG_1(OGRFeatureShadow *self,char const *name){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1)
-	  CPLError(CE_Failure, 1, "No such field: '%s'", name);
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
-	  return (OGRFieldDefnShadow *) OGR_F_GetFieldDefnRef(self, i);
+          return (OGRFieldDefnShadow *) OGR_F_GetFieldDefnRef(self, i);
       return NULL;
   }
 SWIGINTERN int OGRFeatureShadow_GetGeomFieldCount(OGRFeatureShadow *self){
     return OGR_F_GetGeomFieldCount(self);
   }
 SWIGINTERN OGRGeomFieldDefnShadow *OGRFeatureShadow_GetGeomFieldDefnRef__SWIG_0(OGRFeatureShadow *self,int id){
-    return (OGRGeomFieldDefnShadow *) OGR_F_GetGeomFieldDefnRef(self, id);
+      return (OGRGeomFieldDefnShadow *) OGR_F_GetGeomFieldDefnRef(self, id);
   }
 SWIGINTERN OGRGeomFieldDefnShadow *OGRFeatureShadow_GetGeomFieldDefnRef__SWIG_1(OGRFeatureShadow *self,char const *name){
       int i = OGR_F_GetGeomFieldIndex(self, name);
       if (i == -1)
-      CPLError(CE_Failure, 1, "No such field: '%s'", name);
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
-      return (OGRGeomFieldDefnShadow *) OGR_F_GetGeomFieldDefnRef(self, i);
+          return (OGRGeomFieldDefnShadow *) OGR_F_GetGeomFieldDefnRef(self, i);
       return NULL;
   }
 SWIGINTERN char const *OGRFeatureShadow_GetFieldAsString__SWIG_0(OGRFeatureShadow *self,int id){
@@ -1416,7 +1440,7 @@ SWIGINTERN char const *OGRFeatureShadow_GetFieldAsString__SWIG_0(OGRFeatureShado
 SWIGINTERN char const *OGRFeatureShadow_GetFieldAsString__SWIG_1(OGRFeatureShadow *self,char const *name){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1)
-	  CPLError(CE_Failure, 1, "No such field: '%s'", name);
+	  CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
 	  return (const char *) OGR_F_GetFieldAsString(self, i);
       return NULL;
@@ -1427,9 +1451,20 @@ SWIGINTERN int OGRFeatureShadow_GetFieldAsInteger__SWIG_0(OGRFeatureShadow *self
 SWIGINTERN int OGRFeatureShadow_GetFieldAsInteger__SWIG_1(OGRFeatureShadow *self,char const *name){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1)
-	  CPLError(CE_Failure, 1, "No such field: '%s'", name);
+	  CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
 	  return OGR_F_GetFieldAsInteger(self, i);
+      return 0;
+  }
+SWIGINTERN GIntBig OGRFeatureShadow_GetFieldAsInteger64__SWIG_0(OGRFeatureShadow *self,int id){
+    return OGR_F_GetFieldAsInteger64(self, id);
+  }
+SWIGINTERN GIntBig OGRFeatureShadow_GetFieldAsInteger64__SWIG_1(OGRFeatureShadow *self,char const *name){
+      int i = OGR_F_GetFieldIndex(self, name);
+      if (i == -1)
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
+      else
+          return OGR_F_GetFieldAsInteger64(self, i);
       return 0;
   }
 SWIGINTERN double OGRFeatureShadow_GetFieldAsDouble__SWIG_0(OGRFeatureShadow *self,int id){
@@ -1438,14 +1473,23 @@ SWIGINTERN double OGRFeatureShadow_GetFieldAsDouble__SWIG_0(OGRFeatureShadow *se
 SWIGINTERN double OGRFeatureShadow_GetFieldAsDouble__SWIG_1(OGRFeatureShadow *self,char const *name){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1)
-	  CPLError(CE_Failure, 1, "No such field: '%s'", name);
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
-	  return OGR_F_GetFieldAsDouble(self, i);
+          return OGR_F_GetFieldAsDouble(self, i);
       return 0;
   }
-SWIGINTERN void OGRFeatureShadow_GetFieldAsDateTime(OGRFeatureShadow *self,int id,int *pnYear,int *pnMonth,int *pnDay,int *pnHour,int *pnMinute,int *pnSecond,int *pnTZFlag){
-      OGR_F_GetFieldAsDateTime(self, id, pnYear, pnMonth, pnDay,
-			       pnHour, pnMinute, pnSecond,
+SWIGINTERN void OGRFeatureShadow_GetFieldAsDateTime__SWIG_0(OGRFeatureShadow *self,int id,int *pnYear,int *pnMonth,int *pnDay,int *pnHour,int *pnMinute,float *pfSecond,int *pnTZFlag){
+      OGR_F_GetFieldAsDateTimeEx(self, id, pnYear, pnMonth, pnDay,
+			       pnHour, pnMinute, pfSecond,
+			       pnTZFlag);
+  }
+SWIGINTERN void OGRFeatureShadow_GetFieldAsDateTime__SWIG_1(OGRFeatureShadow *self,char const *name,int *pnYear,int *pnMonth,int *pnDay,int *pnHour,int *pnMinute,float *pfSecond,int *pnTZFlag){
+      int id = OGR_F_GetFieldIndex(self, name);
+      if (id == -1)
+	  CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
+      else
+	  OGR_F_GetFieldAsDateTimeEx(self, id, pnYear, pnMonth, pnDay,
+			       pnHour, pnMinute, pfSecond,
 			       pnTZFlag);
   }
 SWIGINTERN retIntArray OGRFeatureShadow_GetFieldAsIntegerList(OGRFeatureShadow *self,int id,int *nLen,int const **pList){
@@ -1459,27 +1503,50 @@ SWIGINTERN retDoubleArray OGRFeatureShadow_GetFieldAsDoubleList(OGRFeatureShadow
 SWIGINTERN char **OGRFeatureShadow_GetFieldAsStringList(OGRFeatureShadow *self,int id){
       return OGR_F_GetFieldAsStringList(self, id);
   }
+SWIGINTERN GByte *OGRFeatureShadow_GetFieldAsBinary__SWIG_0(OGRFeatureShadow *self,int id,int *nLen,char **pBuf){
+    GByte* pabyBlob = OGR_F_GetFieldAsBinary(self, id, nLen);
+    *pBuf = (char*)malloc(*nLen);
+    memcpy(*pBuf, pabyBlob, *nLen);
+    return (GByte*)*pBuf;
+  }
+SWIGINTERN GByte *OGRFeatureShadow_GetFieldAsBinary__SWIG_1(OGRFeatureShadow *self,char const *name,int *nLen,char **pBuf){
+      int id = OGR_F_GetFieldIndex(self, name);
+      if (id == -1)
+      {
+        CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
+        return NULL;
+      }
+      else
+      {
+        GByte* pabyBlob = OGR_F_GetFieldAsBinary(self, id, nLen);
+        *pBuf = (char*)malloc(*nLen);
+        memcpy(*pBuf, pabyBlob, *nLen);
+        return (GByte*)*pBuf;
+      }
+  }
 SWIGINTERN bool OGRFeatureShadow_IsFieldSet__SWIG_0(OGRFeatureShadow *self,int id){
     return (OGR_F_IsFieldSet(self, id) > 0);
   }
 SWIGINTERN bool OGRFeatureShadow_IsFieldSet__SWIG_1(OGRFeatureShadow *self,char const *name){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1)
-	  CPLError(CE_Failure, 1, "No such field: '%s'", name);
+	  CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
 	  return (OGR_F_IsFieldSet(self, i) > 0);
       return false;
   }
 SWIGINTERN int OGRFeatureShadow_GetFieldIndex(OGRFeatureShadow *self,char const *name){
+      // Do not issue an error if the field doesn't exist. It is intended to be silent
       return OGR_F_GetFieldIndex(self, name);
   }
 SWIGINTERN int OGRFeatureShadow_GetGeomFieldIndex(OGRFeatureShadow *self,char const *name){
+      // Do not issue an error if the field doesn't exist. It is intended to be silent
       return OGR_F_GetGeomFieldIndex(self, name);
   }
-SWIGINTERN int OGRFeatureShadow_GetFID(OGRFeatureShadow *self){
+SWIGINTERN GIntBig OGRFeatureShadow_GetFID(OGRFeatureShadow *self){
     return OGR_F_GetFID(self);
   }
-SWIGINTERN OGRErr OGRFeatureShadow_SetFID(OGRFeatureShadow *self,int fid){
+SWIGINTERN OGRErr OGRFeatureShadow_SetFID(OGRFeatureShadow *self,GIntBig fid){
     return OGR_F_SetFID(self, fid);
   }
 SWIGINTERN void OGRFeatureShadow_DumpReadable(OGRFeatureShadow *self){
@@ -1491,9 +1558,9 @@ SWIGINTERN void OGRFeatureShadow_UnsetField__SWIG_0(OGRFeatureShadow *self,int i
 SWIGINTERN void OGRFeatureShadow_UnsetField__SWIG_1(OGRFeatureShadow *self,char const *name){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1)
-	  CPLError(CE_Failure, 1, "No such field: '%s'", name);
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
-	  OGR_F_UnsetField(self, i);
+          OGR_F_UnsetField(self, i);
   }
 SWIGINTERN void OGRFeatureShadow_SetField__SWIG_0(OGRFeatureShadow *self,int id,char const *value){
     OGR_F_SetFieldString(self, id, value);
@@ -1501,9 +1568,12 @@ SWIGINTERN void OGRFeatureShadow_SetField__SWIG_0(OGRFeatureShadow *self,int id,
 SWIGINTERN void OGRFeatureShadow_SetField__SWIG_1(OGRFeatureShadow *self,char const *name,char const *value){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1)
-	  CPLError(CE_Failure, 1, "No such field: '%s'", name);
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
-	  OGR_F_SetFieldString(self, i, value);
+          OGR_F_SetFieldString(self, i, value);
+  }
+SWIGINTERN void OGRFeatureShadow_SetFieldInteger64(OGRFeatureShadow *self,int id,GIntBig value){
+    OGR_F_SetFieldInteger64(self, id, value);
   }
 SWIGINTERN void OGRFeatureShadow_SetField__SWIG_2(OGRFeatureShadow *self,int id,int value){
     OGR_F_SetFieldInteger(self, id, value);
@@ -1511,7 +1581,7 @@ SWIGINTERN void OGRFeatureShadow_SetField__SWIG_2(OGRFeatureShadow *self,int id,
 SWIGINTERN void OGRFeatureShadow_SetField__SWIG_3(OGRFeatureShadow *self,char const *name,int value){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1)
-	  CPLError(CE_Failure, 1, "No such field: '%s'", name);
+	  CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
 	  OGR_F_SetFieldInteger(self, i, value);
   }
@@ -1521,22 +1591,22 @@ SWIGINTERN void OGRFeatureShadow_SetField__SWIG_4(OGRFeatureShadow *self,int id,
 SWIGINTERN void OGRFeatureShadow_SetField__SWIG_5(OGRFeatureShadow *self,char const *name,double value){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1)
-	  CPLError(CE_Failure, 1, "No such field: '%s'", name);
+	  CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
 	  OGR_F_SetFieldDouble(self, i, value);
   }
-SWIGINTERN void OGRFeatureShadow_SetField__SWIG_6(OGRFeatureShadow *self,int id,int year,int month,int day,int hour,int minute,int second,int tzflag){
-    OGR_F_SetFieldDateTime(self, id, year, month, day,
-                             hour, minute, second, 
+SWIGINTERN void OGRFeatureShadow_SetField__SWIG_6(OGRFeatureShadow *self,int id,int year,int month,int day,int hour,int minute,float second,int tzflag){
+    OGR_F_SetFieldDateTimeEx(self, id, year, month, day,
+                             hour, minute, second,
                              tzflag);
   }
-SWIGINTERN void OGRFeatureShadow_SetField__SWIG_7(OGRFeatureShadow *self,char const *name,int year,int month,int day,int hour,int minute,int second,int tzflag){
+SWIGINTERN void OGRFeatureShadow_SetField__SWIG_7(OGRFeatureShadow *self,char const *name,int year,int month,int day,int hour,int minute,float second,int tzflag){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1)
-	  CPLError(CE_Failure, 1, "No such field: '%s'", name);
+	  CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
-	  OGR_F_SetFieldDateTime(self, i, year, month, day,
-				 hour, minute, second, 
+	  OGR_F_SetFieldDateTimeEx(self, i, year, month, day,
+				 hour, minute, second,
 				 tzflag);
   }
 SWIGINTERN void OGRFeatureShadow_SetFieldIntegerList(OGRFeatureShadow *self,int id,int nList,int *pList){
@@ -1557,13 +1627,13 @@ SWIGINTERN void OGRFeatureShadow_SetFieldBinaryFromHexString__SWIG_0(OGRFeatureS
 SWIGINTERN void OGRFeatureShadow_SetFieldBinaryFromHexString__SWIG_1(OGRFeatureShadow *self,char const *name,char const *pszValue){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1)
-        CPLError(CE_Failure, 1, "No such field: '%s'", name);
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
       else
       {
-        int nBytes;
-        GByte* pabyBuf = CPLHexToBinary(pszValue, &nBytes );
-        OGR_F_SetFieldBinary(self, i, nBytes, pabyBuf);
-        CPLFree(pabyBuf);
+          int nBytes;
+          GByte* pabyBuf = CPLHexToBinary(pszValue, &nBytes );
+          OGR_F_SetFieldBinary(self, i, nBytes, pabyBuf);
+          CPLFree(pabyBuf);
       }
   }
 SWIGINTERN OGRErr OGRFeatureShadow_SetFrom__SWIG_0(OGRFeatureShadow *self,OGRFeatureShadow *other,int forgiving=1){
@@ -1585,17 +1655,37 @@ SWIGINTERN void OGRFeatureShadow_SetStyleString(OGRFeatureShadow *self,char cons
     OGR_F_SetStyleString(self, the_string);
   }
 SWIGINTERN OGRFieldType OGRFeatureShadow_GetFieldType__SWIG_0(OGRFeatureShadow *self,int id){
-    return (OGRFieldType) OGR_Fld_GetType( OGR_F_GetFieldDefnRef( self, id));
+      OGRFieldDefnH fd = OGR_F_GetFieldDefnRef( self,  id );
+      if (fd)
+          return (OGRFieldType) OGR_Fld_GetType( fd );
+      else
+          return (OGRFieldType)0;
   }
 SWIGINTERN OGRFieldType OGRFeatureShadow_GetFieldType__SWIG_1(OGRFeatureShadow *self,char const *name){
       int i = OGR_F_GetFieldIndex(self, name);
       if (i == -1) {
-	  CPLError(CE_Failure, 1, "No such field: '%s'", name);
-	  return (OGRFieldType)0;
+          CPLError(CE_Failure, 1, FIELD_NAME_ERROR_TMPL, name);
+          return (OGRFieldType)0;
       } else
-	  return (OGRFieldType) OGR_Fld_GetType( 
-	      OGR_F_GetFieldDefnRef( self,  i )
-	      );
+          return (OGRFieldType) OGR_Fld_GetType( OGR_F_GetFieldDefnRef( self, i ) );
+  }
+SWIGINTERN int OGRFeatureShadow_Validate__SWIG_0(OGRFeatureShadow *self,int flags=OGR_F_VAL_ALL,int bEmitError=TRUE){
+    return OGR_F_Validate(self, flags, bEmitError);
+  }
+SWIGINTERN void OGRFeatureShadow_FillUnsetWithDefault__SWIG_0(OGRFeatureShadow *self,int bNotNullableOnly=FALSE,char **options=NULL){
+    OGR_F_FillUnsetWithDefault(self, bNotNullableOnly, options );
+  }
+SWIGINTERN char const *OGRFeatureShadow_GetNativeData(OGRFeatureShadow *self){
+    return OGR_F_GetNativeData(self);
+  }
+SWIGINTERN char const *OGRFeatureShadow_GetNativeMediaType(OGRFeatureShadow *self){
+    return OGR_F_GetNativeMediaType(self);
+  }
+SWIGINTERN void OGRFeatureShadow_SetNativeData(OGRFeatureShadow *self,char const *nativeData){
+    OGR_F_SetNativeData(self, nativeData);
+  }
+SWIGINTERN void OGRFeatureShadow_SetNativeMediaType(OGRFeatureShadow *self,char const *nativeMediaType){
+    OGR_F_SetNativeMediaType(self, nativeMediaType);
   }
 
     static int ValidateOGRGeometryType(OGRwkbGeometryType field_type)
@@ -1610,8 +1700,18 @@ SWIGINTERN OGRFieldType OGRFeatureShadow_GetFieldType__SWIG_1(OGRFeatureShadow *
             case wkbMultiLineString:
             case wkbMultiPolygon:
             case wkbGeometryCollection:
+            case wkbCircularString:
+            case wkbCompoundCurve:
+            case wkbCurvePolygon:
+            case wkbMultiCurve:
+            case wkbMultiSurface:
             case wkbNone:
             /*case wkbLinearRing:*/
+            case wkbCircularStringZ:
+            case wkbCompoundCurveZ:
+            case wkbCurvePolygonZ:
+            case wkbMultiCurveZ:
+            case wkbMultiSurfaceZ:
             case wkbPoint25D:
             case wkbLineString25D:
             case wkbPolygon25D:
@@ -1619,6 +1719,30 @@ SWIGINTERN OGRFieldType OGRFeatureShadow_GetFieldType__SWIG_1(OGRFeatureShadow *
             case wkbMultiLineString25D:
             case wkbMultiPolygon25D:
             case wkbGeometryCollection25D:
+            case wkbPointM:
+            case wkbLineStringM:
+            case wkbPolygonM:
+            case wkbMultiPointM:
+            case wkbMultiLineStringM:
+            case wkbMultiPolygonM:
+            case wkbGeometryCollectionM:
+            case wkbCircularStringM:
+            case wkbCompoundCurveM:
+            case wkbCurvePolygonM:
+            case wkbMultiCurveM:
+            case wkbMultiSurfaceM:
+            case wkbPointZM:
+            case wkbLineStringZM:
+            case wkbPolygonZM:
+            case wkbMultiPointZM:
+            case wkbMultiLineStringZM:
+            case wkbMultiPolygonZM:
+            case wkbGeometryCollectionZM:
+            case wkbCircularStringZM:
+            case wkbCompoundCurveZM:
+            case wkbCurvePolygonZM:
+            case wkbMultiCurveZM:
+            case wkbMultiSurfaceZM:
                 return TRUE;
             default:
                 CPLError(CE_Failure, CPLE_IllegalArg, "Illegal geometry type value");
@@ -1645,6 +1769,7 @@ SWIGINTERN OGRFieldDefnShadow *OGRFeatureDefnShadow_GetFieldDefn(OGRFeatureDefnS
     return (OGRFieldDefnShadow*) OGR_FD_GetFieldDefn(self, i);
   }
 SWIGINTERN int OGRFeatureDefnShadow_GetFieldIndex(OGRFeatureDefnShadow *self,char const *name){
+      // Do not issue an error if the field doesn't exist. It is intended to be silent
       return OGR_FD_GetFieldIndex(self, name);
   }
 SWIGINTERN void OGRFeatureDefnShadow_AddFieldDefn(OGRFeatureDefnShadow *self,OGRFieldDefnShadow *defn){
@@ -1657,6 +1782,7 @@ SWIGINTERN OGRGeomFieldDefnShadow *OGRFeatureDefnShadow_GetGeomFieldDefn(OGRFeat
     return (OGRGeomFieldDefnShadow*) OGR_FD_GetGeomFieldDefn(self, i);
   }
 SWIGINTERN int OGRFeatureDefnShadow_GetGeomFieldIndex(OGRFeatureDefnShadow *self,char const *name){
+      // Do not issue an error if the field doesn't exist. It is intended to be silent
       return OGR_FD_GetGeomFieldIndex(self, name);
   }
 SWIGINTERN void OGRFeatureDefnShadow_AddGeomFieldDefn(OGRFeatureDefnShadow *self,OGRGeomFieldDefnShadow *defn){
@@ -1705,9 +1831,27 @@ SWIGINTERN int OGRFeatureDefnShadow_IsSame(OGRFeatureDefnShadow *self,OGRFeature
             case OFTDate:
             case OFTTime:
             case OFTDateTime:
+            case OFTInteger64:
+            case OFTInteger64List:
                 return TRUE;
             default:
                 CPLError(CE_Failure, CPLE_IllegalArg, "Illegal field type value");
+                return FALSE;
+        }
+    }
+
+
+    static int ValidateOGRFieldSubType(OGRFieldSubType field_subtype)
+    {
+        switch(field_subtype)
+        {
+            case OFSTNone:
+            case OFSTBoolean:
+            case OFSTInt16:
+            case OFSTFloat32:
+                return TRUE;
+            default:
+                CPLError(CE_Failure, CPLE_IllegalArg, "Illegal field subtype value");
                 return FALSE;
         }
     }
@@ -1737,6 +1881,13 @@ SWIGINTERN void OGRFieldDefnShadow_SetType(OGRFieldDefnShadow *self,OGRFieldType
     if (ValidateOGRFieldType(type))
         OGR_Fld_SetType(self, type);
   }
+SWIGINTERN OGRFieldSubType OGRFieldDefnShadow_GetSubType(OGRFieldDefnShadow *self){
+    return OGR_Fld_GetSubType(self);
+  }
+SWIGINTERN void OGRFieldDefnShadow_SetSubType(OGRFieldDefnShadow *self,OGRFieldSubType type){
+    if (ValidateOGRFieldSubType(type))
+        OGR_Fld_SetSubType(self, type);
+  }
 SWIGINTERN OGRJustification OGRFieldDefnShadow_GetJustify(OGRFieldDefnShadow *self){
     return OGR_Fld_GetJustify(self);
   }
@@ -1765,7 +1916,22 @@ SWIGINTERN int OGRFieldDefnShadow_IsIgnored(OGRFieldDefnShadow *self){
     return OGR_Fld_IsIgnored( self );
   }
 SWIGINTERN void OGRFieldDefnShadow_SetIgnored(OGRFieldDefnShadow *self,int bIgnored){
-    return OGR_Fld_SetIgnored( self, bIgnored );
+    OGR_Fld_SetIgnored( self, bIgnored );
+  }
+SWIGINTERN int OGRFieldDefnShadow_IsNullable(OGRFieldDefnShadow *self){
+    return OGR_Fld_IsNullable( self );
+  }
+SWIGINTERN void OGRFieldDefnShadow_SetNullable(OGRFieldDefnShadow *self,int bNullable){
+    OGR_Fld_SetNullable( self, bNullable );
+  }
+SWIGINTERN char const *OGRFieldDefnShadow_GetDefault(OGRFieldDefnShadow *self){
+    return OGR_Fld_GetDefault( self );
+  }
+SWIGINTERN void OGRFieldDefnShadow_SetDefault(OGRFieldDefnShadow *self,char const *pszValue){
+    OGR_Fld_SetDefault( self, pszValue );
+  }
+SWIGINTERN int OGRFieldDefnShadow_IsDefaultDriverSpecific(OGRFieldDefnShadow *self){
+    return OGR_Fld_IsDefaultDriverSpecific( self );
   }
 SWIGINTERN void delete_OGRGeomFieldDefnShadow(OGRGeomFieldDefnShadow *self){
     OGR_GFld_Destroy(self);
@@ -1807,8 +1973,14 @@ SWIGINTERN int OGRGeomFieldDefnShadow_IsIgnored(OGRGeomFieldDefnShadow *self){
 SWIGINTERN void OGRGeomFieldDefnShadow_SetIgnored(OGRGeomFieldDefnShadow *self,int bIgnored){
     OGR_GFld_SetIgnored( self, bIgnored );
   }
+SWIGINTERN int OGRGeomFieldDefnShadow_IsNullable(OGRGeomFieldDefnShadow *self){
+    return OGR_GFld_IsNullable( self );
+  }
+SWIGINTERN void OGRGeomFieldDefnShadow_SetNullable(OGRGeomFieldDefnShadow *self,int bNullable){
+    return OGR_GFld_SetNullable( self, bNullable );
+  }
 
-OGRGeometryShadow* CreateGeometryFromWkb(int nLen, unsigned char *pBuf, 
+OGRGeometryShadow* CreateGeometryFromWkb(int nLen, unsigned char *pBuf,
                                             OSRSpatialReferenceShadow *reference=NULL ) {
     OGRGeometryH geom = NULL;
     OGRErr err = OGR_G_CreateFromWkb((unsigned char*) pBuf, reference, &geom, nLen);
@@ -1820,7 +1992,7 @@ OGRGeometryShadow* CreateGeometryFromWkb(int nLen, unsigned char *pBuf,
   }
 
 
-  OGRGeometryShadow* CreateGeometryFromWkt( char **val, 
+  OGRGeometryShadow* CreateGeometryFromWkt( char **val,
                                       OSRSpatialReferenceShadow *reference=NULL ) {
     OGRGeometryH geom = NULL;
     OGRErr err = OGR_G_CreateFromWkt(val,
@@ -1832,33 +2004,33 @@ OGRGeometryShadow* CreateGeometryFromWkb(int nLen, unsigned char *pBuf,
     }
     return (OGRGeometryShadow*) geom;
   }
- 
+
 
 
   OGRGeometryShadow *CreateGeometryFromGML( const char * input_string ) {
     OGRGeometryShadow* geom = (OGRGeometryShadow*)OGR_G_CreateFromGML(input_string);
     return geom;
   }
- 
+
 
 
   OGRGeometryShadow *CreateGeometryFromJson( const char * input_string ) {
     OGRGeometryShadow* geom = (OGRGeometryShadow*)OGR_G_CreateGeometryFromJson(input_string);
     return geom;
   }
- 
 
 
-  OGRGeometryShadow* BuildPolygonFromEdges( OGRGeometryShadow*  hLineCollection,  
-                                            int bBestEffort = 0, 
-                                            int bAutoClose = 0, 
+
+  OGRGeometryShadow* BuildPolygonFromEdges( OGRGeometryShadow*  hLineCollection,
+                                            int bBestEffort = 0,
+                                            int bAutoClose = 0,
                                             double dfTolerance=0) {
-  
+
   OGRGeometryH hPolygon = NULL;
-  
+
   OGRErr eErr;
 
-  hPolygon = OGRBuildPolygonFromEdges( hLineCollection, bBestEffort, 
+  hPolygon = OGRBuildPolygonFromEdges( hLineCollection, bBestEffort,
                                        bAutoClose, dfTolerance, &eErr );
 
   if (eErr != OGRERR_NONE ) {
@@ -1870,14 +2042,14 @@ OGRGeometryShadow* CreateGeometryFromWkb(int nLen, unsigned char *pBuf,
   }
 
 
-  OGRGeometryShadow* ApproximateArcAngles( 
+  OGRGeometryShadow* ApproximateArcAngles(
         double dfCenterX, double dfCenterY, double dfZ,
-  	double dfPrimaryRadius, double dfSecondaryAxis, double dfRotation, 
+  	double dfPrimaryRadius, double dfSecondaryAxis, double dfRotation,
         double dfStartAngle, double dfEndAngle,
         double dfMaxAngleStepSizeDegrees ) {
-  
-  return (OGRGeometryShadow* )OGR_G_ApproximateArcAngles( 
-             dfCenterX, dfCenterY, dfZ, 
+
+  return (OGRGeometryShadow* )OGR_G_ApproximateArcAngles(
+             dfCenterX, dfCenterY, dfZ,
              dfPrimaryRadius, dfSecondaryAxis, dfRotation,
              dfStartAngle, dfEndAngle, dfMaxAngleStepSizeDegrees );
   }
@@ -1917,16 +2089,32 @@ OGRGeometryShadow* ForceToMultiLineString( OGRGeometryShadow *geom_in ) {
  return (OGRGeometryShadow* )OGR_G_ForceToMultiLineString( OGR_G_Clone(geom_in) );
 }
 
+
+OGRGeometryShadow* ForceTo( OGRGeometryShadow *geom_in, OGRwkbGeometryType eTargetType, char** options = NULL ) {
+ if (geom_in == NULL)
+     return NULL;
+ return (OGRGeometryShadow* )OGR_G_ForceTo( OGR_G_Clone(geom_in), eTargetType, options );
+}
+
 SWIGINTERN void delete_OGRGeometryShadow(OGRGeometryShadow *self){
     OGR_G_DestroyGeometry( self );
   }
 SWIGINTERN OGRErr OGRGeometryShadow_ExportToWkt__SWIG_0(OGRGeometryShadow *self,char **argout){
     return OGR_G_ExportToWkt(self, argout);
   }
+SWIGINTERN OGRErr OGRGeometryShadow_ExportToIsoWkt(OGRGeometryShadow *self,char **argout){
+    return OGR_G_ExportToIsoWkt(self, argout);
+  }
 SWIGINTERN GByte *OGRGeometryShadow_ExportToWkb__SWIG_0(OGRGeometryShadow *self,int *nLen,char **pBuf,OGRwkbByteOrder byte_order=wkbXDR){
     *nLen = OGR_G_WkbSize( self );
-    *pBuf = (char *) malloc( *nLen * sizeof(unsigned char) );
+    *pBuf = (char *) malloc( *nLen );
     OGR_G_ExportToWkb(self, byte_order, (unsigned char*) *pBuf );
+    return (GByte*)*pBuf;
+  }
+SWIGINTERN GByte *OGRGeometryShadow_ExportToIsoWkb__SWIG_0(OGRGeometryShadow *self,int *nLen,char **pBuf,OGRwkbByteOrder byte_order=wkbXDR){
+    *nLen = OGR_G_WkbSize( self );
+    *pBuf = (char *) malloc( *nLen );
+    OGR_G_ExportToIsoWkb(self, byte_order, (unsigned char*) *pBuf );
     return (GByte*)*pBuf;
   }
 SWIGINTERN retStringAndCPLFree *OGRGeometryShadow_ExportToGML__SWIG_0(OGRGeometryShadow *self,char **options=0){
@@ -1940,6 +2128,12 @@ SWIGINTERN retStringAndCPLFree *OGRGeometryShadow_ExportToJson__SWIG_0(OGRGeomet
   }
 SWIGINTERN void OGRGeometryShadow_AddPoint__SWIG_0(OGRGeometryShadow *self,double x,double y,double z=0){
     OGR_G_AddPoint( self, x, y, z );
+  }
+SWIGINTERN void OGRGeometryShadow_AddPointM(OGRGeometryShadow *self,double x,double y,double m){
+      OGR_G_AddPointM( self, x, y, m );
+  }
+SWIGINTERN void OGRGeometryShadow_AddPointZM(OGRGeometryShadow *self,double x,double y,double z,double m){
+      OGR_G_AddPointZM( self, x, y, z, m );
   }
 SWIGINTERN void OGRGeometryShadow_AddPoint_2D(OGRGeometryShadow *self,double x,double y){
     OGR_G_AddPoint_2D( self, x, y );
@@ -2004,11 +2198,20 @@ SWIGINTERN double OGRGeometryShadow_GetY__SWIG_0(OGRGeometryShadow *self,int poi
 SWIGINTERN double OGRGeometryShadow_GetZ__SWIG_0(OGRGeometryShadow *self,int point=0){
     return OGR_G_GetZ(self, point);
   }
+SWIGINTERN double OGRGeometryShadow_GetM__SWIG_0(OGRGeometryShadow *self,int point=0){
+    return OGR_G_GetM(self, point);
+  }
 SWIGINTERN void OGRGeometryShadow_GetPoint(OGRGeometryShadow *self,int iPoint,double argout[3]){
 
 
 
     OGR_G_GetPoint( self, iPoint, argout+0, argout+1, argout+2 );
+  }
+SWIGINTERN void OGRGeometryShadow_GetPointZM(OGRGeometryShadow *self,int iPoint,double argout[4]){
+
+
+
+      OGR_G_GetPointZM( self, iPoint, argout+0, argout+1, argout+2, argout+3 );
   }
 SWIGINTERN void OGRGeometryShadow_GetPoint_2D(OGRGeometryShadow *self,int iPoint,double argout[2]){
 
@@ -2022,6 +2225,12 @@ SWIGINTERN int OGRGeometryShadow_GetGeometryCount(OGRGeometryShadow *self){
 SWIGINTERN void OGRGeometryShadow_SetPoint__SWIG_0(OGRGeometryShadow *self,int point,double x,double y,double z=0){
     OGR_G_SetPoint(self, point, x, y, z);
   }
+SWIGINTERN void OGRGeometryShadow_SetPointM(OGRGeometryShadow *self,int point,double x,double y,double m){
+      OGR_G_SetPointM(self, point, x, y, m);
+  }
+SWIGINTERN void OGRGeometryShadow_SetPointZM(OGRGeometryShadow *self,int point,double x,double y,double z,double m){
+      OGR_G_SetPointZM(self, point, x, y, z, m);
+  }
 SWIGINTERN void OGRGeometryShadow_SetPoint_2D(OGRGeometryShadow *self,int point,double x,double y){
     OGR_G_SetPoint_2D(self, point, x, y);
   }
@@ -2033,6 +2242,9 @@ SWIGINTERN OGRGeometryShadow *OGRGeometryShadow_Simplify(OGRGeometryShadow *self
   }
 SWIGINTERN OGRGeometryShadow *OGRGeometryShadow_SimplifyPreserveTopology(OGRGeometryShadow *self,double tolerance){
     return (OGRGeometryShadow*) OGR_G_SimplifyPreserveTopology(self, tolerance);
+  }
+SWIGINTERN OGRGeometryShadow *OGRGeometryShadow_DelaunayTriangulation__SWIG_0(OGRGeometryShadow *self,double dfTolerance=0.0,int bOnlyEdges=FALSE){
+    return (OGRGeometryShadow*) OGR_G_DelaunayTriangulation(self, dfTolerance, bOnlyEdges);
   }
 SWIGINTERN OGRGeometryShadow *OGRGeometryShadow_Boundary(OGRGeometryShadow *self){
     return (OGRGeometryShadow*) OGR_G_Boundary(self);
@@ -2156,11 +2368,38 @@ SWIGINTERN int OGRGeometryShadow_WkbSize(OGRGeometryShadow *self){
 SWIGINTERN int OGRGeometryShadow_GetCoordinateDimension(OGRGeometryShadow *self){
     return OGR_G_GetCoordinateDimension(self);
   }
+SWIGINTERN int OGRGeometryShadow_CoordinateDimension(OGRGeometryShadow *self){
+    return OGR_G_CoordinateDimension(self);
+  }
+SWIGINTERN int OGRGeometryShadow_Is3D(OGRGeometryShadow *self){
+      return OGR_G_Is3D(self);
+  }
+SWIGINTERN int OGRGeometryShadow_IsMeasured(OGRGeometryShadow *self){
+      return OGR_G_IsMeasured(self);
+  }
 SWIGINTERN void OGRGeometryShadow_SetCoordinateDimension(OGRGeometryShadow *self,int dimension){
     OGR_G_SetCoordinateDimension(self, dimension);
   }
+SWIGINTERN void OGRGeometryShadow_Set3D(OGRGeometryShadow *self,int b3D){
+      OGR_G_Set3D(self, b3D);
+  }
+SWIGINTERN void OGRGeometryShadow_SetMeasured(OGRGeometryShadow *self,int bMeasured){
+      OGR_G_SetMeasured(self, bMeasured);
+  }
 SWIGINTERN int OGRGeometryShadow_GetDimension(OGRGeometryShadow *self){
     return OGR_G_GetDimension(self);
+  }
+SWIGINTERN int OGRGeometryShadow_HasCurveGeometry__SWIG_0(OGRGeometryShadow *self,int bLookForCircular=FALSE){
+        return OGR_G_HasCurveGeometry(self, bLookForCircular);
+  }
+SWIGINTERN OGRGeometryShadow *OGRGeometryShadow_GetLinearGeometry__SWIG_0(OGRGeometryShadow *self,double dfMaxAngleStepSizeDegrees=0.0,char **options=NULL){
+    return (OGRGeometryShadow* )OGR_G_GetLinearGeometry(self, dfMaxAngleStepSizeDegrees, options);
+  }
+SWIGINTERN OGRGeometryShadow *OGRGeometryShadow_GetCurveGeometry__SWIG_0(OGRGeometryShadow *self,char **options=NULL){
+    return (OGRGeometryShadow* )OGR_G_GetCurveGeometry(self, options);
+  }
+SWIGINTERN OGRGeometryShadow *OGRGeometryShadow_Value(OGRGeometryShadow *self,double dfDistance){
+    return OGR_G_Value(self, dfDistance);
   }
 SWIGINTERN OGRGeometryShadow *new_OGRGeometryShadow__SWIG_0(OGRwkbGeometryType type,char *wkt,int nLen,unsigned char *pBuf,char const *gml){
     if (type != wkbUnknown ) {
@@ -2208,6 +2447,12 @@ char const *OGRDataSourceShadow_name_get( OGRDataSourceShadow *h ) {
 }
 
 
+OGRwkbGeometryType GT_SetModifier( OGRwkbGeometryType eType, int bSetZ, int bSetM = FALSE)
+{
+    return OGR_GT_SetModifier(eType, bSetZ, bSetM);
+}
+
+
   OGRDataSourceShadow* GetOpenDS(int ds_number) {
     OGRDataSourceShadow* layer = (OGRDataSourceShadow*) OGRGetOpenDS(ds_number);
     return layer;
@@ -2219,13 +2464,13 @@ char const *OGRDataSourceShadow_name_get( OGRDataSourceShadow *h ) {
     OGRDataSourceShadow* ds = (OGRDataSourceShadow*)OGROpen(utf8_path,update,NULL);
     if( CPLGetLastErrorType() == CE_Failure && ds != NULL )
     {
-        CPLDebug( "SWIG", 
+        CPLDebug( "SWIG",
 		  "OGROpen() succeeded, but an error is posted, so we destroy"
 		  " the datasource and fail at swig level." );
         OGRReleaseDataSource(ds);
         ds = NULL;
     }
-	
+
     return ds;
   }
 
@@ -2238,31 +2483,34 @@ char const *OGRDataSourceShadow_name_get( OGRDataSourceShadow *h ) {
         OGRReleaseDataSource(ds);
         ds = NULL;
     }
-	
+
     return ds;
   }
 
 
+static
 OGRDriverShadow* GetDriverByName( char const *name ) {
   return (OGRDriverShadow*) OGRGetDriverByName( name );
 }
 
+static
 OGRDriverShadow* GetDriver(int driver_number) {
   return (OGRDriverShadow*) OGRGetDriver(driver_number);
 }
 
 
+  static
   char **GeneralCmdLineProcessor( char **papszArgv, int nOptions = 0 ) {
     int nResArgCount;
-    
+
     /* We must add a 'dummy' element in front of the real argument list */
     /* as Java doesn't include the binary name as the first */
     /* argument, as C does... */
     char** papszArgvModBefore = CSLInsertString(CSLDuplicate(papszArgv), 0, "dummy");
     char** papszArgvModAfter = papszArgvModBefore;
 
-    nResArgCount = 
-      OGRGeneralCmdLineProcessor( CSLCount(papszArgvModBefore), &papszArgvModAfter, nOptions ); 
+    nResArgCount =
+      OGRGeneralCmdLineProcessor( CSLCount(papszArgvModBefore), &papszArgvModAfter, nOptions );
 
     CSLDestroy(papszArgvModBefore);
 
@@ -2588,7 +2836,7 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Driver_1CreateDataSource_1_1SW
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -2673,7 +2921,7 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Driver_1CopyDataSource_1_1SWIG
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -3035,6 +3283,17 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_DataSource_1SyncToDisk(JNIEnv *
 }
 
 
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_DataSource_1FlushCache(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  OGRDataSourceShadow *arg1 = (OGRDataSourceShadow *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRDataSourceShadow **)&jarg1; 
+  OGRDataSourceShadow_FlushCache(arg1);
+}
+
+
 SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_DataSource_1CreateLayer_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2, jlong jarg3, jobject jarg3_, jint jarg4, jobject jarg5) {
   jlong jresult = 0 ;
   OGRDataSourceShadow *arg1 = (OGRDataSourceShadow *) 0 ;
@@ -3065,7 +3324,7 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_DataSource_1CreateLayer_1_1SWI
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -3230,7 +3489,7 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_DataSource_1CopyLayer_1_1SWIG_
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -3515,6 +3774,116 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_DataSource_1SetStyleTable(JNIEn
 }
 
 
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_DataSource_1StartTransaction_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jint jresult = 0 ;
+  OGRDataSourceShadow *arg1 = (OGRDataSourceShadow *) 0 ;
+  int arg2 ;
+  OGRErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRDataSourceShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  result = (OGRErr)OGRDataSourceShadow_StartTransaction__SWIG_0(arg1,arg2);
+  {
+    /* %typemap(out) OGRErr */
+    if (result != 0 && bUseExceptions) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
+        OGRErrMessages(result));
+      return 0;
+    }
+    jresult = (jint)result;
+  }
+  {
+    /* %typemap(ret) OGRErr */
+    
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_DataSource_1StartTransaction_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRDataSourceShadow *arg1 = (OGRDataSourceShadow *) 0 ;
+  OGRErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRDataSourceShadow **)&jarg1; 
+  result = (OGRErr)OGRDataSourceShadow_StartTransaction__SWIG_0(arg1);
+  {
+    /* %typemap(out) OGRErr */
+    if (result != 0 && bUseExceptions) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
+        OGRErrMessages(result));
+      return 0;
+    }
+    jresult = (jint)result;
+  }
+  {
+    /* %typemap(ret) OGRErr */
+    
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_DataSource_1CommitTransaction(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRDataSourceShadow *arg1 = (OGRDataSourceShadow *) 0 ;
+  OGRErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRDataSourceShadow **)&jarg1; 
+  result = (OGRErr)OGRDataSourceShadow_CommitTransaction(arg1);
+  {
+    /* %typemap(out) OGRErr */
+    if (result != 0 && bUseExceptions) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
+        OGRErrMessages(result));
+      return 0;
+    }
+    jresult = (jint)result;
+  }
+  {
+    /* %typemap(ret) OGRErr */
+    
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_DataSource_1RollbackTransaction(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRDataSourceShadow *arg1 = (OGRDataSourceShadow *) 0 ;
+  OGRErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRDataSourceShadow **)&jarg1; 
+  result = (OGRErr)OGRDataSourceShadow_RollbackTransaction(arg1);
+  {
+    /* %typemap(out) OGRErr */
+    if (result != 0 && bUseExceptions) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
+        OGRErrMessages(result));
+      return 0;
+    }
+    jresult = (jint)result;
+  }
+  {
+    /* %typemap(ret) OGRErr */
+    
+  }
+  return jresult;
+}
+
+
 SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1GetRefCount(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
   jint jresult = 0 ;
   OGRLayerShadow *arg1 = (OGRLayerShadow *) 0 ;
@@ -3720,17 +4089,17 @@ SWIGEXPORT jstring JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1GetFIDColumn(JNIEnv *
 }
 
 
-SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1GetFeature(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1GetFeature(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2) {
   jlong jresult = 0 ;
   OGRLayerShadow *arg1 = (OGRLayerShadow *) 0 ;
-  long arg2 ;
+  GIntBig arg2 ;
   OGRFeatureShadow *result = 0 ;
   
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
   arg1 = *(OGRLayerShadow **)&jarg1; 
-  arg2 = (long)jarg2; 
+  arg2 = jarg2;
   result = (OGRFeatureShadow *)OGRLayerShadow_GetFeature(arg1,arg2);
   *(OGRFeatureShadow **)&jresult = result; 
   return jresult;
@@ -3752,17 +4121,17 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1GetNextFeature(JNIEnv *
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1SetNextByIndex(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1SetNextByIndex(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2) {
   jint jresult = 0 ;
   OGRLayerShadow *arg1 = (OGRLayerShadow *) 0 ;
-  long arg2 ;
+  GIntBig arg2 ;
   OGRErr result;
   
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
   arg1 = *(OGRLayerShadow **)&jarg1; 
-  arg2 = (long)jarg2; 
+  arg2 = jarg2;
   result = (OGRErr)OGRLayerShadow_SetNextByIndex(arg1,arg2);
   {
     /* %typemap(out) OGRErr */
@@ -3855,17 +4224,17 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1CreateFeature(JNIEnv *je
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1DeleteFeature(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1DeleteFeature(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2) {
   jint jresult = 0 ;
   OGRLayerShadow *arg1 = (OGRLayerShadow *) 0 ;
-  long arg2 ;
+  GIntBig arg2 ;
   OGRErr result;
   
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
   arg1 = *(OGRLayerShadow **)&jarg1; 
-  arg2 = (long)jarg2; 
+  arg2 = jarg2;
   result = (OGRErr)OGRLayerShadow_DeleteFeature(arg1,arg2);
   {
     /* %typemap(out) OGRErr */
@@ -3926,34 +4295,40 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1GetLayerDefn(JNIEnv *je
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1GetFeatureCount_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
-  jint jresult = 0 ;
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1GetFeatureCount_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jlong jresult = 0 ;
   OGRLayerShadow *arg1 = (OGRLayerShadow *) 0 ;
   int arg2 ;
-  int result;
+  GIntBig result;
   
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
   arg1 = *(OGRLayerShadow **)&jarg1; 
   arg2 = (int)jarg2; 
-  result = (int)OGRLayerShadow_GetFeatureCount__SWIG_0(arg1,arg2);
-  jresult = (jint)result; 
+  result = OGRLayerShadow_GetFeatureCount__SWIG_0(arg1,arg2);
+  {
+    /* %typemap(out) (GIntBig) */
+    jresult = result;
+  }
   return jresult;
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1GetFeatureCount_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
-  jint jresult = 0 ;
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1GetFeatureCount_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jlong jresult = 0 ;
   OGRLayerShadow *arg1 = (OGRLayerShadow *) 0 ;
-  int result;
+  GIntBig result;
   
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
   arg1 = *(OGRLayerShadow **)&jarg1; 
-  result = (int)OGRLayerShadow_GetFeatureCount__SWIG_0(arg1);
-  jresult = (jint)result; 
+  result = OGRLayerShadow_GetFeatureCount__SWIG_0(arg1);
+  {
+    /* %typemap(out) (GIntBig) */
+    jresult = result;
+  }
   return jresult;
 }
 
@@ -4499,7 +4874,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1SetIgnoredFields(JNIEnv 
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -4575,7 +4950,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Intersection_1_1SWIG_10(
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -4658,7 +5033,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Intersection_1_1SWIG_12(
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -4767,7 +5142,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Union_1_1SWIG_10(JNIEnv 
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -4850,7 +5225,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Union_1_1SWIG_12(JNIEnv 
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -4959,7 +5334,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1SymDifference_1_1SWIG_10
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -5042,7 +5417,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1SymDifference_1_1SWIG_12
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -5151,7 +5526,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Identity_1_1SWIG_10(JNIE
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -5234,7 +5609,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Identity_1_1SWIG_12(JNIE
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -5343,7 +5718,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Update_1_1SWIG_10(JNIEnv
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -5426,7 +5801,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Update_1_1SWIG_12(JNIEnv
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -5535,7 +5910,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Clip_1_1SWIG_10(JNIEnv *
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -5618,7 +5993,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Clip_1_1SWIG_12(JNIEnv *
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -5727,7 +6102,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Erase_1_1SWIG_10(JNIEnv 
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -5810,7 +6185,7 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1Erase_1_1SWIG_12(JNIEnv 
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -6492,6 +6867,58 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsInteger_1_1S
 }
 
 
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsInteger64_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jlong jresult = 0 ;
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  int arg2 ;
+  GIntBig result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  result = OGRFeatureShadow_GetFieldAsInteger64__SWIG_0(arg1,arg2);
+  {
+    /* %typemap(out) (GIntBig) */
+    jresult = result;
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsInteger64_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2) {
+  jlong jresult = 0 ;
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  GIntBig result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return 0;
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = OGRFeatureShadow_GetFieldAsInteger64__SWIG_1(arg1,(char const *)arg2);
+  {
+    /* %typemap(out) (GIntBig) */
+    jresult = result;
+  }
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  return jresult;
+}
+
+
 SWIGEXPORT jdouble JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsDouble_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
   jdouble jresult = 0 ;
   OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
@@ -6538,7 +6965,7 @@ SWIGEXPORT jdouble JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsDouble_1_
 }
 
 
-SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsDateTime(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jintArray jarg3, jintArray jarg4, jintArray jarg5, jintArray jarg6, jintArray jarg7, jintArray jarg8, jintArray jarg9) {
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsDateTime_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jintArray jarg3, jintArray jarg4, jintArray jarg5, jintArray jarg6, jintArray jarg7, jfloatArray jarg8, jintArray jarg9) {
   OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
   int arg2 ;
   int *arg3 = (int *) 0 ;
@@ -6546,14 +6973,14 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsDateTime(JNI
   int *arg5 = (int *) 0 ;
   int *arg6 = (int *) 0 ;
   int *arg7 = (int *) 0 ;
-  int *arg8 = (int *) 0 ;
+  float *arg8 = (float *) 0 ;
   int *arg9 = (int *) 0 ;
   int temp3 ;
   int temp4 ;
   int temp5 ;
   int temp6 ;
   int temp7 ;
-  int temp8 ;
+  float temp8 ;
   int temp9 ;
   
   (void)jenv;
@@ -6630,7 +7057,7 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsDateTime(JNI
       SWIG_JavaThrowException(jenv, SWIG_JavaIndexOutOfBoundsException, "Array must contain at least 1 element");
       return ;
     }
-    temp8 = (int)0;
+    temp8 = (float)0;
     arg8 = &temp8; 
   }
   {
@@ -6645,7 +7072,7 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsDateTime(JNI
     temp9 = (int)0;
     arg9 = &temp9; 
   }
-  OGRFeatureShadow_GetFieldAsDateTime(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
+  OGRFeatureShadow_GetFieldAsDateTime__SWIG_0(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
   {
     jint jvalue = (jint)temp3;
     jenv->SetIntArrayRegion(jarg3, 0, 1, &jvalue);
@@ -6667,13 +7094,171 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsDateTime(JNI
     jenv->SetIntArrayRegion(jarg7, 0, 1, &jvalue);
   }
   {
-    jint jvalue = (jint)temp8;
-    jenv->SetIntArrayRegion(jarg8, 0, 1, &jvalue);
+    jfloat jvalue = (jfloat)temp8;
+    jenv->SetFloatArrayRegion(jarg8, 0, 1, &jvalue);
   }
   {
     jint jvalue = (jint)temp9;
     jenv->SetIntArrayRegion(jarg9, 0, 1, &jvalue);
   }
+  
+  
+  
+  
+  
+  
+  
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsDateTime_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2, jintArray jarg3, jintArray jarg4, jintArray jarg5, jintArray jarg6, jintArray jarg7, jfloatArray jarg8, jintArray jarg9) {
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  int *arg3 = (int *) 0 ;
+  int *arg4 = (int *) 0 ;
+  int *arg5 = (int *) 0 ;
+  int *arg6 = (int *) 0 ;
+  int *arg7 = (int *) 0 ;
+  float *arg8 = (float *) 0 ;
+  int *arg9 = (int *) 0 ;
+  int temp3 ;
+  int temp4 ;
+  int temp5 ;
+  int temp6 ;
+  int temp7 ;
+  float temp8 ;
+  int temp9 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return ;
+  }
+  {
+    if (!jarg3) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "array null");
+      return ;
+    }
+    if (jenv->GetArrayLength(jarg3) == 0) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaIndexOutOfBoundsException, "Array must contain at least 1 element");
+      return ;
+    }
+    temp3 = (int)0;
+    arg3 = &temp3; 
+  }
+  {
+    if (!jarg4) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "array null");
+      return ;
+    }
+    if (jenv->GetArrayLength(jarg4) == 0) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaIndexOutOfBoundsException, "Array must contain at least 1 element");
+      return ;
+    }
+    temp4 = (int)0;
+    arg4 = &temp4; 
+  }
+  {
+    if (!jarg5) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "array null");
+      return ;
+    }
+    if (jenv->GetArrayLength(jarg5) == 0) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaIndexOutOfBoundsException, "Array must contain at least 1 element");
+      return ;
+    }
+    temp5 = (int)0;
+    arg5 = &temp5; 
+  }
+  {
+    if (!jarg6) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "array null");
+      return ;
+    }
+    if (jenv->GetArrayLength(jarg6) == 0) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaIndexOutOfBoundsException, "Array must contain at least 1 element");
+      return ;
+    }
+    temp6 = (int)0;
+    arg6 = &temp6; 
+  }
+  {
+    if (!jarg7) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "array null");
+      return ;
+    }
+    if (jenv->GetArrayLength(jarg7) == 0) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaIndexOutOfBoundsException, "Array must contain at least 1 element");
+      return ;
+    }
+    temp7 = (int)0;
+    arg7 = &temp7; 
+  }
+  {
+    if (!jarg8) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "array null");
+      return ;
+    }
+    if (jenv->GetArrayLength(jarg8) == 0) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaIndexOutOfBoundsException, "Array must contain at least 1 element");
+      return ;
+    }
+    temp8 = (float)0;
+    arg8 = &temp8; 
+  }
+  {
+    if (!jarg9) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "array null");
+      return ;
+    }
+    if (jenv->GetArrayLength(jarg9) == 0) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaIndexOutOfBoundsException, "Array must contain at least 1 element");
+      return ;
+    }
+    temp9 = (int)0;
+    arg9 = &temp9; 
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return ; 
+      };
+    }
+  }
+  OGRFeatureShadow_GetFieldAsDateTime__SWIG_1(arg1,(char const *)arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
+  {
+    jint jvalue = (jint)temp3;
+    jenv->SetIntArrayRegion(jarg3, 0, 1, &jvalue);
+  }
+  {
+    jint jvalue = (jint)temp4;
+    jenv->SetIntArrayRegion(jarg4, 0, 1, &jvalue);
+  }
+  {
+    jint jvalue = (jint)temp5;
+    jenv->SetIntArrayRegion(jarg5, 0, 1, &jvalue);
+  }
+  {
+    jint jvalue = (jint)temp6;
+    jenv->SetIntArrayRegion(jarg6, 0, 1, &jvalue);
+  }
+  {
+    jint jvalue = (jint)temp7;
+    jenv->SetIntArrayRegion(jarg7, 0, 1, &jvalue);
+  }
+  {
+    jfloat jvalue = (jfloat)temp8;
+    jenv->SetFloatArrayRegion(jarg8, 0, 1, &jvalue);
+  }
+  {
+    jint jvalue = (jint)temp9;
+    jenv->SetIntArrayRegion(jarg9, 0, 1, &jvalue);
+  }
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
   
   
   
@@ -6791,6 +7376,98 @@ SWIGEXPORT jobjectArray JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsStri
 }
 
 
+SWIGEXPORT jbyteArray JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsBinary_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jbyteArray jresult = 0 ;
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  int arg2 ;
+  int *arg3 = (int *) 0 ;
+  char **arg4 = (char **) 0 ;
+  int nLen3 ;
+  char *pBuf3 ;
+  GByte *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) (int *nLen3, char **pBuf3 ) */
+    arg3 = &nLen3;
+    arg4 = &pBuf3;
+  }
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  result = (GByte *)OGRFeatureShadow_GetFieldAsBinary__SWIG_0(arg1,arg2,arg3,arg4);
+  {
+    /* %typemap(out) (GByte* outBytes ) */
+  }
+  {
+    /* %typemap(argout) (int *nLen, char **pBuf ) */
+    jbyteArray byteArray = jenv->NewByteArray(nLen3);
+    jenv->SetByteArrayRegion(byteArray, (jsize)0, (jsize)nLen3, (jbyte*)pBuf3);
+    jresult = byteArray;
+  }
+  {
+    /* %typemap(freearg) (int *nLen, char **pBuf ) */
+    if( nLen3 ) {
+      free( pBuf3 );
+    }
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jbyteArray JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldAsBinary_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2) {
+  jbyteArray jresult = 0 ;
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  int *arg3 = (int *) 0 ;
+  char **arg4 = (char **) 0 ;
+  int nLen3 ;
+  char *pBuf3 ;
+  GByte *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) (int *nLen3, char **pBuf3 ) */
+    arg3 = &nLen3;
+    arg4 = &pBuf3;
+  }
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return 0;
+  }
+  {
+    if (!arg2) {
+      {
+        SWIG_JavaException(jenv, SWIG_ValueError, "Received a NULL pointer."); return 0; 
+      };
+    }
+  }
+  result = (GByte *)OGRFeatureShadow_GetFieldAsBinary__SWIG_1(arg1,(char const *)arg2,arg3,arg4);
+  {
+    /* %typemap(out) (GByte* outBytes ) */
+  }
+  {
+    /* %typemap(argout) (int *nLen, char **pBuf ) */
+    jbyteArray byteArray = jenv->NewByteArray(nLen3);
+    jenv->SetByteArrayRegion(byteArray, (jsize)0, (jsize)nLen3, (jbyte*)pBuf3);
+    jresult = byteArray;
+  }
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+  {
+    /* %typemap(freearg) (int *nLen, char **pBuf ) */
+    if( nLen3 ) {
+      free( pBuf3 );
+    }
+  }
+  return jresult;
+}
+
+
 SWIGEXPORT jboolean JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1IsFieldSet_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
   jboolean jresult = 0 ;
   OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
@@ -6895,32 +7572,35 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetGeomFieldIndex(JNIE
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFID(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
-  jint jresult = 0 ;
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFID(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jlong jresult = 0 ;
   OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
-  int result;
+  GIntBig result;
   
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
   arg1 = *(OGRFeatureShadow **)&jarg1; 
-  result = (int)OGRFeatureShadow_GetFID(arg1);
-  jresult = (jint)result; 
+  result = OGRFeatureShadow_GetFID(arg1);
+  {
+    /* %typemap(out) (GIntBig) */
+    jresult = result;
+  }
   return jresult;
 }
 
 
-SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetFID(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetFID(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2) {
   jint jresult = 0 ;
   OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
-  int arg2 ;
+  GIntBig arg2 ;
   OGRErr result;
   
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
   arg1 = *(OGRFeatureShadow **)&jarg1; 
-  arg2 = (int)jarg2; 
+  arg2 = jarg2;
   result = (OGRErr)OGRFeatureShadow_SetFID(arg1,arg2);
   {
     /* %typemap(out) OGRErr */
@@ -7048,6 +7728,21 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetField_1_1SWIG_11(JN
 }
 
 
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetFieldInteger64(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jlong jarg3) {
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  int arg2 ;
+  GIntBig arg3 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  arg3 = jarg3;
+  OGRFeatureShadow_SetFieldInteger64(arg1,arg2,arg3);
+}
+
+
 SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetField_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jint jarg3) {
   OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
   int arg2 ;
@@ -7132,7 +7827,7 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetField_1_1SWIG_15(JN
 }
 
 
-SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetField_1_1SWIG_16(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jint jarg3, jint jarg4, jint jarg5, jint jarg6, jint jarg7, jint jarg8, jint jarg9) {
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetField_1_1SWIG_16(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jint jarg3, jint jarg4, jint jarg5, jint jarg6, jint jarg7, jfloat jarg8, jint jarg9) {
   OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
   int arg2 ;
   int arg3 ;
@@ -7140,7 +7835,7 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetField_1_1SWIG_16(JN
   int arg5 ;
   int arg6 ;
   int arg7 ;
-  int arg8 ;
+  float arg8 ;
   int arg9 ;
   
   (void)jenv;
@@ -7153,13 +7848,13 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetField_1_1SWIG_16(JN
   arg5 = (int)jarg5; 
   arg6 = (int)jarg6; 
   arg7 = (int)jarg7; 
-  arg8 = (int)jarg8; 
+  arg8 = (float)jarg8; 
   arg9 = (int)jarg9; 
   OGRFeatureShadow_SetField__SWIG_6(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
 }
 
 
-SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetField_1_1SWIG_17(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2, jint jarg3, jint jarg4, jint jarg5, jint jarg6, jint jarg7, jint jarg8, jint jarg9) {
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetField_1_1SWIG_17(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2, jint jarg3, jint jarg4, jint jarg5, jint jarg6, jint jarg7, jfloat jarg8, jint jarg9) {
   OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
   char *arg2 = (char *) 0 ;
   int arg3 ;
@@ -7167,7 +7862,7 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetField_1_1SWIG_17(JN
   int arg5 ;
   int arg6 ;
   int arg7 ;
-  int arg8 ;
+  float arg8 ;
   int arg9 ;
   
   (void)jenv;
@@ -7184,7 +7879,7 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetField_1_1SWIG_17(JN
   arg5 = (int)jarg5; 
   arg6 = (int)jarg6; 
   arg7 = (int)jarg7; 
-  arg8 = (int)jarg8; 
+  arg8 = (float)jarg8; 
   arg9 = (int)jarg9; 
   {
     if (!arg2) {
@@ -7299,7 +7994,7 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetFieldStringList(JNI
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -7602,6 +8297,198 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetFieldType_1_1SWIG_1
   jresult = (jint)result; 
   if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
   return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1Validate_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jint jarg3) {
+  jint jresult = 0 ;
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  int arg2 ;
+  int arg3 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  arg3 = (int)jarg3; 
+  result = (int)OGRFeatureShadow_Validate__SWIG_0(arg1,arg2,arg3);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1Validate_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jint jresult = 0 ;
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  int arg2 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  result = (int)OGRFeatureShadow_Validate__SWIG_0(arg1,arg2);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1Validate_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  result = (int)OGRFeatureShadow_Validate__SWIG_0(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1FillUnsetWithDefault_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jobject jarg3) {
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  int arg2 ;
+  char **arg3 = (char **) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  {
+    /* %typemap(in) char **options */
+    arg3 = NULL;
+    if(jarg3 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return ;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg3, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg3);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return ;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg3 = CSLAddString(arg3,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  OGRFeatureShadow_FillUnsetWithDefault__SWIG_0(arg1,arg2,arg3);
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg3 );
+  }
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1FillUnsetWithDefault_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  int arg2 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  OGRFeatureShadow_FillUnsetWithDefault__SWIG_0(arg1,arg2);
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1FillUnsetWithDefault_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  OGRFeatureShadow_FillUnsetWithDefault__SWIG_0(arg1);
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetNativeData(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jstring jresult = 0 ;
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  result = (char *)OGRFeatureShadow_GetNativeData(arg1);
+  if (result) jresult = jenv->NewStringUTF((const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1GetNativeMediaType(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jstring jresult = 0 ;
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  result = (char *)OGRFeatureShadow_GetNativeMediaType(arg1);
+  if (result) jresult = jenv->NewStringUTF((const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetNativeData(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2) {
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return ;
+  }
+  OGRFeatureShadow_SetNativeData(arg1,(char const *)arg2);
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Feature_1SetNativeMediaType(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2) {
+  OGRFeatureShadow *arg1 = (OGRFeatureShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFeatureShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return ;
+  }
+  OGRFeatureShadow_SetNativeMediaType(arg1,(char const *)arg2);
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
 }
 
 
@@ -8123,6 +9010,34 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_FieldDefn_1SetType(JNIEnv *jenv
 }
 
 
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_FieldDefn_1GetSubType(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRFieldDefnShadow *arg1 = (OGRFieldDefnShadow *) 0 ;
+  OGRFieldSubType result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFieldDefnShadow **)&jarg1; 
+  result = (OGRFieldSubType)OGRFieldDefnShadow_GetSubType(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_FieldDefn_1SetSubType(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  OGRFieldDefnShadow *arg1 = (OGRFieldDefnShadow *) 0 ;
+  OGRFieldSubType arg2 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFieldDefnShadow **)&jarg1; 
+  arg2 = (OGRFieldSubType)jarg2; 
+  OGRFieldDefnShadow_SetSubType(arg1,arg2);
+}
+
+
 SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_FieldDefn_1GetJustify(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
   jint jresult = 0 ;
   OGRFieldDefnShadow *arg1 = (OGRFieldDefnShadow *) 0 ;
@@ -8264,6 +9179,82 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_FieldDefn_1SetIgnored(JNIEnv *j
   arg1 = *(OGRFieldDefnShadow **)&jarg1; 
   arg2 = (int)jarg2; 
   OGRFieldDefnShadow_SetIgnored(arg1,arg2);
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_FieldDefn_1IsNullable(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRFieldDefnShadow *arg1 = (OGRFieldDefnShadow *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFieldDefnShadow **)&jarg1; 
+  result = (int)OGRFieldDefnShadow_IsNullable(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_FieldDefn_1SetNullable(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  OGRFieldDefnShadow *arg1 = (OGRFieldDefnShadow *) 0 ;
+  int arg2 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFieldDefnShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  OGRFieldDefnShadow_SetNullable(arg1,arg2);
+}
+
+
+SWIGEXPORT jstring JNICALL Java_org_gdal_ogr_ogrJNI_FieldDefn_1GetDefault(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jstring jresult = 0 ;
+  OGRFieldDefnShadow *arg1 = (OGRFieldDefnShadow *) 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFieldDefnShadow **)&jarg1; 
+  result = (char *)OGRFieldDefnShadow_GetDefault(arg1);
+  if (result) jresult = jenv->NewStringUTF((const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_FieldDefn_1SetDefault(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2) {
+  OGRFieldDefnShadow *arg1 = (OGRFieldDefnShadow *) 0 ;
+  char *arg2 = (char *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFieldDefnShadow **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)jenv->GetStringUTFChars(jarg2, 0);
+    if (!arg2) return ;
+  }
+  OGRFieldDefnShadow_SetDefault(arg1,(char const *)arg2);
+  if (arg2) jenv->ReleaseStringUTFChars(jarg2, (const char *)arg2);
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_FieldDefn_1IsDefaultDriverSpecific(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRFieldDefnShadow *arg1 = (OGRFieldDefnShadow *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRFieldDefnShadow **)&jarg1; 
+  result = (int)OGRFieldDefnShadow_IsDefaultDriverSpecific(arg1);
+  jresult = (jint)result; 
+  return jresult;
 }
 
 
@@ -8466,6 +9457,34 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_GeomFieldDefn_1SetIgnored(JNIEn
   arg1 = *(OGRGeomFieldDefnShadow **)&jarg1; 
   arg2 = (int)jarg2; 
   OGRGeomFieldDefnShadow_SetIgnored(arg1,arg2);
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GeomFieldDefn_1IsNullable(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRGeomFieldDefnShadow *arg1 = (OGRGeomFieldDefnShadow *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeomFieldDefnShadow **)&jarg1; 
+  result = (int)OGRGeomFieldDefnShadow_IsNullable(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_GeomFieldDefn_1SetNullable(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  OGRGeomFieldDefnShadow *arg1 = (OGRGeomFieldDefnShadow *) 0 ;
+  int arg2 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeomFieldDefnShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  OGRGeomFieldDefnShadow_SetNullable(arg1,arg2);
 }
 
 
@@ -8810,6 +9829,78 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_ForceToMultiLineString(JNIEnv 
 }
 
 
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_ForceTo_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jobject jarg3) {
+  jlong jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  OGRwkbGeometryType arg2 ;
+  char **arg3 = (char **) 0 ;
+  OGRGeometryShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (OGRwkbGeometryType)jarg2; 
+  {
+    /* %typemap(in) char **options */
+    arg3 = NULL;
+    if(jarg3 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg3, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg3);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg3 = CSLAddString(arg3,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (OGRGeometryShadow *)ForceTo(arg1,arg2,arg3);
+  *(OGRGeometryShadow **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg3 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_ForceTo_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jlong jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  OGRwkbGeometryType arg2 ;
+  OGRGeometryShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (OGRwkbGeometryType)jarg2; 
+  result = (OGRGeometryShadow *)ForceTo(arg1,arg2);
+  *(OGRGeometryShadow **)&jresult = result; 
+  return jresult;
+}
+
+
 SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_delete_1Geometry(JNIEnv *jenv, jclass jcls, jlong jarg1) {
   OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
   
@@ -8836,6 +9927,55 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1ExportToWkt_1_1SWIG_1
     arg2 = &argout2;
   }
   result = (OGRErr)OGRGeometryShadow_ExportToWkt__SWIG_0(arg1,arg2);
+  {
+    /* %typemap(out) OGRErr */
+    if (result != 0 && bUseExceptions) {
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
+        OGRErrMessages(result));
+      return 0;
+    }
+    jresult = (jint)result;
+  }
+  {
+    /* %typemap(argout) (char **argout) */
+    jstring temp_string;
+    
+    if(jarg2 != NULL && (int)jenv->GetArrayLength(jarg2) >= 1) {
+      temp_string = jenv->NewStringUTF(argout2);
+      jenv->SetObjectArrayElement(jarg2, 0, temp_string);
+      jenv->DeleteLocalRef(temp_string);
+    }
+  }
+  {
+    /* %typemap(freearg) (char **argout) */
+    if(arg2) {
+      CPLFree((void *)argout2);
+    }
+  }
+  {
+    /* %typemap(ret) OGRErr */
+    
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1ExportToIsoWkt(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jobjectArray jarg2) {
+  jint jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  char **arg2 = (char **) 0 ;
+  char *argout2 = 0 ;
+  OGRErr result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  {
+    /* %typemap(in) (char **argout2) */
+    arg2 = &argout2;
+  }
+  result = (OGRErr)OGRGeometryShadow_ExportToIsoWkt(arg1,arg2);
   {
     /* %typemap(out) OGRErr */
     if (result != 0 && bUseExceptions) {
@@ -8947,6 +10087,84 @@ SWIGEXPORT jbyteArray JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1ExportToWkb_1_1
 }
 
 
+SWIGEXPORT jbyteArray JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1ExportToIsoWkb_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg4) {
+  jbyteArray jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int *arg2 = (int *) 0 ;
+  char **arg3 = (char **) 0 ;
+  OGRwkbByteOrder arg4 ;
+  int nLen2 ;
+  char *pBuf2 ;
+  GByte *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) (int *nLen2, char **pBuf2 ) */
+    arg2 = &nLen2;
+    arg3 = &pBuf2;
+  }
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg4 = (OGRwkbByteOrder)jarg4; 
+  result = (GByte *)OGRGeometryShadow_ExportToIsoWkb__SWIG_0(arg1,arg2,arg3,arg4);
+  {
+    /* %typemap(out) (GByte* outBytes ) */
+  }
+  {
+    /* %typemap(argout) (int *nLen, char **pBuf ) */
+    jbyteArray byteArray = jenv->NewByteArray(nLen2);
+    jenv->SetByteArrayRegion(byteArray, (jsize)0, (jsize)nLen2, (jbyte*)pBuf2);
+    jresult = byteArray;
+  }
+  {
+    /* %typemap(freearg) (int *nLen, char **pBuf ) */
+    if( nLen2 ) {
+      free( pBuf2 );
+    }
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jbyteArray JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1ExportToIsoWkb_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jbyteArray jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int *arg2 = (int *) 0 ;
+  char **arg3 = (char **) 0 ;
+  int nLen2 ;
+  char *pBuf2 ;
+  GByte *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  {
+    /* %typemap(in) (int *nLen2, char **pBuf2 ) */
+    arg2 = &nLen2;
+    arg3 = &pBuf2;
+  }
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  result = (GByte *)OGRGeometryShadow_ExportToIsoWkb__SWIG_0(arg1,arg2,arg3);
+  {
+    /* %typemap(out) (GByte* outBytes ) */
+  }
+  {
+    /* %typemap(argout) (int *nLen, char **pBuf ) */
+    jbyteArray byteArray = jenv->NewByteArray(nLen2);
+    jenv->SetByteArrayRegion(byteArray, (jsize)0, (jsize)nLen2, (jbyte*)pBuf2);
+    jresult = byteArray;
+  }
+  {
+    /* %typemap(freearg) (int *nLen, char **pBuf ) */
+    if( nLen2 ) {
+      free( pBuf2 );
+    }
+  }
+  return jresult;
+}
+
+
 SWIGEXPORT jstring JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1ExportToGML_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jobject jarg2) {
   jstring jresult = 0 ;
   OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
@@ -8966,7 +10184,7 @@ SWIGEXPORT jstring JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1ExportToGML_1_1SWI
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -9099,7 +10317,7 @@ SWIGEXPORT jstring JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1ExportToJson_1_1SW
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -9191,6 +10409,42 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1AddPoint_1_1SWIG_11(J
   arg2 = (double)jarg2; 
   arg3 = (double)jarg3; 
   OGRGeometryShadow_AddPoint__SWIG_0(arg1,arg2,arg3);
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1AddPointM(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2, jdouble jarg3, jdouble jarg4) {
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  double arg2 ;
+  double arg3 ;
+  double arg4 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (double)jarg2; 
+  arg3 = (double)jarg3; 
+  arg4 = (double)jarg4; 
+  OGRGeometryShadow_AddPointM(arg1,arg2,arg3,arg4);
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1AddPointZM(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2, jdouble jarg3, jdouble jarg4, jdouble jarg5) {
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  double arg2 ;
+  double arg3 ;
+  double arg4 ;
+  double arg5 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (double)jarg2; 
+  arg3 = (double)jarg3; 
+  arg4 = (double)jarg4; 
+  arg5 = (double)jarg5; 
+  OGRGeometryShadow_AddPointZM(arg1,arg2,arg3,arg4,arg5);
 }
 
 
@@ -9596,6 +10850,38 @@ SWIGEXPORT jdouble JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetZ_1_1SWIG_11(JN
 }
 
 
+SWIGEXPORT jdouble JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetM_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jdouble jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int arg2 ;
+  double result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  result = (double)OGRGeometryShadow_GetM__SWIG_0(arg1,arg2);
+  jresult = (jdouble)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jdouble JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetM_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jdouble jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  double result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  result = (double)OGRGeometryShadow_GetM__SWIG_0(arg1);
+  jresult = (jdouble)result; 
+  return jresult;
+}
+
+
 SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetPoint(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jdoubleArray jarg3) {
   OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
   int arg2 ;
@@ -9617,6 +10903,37 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetPoint(JNIEnv *jenv
     arg3 = (double *)jenv->GetDoubleArrayElements(jarg3, NULL);
   }
   OGRGeometryShadow_GetPoint(arg1,arg2,arg3);
+  {
+    /* %typemap(argout) (double argout[ANY]) */
+  }
+  {
+    /* %typemap(freearg) (double argout[ANY]) */
+    jenv->ReleaseDoubleArrayElements(jarg3, (jdouble *)arg3, 0);
+  }
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetPointZM(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jdoubleArray jarg3) {
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int arg2 ;
+  double *arg3 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  {
+    /* %typemap(in) (double argout[ANY]) */
+    if(jarg3 == NULL || jenv->GetArrayLength(jarg3) != 4) {
+      char errorMsg[512];
+      sprintf(errorMsg, "array of size %d expected", 4);
+      SWIG_JavaThrowException(jenv, SWIG_JavaIndexOutOfBoundsException, errorMsg);
+      return ;
+    }
+    arg3 = (double *)jenv->GetDoubleArrayElements(jarg3, NULL);
+  }
+  OGRGeometryShadow_GetPointZM(arg1,arg2,arg3);
   {
     /* %typemap(argout) (double argout[ANY]) */
   }
@@ -9709,6 +11026,46 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1SetPoint_1_1SWIG_11(J
 }
 
 
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1SetPointM(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jdouble jarg3, jdouble jarg4, jdouble jarg5) {
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int arg2 ;
+  double arg3 ;
+  double arg4 ;
+  double arg5 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  arg3 = (double)jarg3; 
+  arg4 = (double)jarg4; 
+  arg5 = (double)jarg5; 
+  OGRGeometryShadow_SetPointM(arg1,arg2,arg3,arg4,arg5);
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1SetPointZM(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jdouble jarg3, jdouble jarg4, jdouble jarg5, jdouble jarg6) {
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int arg2 ;
+  double arg3 ;
+  double arg4 ;
+  double arg5 ;
+  double arg6 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  arg3 = (double)jarg3; 
+  arg4 = (double)jarg4; 
+  arg5 = (double)jarg5; 
+  arg6 = (double)jarg6; 
+  OGRGeometryShadow_SetPointZM(arg1,arg2,arg3,arg4,arg5,arg6);
+}
+
+
 SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1SetPoint_12D(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jdouble jarg3, jdouble jarg4) {
   OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
   int arg2 ;
@@ -9772,6 +11129,57 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1SimplifyPreserveTopo
   arg1 = *(OGRGeometryShadow **)&jarg1; 
   arg2 = (double)jarg2; 
   result = (OGRGeometryShadow *)OGRGeometryShadow_SimplifyPreserveTopology(arg1,arg2);
+  *(OGRGeometryShadow **)&jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1DelaunayTriangulation_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2, jint jarg3) {
+  jlong jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  double arg2 ;
+  int arg3 ;
+  OGRGeometryShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (double)jarg2; 
+  arg3 = (int)jarg3; 
+  result = (OGRGeometryShadow *)OGRGeometryShadow_DelaunayTriangulation__SWIG_0(arg1,arg2,arg3);
+  *(OGRGeometryShadow **)&jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1DelaunayTriangulation_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2) {
+  jlong jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  double arg2 ;
+  OGRGeometryShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (double)jarg2; 
+  result = (OGRGeometryShadow *)OGRGeometryShadow_DelaunayTriangulation__SWIG_0(arg1,arg2);
+  *(OGRGeometryShadow **)&jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1DelaunayTriangulation_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jlong jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  OGRGeometryShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  result = (OGRGeometryShadow *)OGRGeometryShadow_DelaunayTriangulation__SWIG_0(arg1);
   *(OGRGeometryShadow **)&jresult = result; 
   return jresult;
 }
@@ -10600,6 +12008,51 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetCoordinateDimensio
 }
 
 
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1CoordinateDimension(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  result = (int)OGRGeometryShadow_CoordinateDimension(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1Is3D(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  result = (int)OGRGeometryShadow_Is3D(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1IsMeasured(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  result = (int)OGRGeometryShadow_IsMeasured(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
 SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1SetCoordinateDimension(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
   OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
   int arg2 ;
@@ -10610,6 +12063,32 @@ SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1SetCoordinateDimensio
   arg1 = *(OGRGeometryShadow **)&jarg1; 
   arg2 = (int)jarg2; 
   OGRGeometryShadow_SetCoordinateDimension(arg1,arg2);
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1Set3D(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int arg2 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  OGRGeometryShadow_Set3D(arg1,arg2);
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1SetMeasured(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int arg2 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  OGRGeometryShadow_SetMeasured(arg1,arg2);
 }
 
 
@@ -10624,6 +12103,210 @@ SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetDimension(JNIEnv *
   arg1 = *(OGRGeometryShadow **)&jarg1; 
   result = (int)OGRGeometryShadow_GetDimension(arg1);
   jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1HasCurveGeometry_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jint jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int arg2 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (int)jarg2; 
+  result = (int)OGRGeometryShadow_HasCurveGeometry__SWIG_0(arg1,arg2);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1HasCurveGeometry_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  result = (int)OGRGeometryShadow_HasCurveGeometry__SWIG_0(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetLinearGeometry_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2, jobject jarg3) {
+  jlong jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  double arg2 ;
+  char **arg3 = (char **) 0 ;
+  OGRGeometryShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (double)jarg2; 
+  {
+    /* %typemap(in) char **options */
+    arg3 = NULL;
+    if(jarg3 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg3, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg3);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg3 = CSLAddString(arg3,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (OGRGeometryShadow *)OGRGeometryShadow_GetLinearGeometry__SWIG_0(arg1,arg2,arg3);
+  *(OGRGeometryShadow **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg3 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetLinearGeometry_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2) {
+  jlong jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  double arg2 ;
+  OGRGeometryShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (double)jarg2; 
+  result = (OGRGeometryShadow *)OGRGeometryShadow_GetLinearGeometry__SWIG_0(arg1,arg2);
+  *(OGRGeometryShadow **)&jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetLinearGeometry_1_1SWIG_12(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jlong jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  OGRGeometryShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  result = (OGRGeometryShadow *)OGRGeometryShadow_GetLinearGeometry__SWIG_0(arg1);
+  *(OGRGeometryShadow **)&jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetCurveGeometry_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jobject jarg2) {
+  jlong jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  char **arg2 = (char **) 0 ;
+  OGRGeometryShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  {
+    /* %typemap(in) char **options */
+    arg2 = NULL;
+    if(jarg2 != 0) {
+      const jclass vector = jenv->FindClass("java/util/Vector");
+      const jclass enumeration = jenv->FindClass("java/util/Enumeration");
+      const jclass stringClass = jenv->FindClass("java/lang/String");
+      const jmethodID elements = jenv->GetMethodID(vector, "elements",
+        "()Ljava/util/Enumeration;");
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
+        "hasMoreElements", "()Z");
+      const jmethodID getNextElement = jenv->GetMethodID(enumeration,
+        "nextElement", "()Ljava/lang/Object;");
+      if(vector == NULL || enumeration == NULL || elements == NULL ||
+        hasMoreElements == NULL || getNextElement == NULL) {
+        fprintf(stderr, "Could not load (options **) jni types.\n");
+        return 0;
+      }
+      for (jobject keys = jenv->CallObjectMethod(jarg2, elements);
+        jenv->CallBooleanMethod(keys, hasMoreElements) == JNI_TRUE;) {
+        jstring value = (jstring)jenv->CallObjectMethod(keys, getNextElement);
+        if (value == NULL || !jenv->IsInstanceOf(value, stringClass))
+        {
+          CSLDestroy(arg2);
+          SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, "an element in the vector is not a string");
+          return 0;
+        }
+        const char *valptr = jenv->GetStringUTFChars(value, 0);
+        arg2 = CSLAddString(arg2,  valptr);
+        jenv->ReleaseStringUTFChars(value, valptr);
+      }
+    }
+  }
+  result = (OGRGeometryShadow *)OGRGeometryShadow_GetCurveGeometry__SWIG_0(arg1,arg2);
+  *(OGRGeometryShadow **)&jresult = result; 
+  {
+    /* %typemap(freearg) char **options */
+    CSLDestroy( arg2 );
+  }
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1GetCurveGeometry_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jlong jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  OGRGeometryShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  result = (OGRGeometryShadow *)OGRGeometryShadow_GetCurveGeometry__SWIG_0(arg1);
+  *(OGRGeometryShadow **)&jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Geometry_1Value(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jdouble jarg2) {
+  jlong jresult = 0 ;
+  OGRGeometryShadow *arg1 = (OGRGeometryShadow *) 0 ;
+  double arg2 ;
+  OGRGeometryShadow *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(OGRGeometryShadow **)&jarg1; 
+  arg2 = (double)jarg2; 
+  result = (OGRGeometryShadow *)OGRGeometryShadow_Value(arg1,arg2);
+  *(OGRGeometryShadow **)&jresult = result; 
   return jresult;
 }
 
@@ -10801,6 +12484,246 @@ SWIGEXPORT jstring JNICALL Java_org_gdal_ogr_ogrJNI_GetFieldTypeName(JNIEnv *jen
 }
 
 
+SWIGEXPORT jstring JNICALL Java_org_gdal_ogr_ogrJNI_GetFieldSubTypeName(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jstring jresult = 0 ;
+  OGRFieldSubType arg1 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRFieldSubType)jarg1; 
+  result = (char *)OGR_GetFieldSubTypeName(arg1);
+  if (result) jresult = jenv->NewStringUTF((const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1Flatten(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  OGRwkbGeometryType result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  result = (OGRwkbGeometryType)OGR_GT_Flatten(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1SetZ(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  OGRwkbGeometryType result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  result = (OGRwkbGeometryType)OGR_GT_SetZ(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1SetM(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  OGRwkbGeometryType result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  result = (OGRwkbGeometryType)OGR_GT_SetM(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1SetModifier_1_1SWIG_10(JNIEnv *jenv, jclass jcls, jint jarg1, jint jarg2, jint jarg3) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  int arg2 ;
+  int arg3 ;
+  OGRwkbGeometryType result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  arg2 = (int)jarg2; 
+  arg3 = (int)jarg3; 
+  result = (OGRwkbGeometryType)GT_SetModifier(arg1,arg2,arg3);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1SetModifier_1_1SWIG_11(JNIEnv *jenv, jclass jcls, jint jarg1, jint jarg2) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  int arg2 ;
+  OGRwkbGeometryType result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  arg2 = (int)jarg2; 
+  result = (OGRwkbGeometryType)GT_SetModifier(arg1,arg2);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1HasZ(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  result = (int)OGR_GT_HasZ(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1HasM(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  result = (int)OGR_GT_HasM(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1IsSubClassOf(JNIEnv *jenv, jclass jcls, jint jarg1, jint jarg2) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  OGRwkbGeometryType arg2 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  arg2 = (OGRwkbGeometryType)jarg2; 
+  result = (int)OGR_GT_IsSubClassOf(arg1,arg2);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1IsCurve(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  result = (int)OGR_GT_IsCurve(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1IsSurface(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  result = (int)OGR_GT_IsSurface(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1IsNonLinear(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  result = (int)OGR_GT_IsNonLinear(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1GetCollection(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  OGRwkbGeometryType result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  result = (OGRwkbGeometryType)OGR_GT_GetCollection(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1GetCurve(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  OGRwkbGeometryType result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  result = (OGRwkbGeometryType)OGR_GT_GetCurve(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GT_1GetLinear(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jint jresult = 0 ;
+  OGRwkbGeometryType arg1 ;
+  OGRwkbGeometryType result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (OGRwkbGeometryType)jarg1; 
+  result = (OGRwkbGeometryType)OGR_GT_GetLinear(arg1);
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_org_gdal_ogr_ogrJNI_SetNonLinearGeometriesEnabledFlag(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  int arg1 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (int)jarg1; 
+  OGRSetNonLinearGeometriesEnabledFlag(arg1);
+}
+
+
+SWIGEXPORT jint JNICALL Java_org_gdal_ogr_ogrJNI_GetNonLinearGeometriesEnabledFlag(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)OGRGetNonLinearGeometriesEnabledFlag();
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
 SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_GetOpenDS(JNIEnv *jenv, jclass jcls, jint jarg1) {
   jlong jresult = 0 ;
   int arg1 ;
@@ -10952,7 +12875,7 @@ SWIGEXPORT jobject JNICALL Java_org_gdal_ogr_ogrJNI_GeneralCmdLineProcessor_1_1S
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -11021,7 +12944,7 @@ SWIGEXPORT jobject JNICALL Java_org_gdal_ogr_ogrJNI_GeneralCmdLineProcessor_1_1S
       const jclass stringClass = jenv->FindClass("java/lang/String");
       const jmethodID elements = jenv->GetMethodID(vector, "elements",
         "()Ljava/util/Enumeration;");
-      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration, 
+      const jmethodID hasMoreElements = jenv->GetMethodID(enumeration,
         "hasMoreElements", "()Z");
       const jmethodID getNextElement = jenv->GetMethodID(enumeration,
         "nextElement", "()Ljava/lang/Object;");
@@ -11078,6 +13001,30 @@ SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_TermProgressCallback_1SWIGUpca
     (void)jenv;
     (void)jcls;
     *(ProgressCallback **)&baseptr = *(TermProgressCallback **)&jarg1;
+    return baseptr;
+}
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Driver_1SWIGUpcast(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+    jlong baseptr = 0;
+    (void)jenv;
+    (void)jcls;
+    *(GDALMajorObjectShadow **)&baseptr = *(OGRDriverShadow **)&jarg1;
+    return baseptr;
+}
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_DataSource_1SWIGUpcast(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+    jlong baseptr = 0;
+    (void)jenv;
+    (void)jcls;
+    *(GDALMajorObjectShadow **)&baseptr = *(OGRDataSourceShadow **)&jarg1;
+    return baseptr;
+}
+
+SWIGEXPORT jlong JNICALL Java_org_gdal_ogr_ogrJNI_Layer_1SWIGUpcast(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+    jlong baseptr = 0;
+    (void)jenv;
+    (void)jcls;
+    *(GDALMajorObjectShadow **)&baseptr = *(OGRLayerShadow **)&jarg1;
     return baseptr;
 }
 
